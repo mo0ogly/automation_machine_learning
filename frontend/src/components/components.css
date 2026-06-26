@@ -54,6 +54,10 @@
 .cfg-assist { margin-top: 0.35rem; }
 .cfg-cell .assist-answer { margin-top: 0.4rem; }
 
+/* ── Per-hyperparameter AI helper (Renforcement) ── */
+.rl-field-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.rl-field .assist-answer { margin-top: 0.4rem; }
+
 /* ── Copilot panel (assisted mode + journal memory) ── */
 .copilot { display: flex; flex-direction: column; gap: 0.75rem; }
 .copilot-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }

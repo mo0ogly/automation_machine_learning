@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import PlotModal from './PlotModal';
+import AssistButton from './AssistButton';
+import AssistAnswer from './AssistAnswer';
 import './components.css';
 
 // API base: configurable at build time (Docker passes VITE_API_URL), defaults to
@@ -24,8 +26,26 @@ export default function ReinforcementView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [explainBusy, setExplainBusy] = useState(false);
 
   const setField = (k, v) => setCfg((p) => ({ ...p, [k]: v }));
+
+  // Per-hyperparameter AI helper: explains one slider (reuses the session-free
+  // assist agent via /api/rl/explain); a suggested value is one-click applicable.
+  const askExplain = async (param, label) => {
+    setExplainBusy(true);
+    try {
+      const res = await fetch(API_URL + '/api/rl/explain', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ param, label, level: 'novice', config: cfg }),
+      });
+      const data = await res.json();
+      if (res.ok) setAnswers((p) => ({ ...p, [param]: data }));
+    } catch (e) { /* explanation is non-blocking */ }
+    setExplainBusy(false);
+  };
+  const applyRlSuggestion = (sc) => setCfg((p) => ({ ...p, ...sc }));
 
   const train = async () => {
     setBusy(true); setError(null);
@@ -64,11 +84,16 @@ export default function ReinforcementView() {
       <div className="rl-panel glass-panel">
         <div className="rl-controls">
           {FIELDS.map((f) => (
-            <label key={f.key} className="rl-field">
-              <span>{f.label} : <strong>{cfg[f.key]}</strong></span>
+            <div key={f.key} className="rl-field">
+              <span className="rl-field-head">
+                <span>{f.label} : <strong>{cfg[f.key]}</strong></span>
+                <AssistButton topic={f.key} label={f.label} text="IA"
+                  onAssist={askExplain} busy={explainBusy} />
+              </span>
               <input type="range" min={f.min} max={f.max} step={f.step}
                 value={cfg[f.key]} onChange={(e) => setField(f.key, Number(e.target.value))} />
-            </label>
+              <AssistAnswer topic={f.key} answers={answers} onApply={applyRlSuggestion} />
+            </div>
           ))}
           <button className="btn btn-primary rl-train" onClick={train} disabled={busy}>
             {busy ? 'Entraînement en cours…' : "Entraîner l'agent"}

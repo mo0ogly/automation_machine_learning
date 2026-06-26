@@ -449,6 +449,40 @@ def rl_train(req: RLTrainRequest):
     })
 
 
+# Q-learning hyperparameters + help text, consumed by the per-slider AI helper.
+_RL_FIELDS = [
+    {"name": "size", "label": "Taille de la grille", "type": "range", "min": 3, "max": 10, "step": 1, "default": 5,
+     "help": "Côté du labyrinthe GridWorld (N×N). Plus grand = espace d'états plus vaste, donc plus long à apprendre."},
+    {"name": "episodes", "label": "Nombre d'épisodes", "type": "range", "min": 20, "max": 2000, "step": 20, "default": 300,
+     "help": "Nombre de parties d'entraînement. Plus d'épisodes = la table Q converge mieux (mais c'est plus long)."},
+    {"name": "alpha", "label": "Taux d'apprentissage (alpha)", "type": "range", "min": 0.01, "max": 1.0, "step": 0.01, "default": 0.1,
+     "help": "Vitesse de mise à jour de Q : haut = apprend vite mais instable ; bas = lent mais stable."},
+    {"name": "gamma", "label": "Facteur d'actualisation (gamma)", "type": "range", "min": 0.5, "max": 0.999, "step": 0.001, "default": 0.95,
+     "help": "Poids des récompenses futures : proche de 1 = vision long terme ; plus bas = privilégie le gain immédiat."},
+    {"name": "epsilon", "label": "Exploration initiale (epsilon)", "type": "range", "min": 0.0, "max": 1.0, "step": 0.05, "default": 1.0,
+     "help": "Part d'actions aléatoires au départ (exploration vs exploitation). Décroît au fil de l'entraînement."},
+    {"name": "n_goals", "label": "Nombre de buts", "type": "range", "min": 1, "max": 3, "step": 1, "default": 1,
+     "help": "Nombre de cases-objectif récompensées. Plusieurs buts = plusieurs solutions optimales possibles."},
+    {"name": "n_traps", "label": "Nombre de pièges", "type": "range", "min": 0, "max": 5, "step": 1, "default": 0,
+     "help": "Cases pénalisantes qui terminent l'épisode. Plus de pièges = environnement plus risqué à naviguer."},
+]
+_RL_FIELDS_BY_NAME = {f["name"]: f for f in _RL_FIELDS}
+
+
+@app.post("/api/rl/explain")
+def rl_explain(body: dict = Body(default={})):
+    """Explain one Q-learning hyperparameter (reuses the session-free assist agent)."""
+    param = str(body.get("param") or "")
+    field = _RL_FIELDS_BY_NAME.get(param)
+    if field is None:
+        raise HTTPException(status_code=404, detail=f"Paramètre RL inconnu : {param}")
+    level = str(body.get("level") or "novice").lower()
+    out = llm_agent.assist("Apprentissage par renforcement (Q-learning)", "reinforcement",
+                           "param:" + param, {"parametre": field}, "", level, _RL_FIELDS,
+                           body.get("config") or {})
+    return to_native({**out, "param": param})
+
+
 # ── deployment ──────────────────────────────────────────────────────────
 @app.post("/api/session/{session_id}/predict")
 def predict(session_id: str, features: dict = Body(default={})):

@@ -60,6 +60,7 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 | `backend/env_loader.py` | Chargement `.env` + garde TLS (mitmproxy CA → certifi si proxy down) |
 | `backend/pipeline/context.py` | Détection cible + type de problème (régression / classification / clustering / anomalie) |
 | `backend/pipeline/session.py` | État de session **rejouable** (snapshots + invalidation aval) |
+| `backend/pipeline/persistence.py` | Miroir SQLite write-through (un blob joblib/session) — les sessions **survivent à un redémarrage** du backend |
 | `backend/pipeline/stages/*.py` | Une étape par module (contrat uniforme `default_config`/`config_schema`/`diagnose`/`run`) ; `tune.py` (GridSearchCV), `explain.py` (SHAP) |
 | `backend/rl/` | Sous-système renforcement : `gridworld.py`, `qlearning.py`, `plots.py` (NumPy seul) |
 
@@ -109,7 +110,7 @@ npm run dev                   # http://localhost:5173 (proxy vers le backend :80
 
 ## Tests
 ```bash
-cd backend && python -m pytest tests/test_api.py -q   # 41 tests, sans réseau
+cd backend && python -m pytest tests/test_api.py -q   # 44 tests, sans réseau
 ```
 
 ## Roadmap
@@ -117,7 +118,9 @@ cd backend && python -m pytest tests/test_api.py -q   # 41 tests, sans réseau
 - **Providers LLM** — **Groq pour l'instant** (REST compatible OpenAI). À venir : OpenAI,
   Anthropic, et un mode **local** (Ollama) pour tourner sans cloud. L'agent parle déjà un
   protocole compatible OpenAI, donc l'ajout d'un provider est un branchement de configuration.
-- **Persistance des sessions** — actuellement en mémoire ; externalisation prévue (SQLite/Redis).
+- **Persistance des sessions** — **faite** : les sessions sont mirroir-ées en SQLite
+  (`backend/sessions.db`) et survivent à un redémarrage du backend (toggle `ML_PERSIST_SESSIONS`).
+  À suivre : un store partagé (Redis/Postgres) pour un backend multi-process.
 - **Non supervisé** — Davies-Bouldin / Calinski-Harabasz sont là ; dendrogramme agglomératif à venir.
 
 ## Licence

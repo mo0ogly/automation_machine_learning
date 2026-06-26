@@ -483,3 +483,70 @@ def test_rl_train_with_traps_and_goals():
     assert len(body["env"]["goals"]) == 2
     assert len(body["env"]["traps"]) == 3
     assert body["config"]["n_traps"] == 3 and body["config"]["n_goals"] == 2
+
+
+# ── session persistence (survive a backend restart) ────────────────────────
+def _populated_session():
+    """Run a full supervised pipeline through the app, return the live Session."""
+    from pipeline import SESSIONS
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    client.post(f"/api/session/{sid}/level", json={"level": "expert"})
+    return SESSIONS.get(sid)
+
+
+def test_persistence_roundtrip_preserves_model_and_state(tmp_path):
+    """A fully-run session (fitted model, splits, journal) survives save->load
+    through a fresh store — the SQLite mirror that outlives a backend restart."""
+    from pipeline import SessionStore, SessionPersistence
+
+    live = _populated_session()
+    live.add_insight("model", "note", "Note", "garder ce modèle", source="user")
+    db = str(tmp_path / "sessions.db")
+
+    # Process 1: write-through to disk.
+    SessionStore(persistence=SessionPersistence(db_path=db)).save(live)
+
+    # Process 2 (simulated restart): brand-new store, cold cache, same DB file.
+    store2 = SessionStore(persistence=SessionPersistence(db_path=db))
+    assert live.id not in store2._sessions          # cold cache
+    restored = store2.get(live.id)                  # rehydrated from SQLite
+    assert restored is not None
+
+    # Identity + context + level.
+    assert restored.id == live.id and restored.filename == live.filename
+    assert restored.ctx.problem_type == live.ctx.problem_type
+    assert restored.level == "expert"
+    # Journal memory preserved verbatim.
+    assert [i["text"] for i in restored.insights] == [i["text"] for i in live.insights]
+    # Recorded stages preserved, including a usable fitted model.
+    assert set(restored.runs) == set(live.runs)
+    model, origin = restored.current_model()
+    assert model is not None and origin in ("baseline", "tuned")
+    Xte = restored.get_run("separate").artifacts["X_test"]
+    assert len(model.predict(Xte)) == len(Xte)      # rehydrated model still predicts
+    # Raw frame intact.
+    assert restored.raw_df.shape == live.raw_df.shape
+    assert list(restored.raw_df.columns) == list(live.raw_df.columns)
+
+
+def test_persistence_drop_removes_blob(tmp_path):
+    """Dropping a session removes its blob from the durable mirror too."""
+    from pipeline import SessionStore, SessionPersistence
+    db = str(tmp_path / "sessions.db")
+    store = SessionStore(persistence=SessionPersistence(db_path=db))
+    live = _populated_session()
+    store.save(live)
+    assert live.id in SessionPersistence(db_path=db).load_all_ids()
+    store.drop(live.id)
+    assert live.id not in SessionPersistence(db_path=db).load_all_ids()
+
+
+def test_persistence_disabled_is_pure_memory(tmp_path):
+    """With persistence off, save is a no-op and a cold lookup misses."""
+    from pipeline import SessionStore, SessionPersistence
+    db = str(tmp_path / "off.db")
+    store = SessionStore(persistence=SessionPersistence(db_path=db, enabled=False))
+    live = _populated_session()
+    store.save(live)                                 # no-op
+    assert SessionStore(persistence=SessionPersistence(db_path=db)).get(live.id) is None

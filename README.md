@@ -58,6 +58,7 @@ All **3 learning paradigms** are covered:
 | `backend/env_loader.py` | `.env` loading + TLS guard (mitmproxy CA → certifi when the proxy is down) |
 | `backend/pipeline/context.py` | Target + problem-type detection (regression / classification / clustering / anomaly) |
 | `backend/pipeline/session.py` | **Replayable** session state (snapshots + downstream invalidation) |
+| `backend/pipeline/persistence.py` | SQLite write-through mirror (one joblib blob/session) — sessions **survive a backend restart** |
 | `backend/pipeline/stages/*.py` | One stage per module (uniform `default_config`/`config_schema`/`diagnose`/`run` contract); `tune.py` (GridSearchCV), `explain.py` (SHAP) |
 | `backend/rl/` | Reinforcement subsystem: `gridworld.py`, `qlearning.py`, `plots.py` (NumPy only) |
 
@@ -107,7 +108,7 @@ npm run dev                   # http://localhost:5173 (proxied to the backend :8
 
 ## Tests
 ```bash
-cd backend && python -m pytest tests/test_api.py -q   # 41 tests, no network
+cd backend && python -m pytest tests/test_api.py -q   # 44 tests, no network
 ```
 
 ## Roadmap
@@ -115,7 +116,9 @@ cd backend && python -m pytest tests/test_api.py -q   # 41 tests, no network
 - **LLM providers** — **Groq for now** (OpenAI-compatible REST). Coming: OpenAI, Anthropic,
   and a **local** mode (Ollama) to run without the cloud. The agent already speaks an
   OpenAI-compatible protocol, so adding a provider is a configuration switch.
-- **Session persistence** — currently in-memory; externalization planned (SQLite/Redis).
+- **Session persistence** — **done**: sessions are mirrored to SQLite (`backend/sessions.db`)
+  and survive a backend restart (toggle with `ML_PERSIST_SESSIONS`). Next: a shared store
+  (Redis/Postgres) for a multi-process backend.
 - **Unsupervised** — Davies-Bouldin / Calinski-Harabasz are in; agglomerative dendrogram next.
 
 ## License

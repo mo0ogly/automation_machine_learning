@@ -180,22 +180,56 @@ class Session:
 
 
 class SessionStore:
-    """Process-wide registry of active sessions."""
+    """Process-wide registry of active sessions.
 
-    def __init__(self):
+    The in-memory dict is the hot cache. When a ``persistence`` backend is
+    injected, every created/mutated session is mirrored to it (write-through),
+    and ``get`` rehydrates from it on a cache miss — so sessions survive a
+    backend restart. With no backend the store is pure in-memory, as before.
+    """
+
+    def __init__(self, persistence=None):
         self._sessions: dict[str, Session] = {}
+        self._persistence = persistence
 
     def create(self, filename: str, raw_df: pd.DataFrame) -> Session:
         s = Session(filename, raw_df)
         self._sessions[s.id] = s
+        self.save(s)
         return s
 
     def get(self, session_id: str) -> Optional[Session]:
-        return self._sessions.get(session_id)
+        s = self._sessions.get(session_id)
+        if s is None and self._persistence is not None:
+            s = self._persistence.load(session_id)
+            if s is not None:
+                self._sessions[session_id] = s  # warm the cache
+        return s
+
+    def save(self, session: Optional[Session]) -> None:
+        """Persist a session after a mutation. No-op without a backend."""
+        if session is not None and self._persistence is not None:
+            self._persistence.save(session)
 
     def drop(self, session_id: str):
         self._sessions.pop(session_id, None)
+        if self._persistence is not None:
+            self._persistence.drop(session_id)
+
+
+def _build_default_store() -> SessionStore:
+    """Wire the shared store, honouring the persistence env toggles."""
+    import os
+
+    if os.environ.get("ML_PERSIST_SESSIONS", "1") == "0":
+        return SessionStore()
+    try:
+        from .persistence import SessionPersistence
+        backend = SessionPersistence(db_path=os.environ.get("ML_SESSION_DB") or None)
+        return SessionStore(persistence=backend)
+    except Exception:  # any wiring failure -> degrade to in-memory, never crash import
+        return SessionStore()
 
 
 # Single shared store for the running app.
-SESSIONS = SessionStore()
+SESSIONS = _build_default_store()

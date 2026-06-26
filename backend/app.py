@@ -124,6 +124,7 @@ def session_start_demo(dataset_name: str):
         from pipeline.context import ANOMALY
         session.ctx.problem_type = ANOMALY
         session.ctx.target_col = None
+        SESSIONS.save(session)  # ctx overridden after create -> re-persist
     return _session_payload(session)
 
 
@@ -202,6 +203,7 @@ def stage_recommend(session_id: str, stage_id: str, body: dict = Body(default={}
     if text:
         session.add_insight(stage_id, "affinage", "Affinage proposé", text,
                             rec.get("source", "llm"), rec.get("model"))
+        SESSIONS.save(session)  # journal mutated -> persist
     return to_native(rec)
 
 
@@ -237,6 +239,7 @@ def stage_run(session_id: str, stage_id: str, body: dict = Body(default={})):
     if get_stage(stage_id) is None:
         raise HTTPException(status_code=404, detail=f"Étape '{stage_id}' inconnue.")
     result = _run_stage(session, stage_id, body.get("config") or {})
+    SESSIONS.save(session)  # stage recorded + downstream invalidated -> persist
     return to_native({"stage_id": stage_id, "result": result, "status": session.stage_status()})
 
 
@@ -256,6 +259,7 @@ def stage_interpret(session_id: str, stage_id: str, body: dict = Body(default={}
         session.add_insight(stage_id, "interpretation", "Interprétation du résultat",
                             out.get("verdict") or out.get("interpretation"),
                             out.get("source", "llm"), out.get("model"))
+        SESSIONS.save(session)  # journal mutated -> persist
     return to_native(out)
 
 
@@ -313,6 +317,7 @@ def stage_assist(session_id: str, stage_id: str, body: dict = Body(default={})):
     entry = session.add_insight(stage_id, topic, label,
                                 out.get("explanation") or out.get("takeaway"),
                                 out.get("source", "llm"), out.get("model"))
+    SESSIONS.save(session)  # level + journal mutated -> persist
     return to_native({**out, "insight_id": entry["id"], "stage": stage_id, "topic": topic, "label": label})
 
 
@@ -330,6 +335,7 @@ def session_journal_add(session_id: str, body: dict = Body(default={})):
         str(body.get("stage") or ""), str(body.get("topic") or "action"),
         str(body.get("label") or "Décision"), body.get("text") or "",
         str(body.get("source") or "user"), None)
+    SESSIONS.save(session)  # expert decision journalled -> persist
     return to_native({"insight_id": entry["id"], "insights": session.insights})
 
 
@@ -339,6 +345,7 @@ def session_level(session_id: str, body: dict = Body(default={})):
     lvl = str(body.get("level") or "").lower()
     if lvl in ("novice", "expert"):
         session.level = lvl
+        SESSIONS.save(session)  # level changed -> persist
     return to_native({"level": session.level})
 
 

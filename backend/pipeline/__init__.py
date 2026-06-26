@@ -14,6 +14,7 @@ refinement recommendation, adjust the config, and re-run that single stage.
 
 from .context import PipelineContext, detect_target_and_type
 from .session import Session, SessionStore, SESSIONS
+from .persistence import SessionPersistence
 from .registry import STAGES, STAGE_IDS, get_stage, stage_meta
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "detect_target_and_type",
     "Session",
     "SessionStore",
+    "SessionPersistence",
     "SESSIONS",
     "STAGES",
     "STAGE_IDS",

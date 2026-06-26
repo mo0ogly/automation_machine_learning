@@ -40,7 +40,8 @@ flowchart LR
 | Module | Rôle |
 |--------|------|
 | `context.py` | `PipelineContext` (target, `problem_type` ∈ {REGRESSION, CLASSIFICATION, CLUSTERING, ANOMALY}, `supervised`). Détecté depuis le CSV. |
-| `session.py` | `Session` (raw_df, ctx, `runs: dict[str, StageRun]`, **`insights` journal**, `level`). `SessionStore SESSIONS` (en mémoire). Replay + invalidation aval (`stale`), `current_model()`. |
+| `session.py` | `Session` (raw_df, ctx, `runs: dict[str, StageRun]`, **`insights` journal**, `level`). `SessionStore SESSIONS` : cache mémoire + **miroir SQLite** (write-through, lazy-load au `get`). Replay + invalidation aval (`stale`), `current_model()`. |
+| `persistence.py` | `SessionPersistence` : un blob `joblib` par session en **SQLite** (modèles, splits, DataFrames, journal). Les sessions **survivent à un redémarrage** du backend. Toggle `ML_PERSIST_SESSIONS=0`, chemin `ML_SESSION_DB`. Best-effort : un échec de DB ne casse jamais une requête. |
 | `registry.py` | `STAGE_IDS`, `DATA_STAGE_IDS`, `get_stage()`, `stage_meta()`. |
 | `diagnostics.py` | Diagnostics déterministes (overview, missing, outliers IQR, corrélations, leakage…). |
 | `typology.py` | Typologie **4 voies** : continue / discrète / nominale / ordinale, + `encode_ordinal` (ordre sémantique préservé : absent=0, Po=1, Fa=2, TA=3, Gd=4, Ex=5). |
@@ -281,7 +282,7 @@ python -m uvicorn app:app --port 8000
 node node_modules/vite/bin/vite.js --port 5174 --host
 
 # Tests
-cd backend && python -m pytest tests/test_api.py -q   # 41 tests
+cd backend && python -m pytest tests/test_api.py -q   # 44 tests
 ```
 
 **Jeux de démo** (`GET /api/demo-datasets`, fichiers dans `data/` à la racine, lecture seule) :
@@ -295,8 +296,11 @@ cd backend && python -m pytest tests/test_api.py -q   # 41 tests
 
 ### Gotchas à connaître
 
-- **Sessions en mémoire** : un redémarrage du backend les perd. Le frontend persiste le
-  `session_id` en `localStorage` et restaure au rechargement *si le backend tourne encore*.
+- **Persistance des sessions** : chaque session est mirroir-ée en SQLite (`backend/sessions.db`,
+  gitignored) et **survit à un redémarrage** du backend ; le frontend conserve le `session_id`
+  en `localStorage` et le retrouve après reload. Cache mémoire pour le chemin chaud, SQLite
+  pour la durabilité. Mono-processus (un backend partagé multi-process resterait à faire :
+  Redis/Postgres). Désactivable via `ML_PERSIST_SESSIONS=0` (revient au tout-mémoire).
 - **DPI 160** sur tous les graphes (net en modale) ; `_save_light` (SHAP) aussi.
 - **TLS / mitmproxy** : `env_loader.ensure_tls_ca()` retombe sur `certifi` si le proxy est
   absent (sinon Groq casse en `CERTIFICATE_VERIFY_FAILED`).

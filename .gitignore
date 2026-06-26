@@ -19,6 +19,12 @@ backend/exports/
 # ─── App runtime state (regenerated) ─────────────────────
 backend/_alire/
 
+# ─── Session persistence (SQLite mirror, regenerated) ────
+sessions.db
+sessions.db-wal
+sessions.db-shm
+backend/sessions.db*
+
 # ─── Node / Vite ─────────────────────────────────────────
 node_modules/
 frontend/dist/

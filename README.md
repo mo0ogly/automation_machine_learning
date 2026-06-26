@@ -1,77 +1,80 @@
-# ML Automator — pipeline ML agentique, expert-in-the-loop
+# ML Automator — agentic, expert-in-the-loop ML pipeline
 
-Construction d'un modèle de machine learning décomposée en **étapes explicites,
-inspectables et rejouables**, où un agent LLM (Groq) propose un affinage à chaque
-étape et où l'expert valide ou ajuste — dans une boucle OODA.
+> **English** · [Français](README.fr.md)
+
+Building a machine-learning model broken down into **explicit, inspectable and
+replayable stages**, where an LLM agent (Groq) proposes a refinement at each stage and
+the expert validates or adjusts — inside an OODA loop.
 
 ```
-Nettoyage → Transformation → Intégration → Séparation → Modèle → Fine-tuning → Évaluation → Explicabilité
-(clean)     (transform)      (integrate)    (separate)   (model)  (tune)        (evaluate)   (explain)
+Clean → Transform → Integrate → Separate → Model → Fine-tuning → Evaluate → Explainability
 ```
 
-Chaque étape : **Observe** (diagnostics déterministes) → **Orient** (recommandation
-de l'agent, ancrée sur les vrais chiffres) → **Decide** (l'expert règle la config) →
-**Act** (exécuter / rejouer). Rejouer une étape invalide automatiquement les étapes aval.
+Each stage: **Observe** (deterministic diagnostics) → **Orient** (agent recommendation,
+grounded in the real numbers) → **Decide** (the expert sets the config) → **Act**
+(run / replay). Replaying a stage automatically invalidates the downstream ones.
 
-Les **3 paradigmes** sont couverts : **supervisé** (régression, classification binaire &
-multiclasse), **non supervisé** (clustering KMeans/DBSCAN/Agglomératif **et** détection
-d'anomalies Isolation Forest/LOF) et **renforcement** (Q-learning sur GridWorld, onglet
-« Renforcement »).
+All **3 learning paradigms** are covered:
 
-> **Architecture détaillée & guide de reprise** (socle, couche agentique, fidélité notebook,
-> 3 paradigmes & Atelier Jour 2) : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- **Supervised** — regression + classification (binary & multiclass): RMSE/R², or
+  accuracy / precision / recall / F1 + per-class report + confusion matrix.
+- **Unsupervised** — **clustering** (KMeans / DBSCAN / Agglomerative; silhouette,
+  Davies-Bouldin, Calinski-Harabasz; business reading in real units + a **decision table**
+  to name clusters) **and anomaly detection** (Isolation Forest / LOF).
+- **Reinforcement** — Q-learning on a GridWorld environment (one or several goals, visible
+  traps), in a dedicated "Reinforcement" tab.
 
-### Couche agentique (mode assisté)
+> **Detailed architecture & handoff guide** (core, agentic layer, notebook fidelity,
+> 3 paradigms & Workshop Day 2): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-- **Copilote d'analyse** (panneau latéral) : assistants contextuels + **journal mémoire** —
-  chaque réponse IA est mémorisée et **ré-injectée dans les prompts suivants**.
-- **Une IA par graphe** : chaque figure a sa légende, un bouton `✦` qui l'explique, et la
-  réponse s'affiche **inline sous le graphe** (en plus du journal). Modale de zoom (DPI 160).
-- **Tables de décision** : l'expert coche les colonnes/variables à garder (avis + raison IA).
-- Bascule **Novice / Expert** sur la verbosité des explications.
+### Agentic layer (assisted mode)
+
+- **Analysis copilot** (side panel): contextual assistants + a **memory journal** — every
+  AI answer is recorded and **re-injected into subsequent prompts**.
+- **One AI per chart**: each figure has its caption, a `✦` button that explains it, and the
+  answer shows **inline below the chart** (in addition to the journal). Zoom modal (DPI 160).
+- **Decision tables**: the expert ticks the columns/features to keep (AI advice + reason)
+  and names the clusters.
+- **Novice / Expert** toggle on explanation verbosity.
 
 ## Architecture
 
 ### Backend (FastAPI, port 8000)
-| Fichier | Responsabilité |
-|---------|----------------|
-| `backend/app.py` | Routes : session, diagnose/recommend/run par étape, predict, export |
-| `backend/llm_agent.py` | Agent d'affinage Groq (REST compatible OpenAI) + repli heuristique déterministe |
-| `backend/env_loader.py` | Chargement `.env` + garde TLS (mitmproxy CA → certifi si proxy down) |
-| `backend/pipeline/context.py` | Détection cible + type de problème |
-| `backend/pipeline/session.py` | État de session **rejouable** (snapshots + invalidation aval) |
-| `backend/pipeline/diagnostics.py` | Diagnostics purs/déterministes (alimentent l'UI **et** l'agent) |
-| `backend/pipeline/typology.py` | Typologie 4 voies (continue/discrète/nominale/ordinale) + encodage ordinal **ordonné** |
-| `backend/pipeline/stages/*.py` | Une étape par module (contrat uniforme `default_config`/`config_schema`/`diagnose`/`run`) ; `tune.py` (GridSearchCV), `explain.py` (SHAP) |
-
-## Fidélité aux ateliers J1/J2 (notebooks corrigés)
-
-- **Typologie en 4 voies** : quantitative continue / discrète / catégorielle **nominale** / **ordinale**.
-- **Encodage ordinal ordonné** : les notes de qualité (`Po<Fa<TA<Gd<Ex`) sont encodées en gardant leur ordre sémantique (`qual_map` du notebook), pas en ordre alphabétique ; les nominales en One-Hot.
-- **Exclusion d'aberrants** pilotée par l'analyse univariée (ex. `GrLivArea > 4000`), configurable par l'expert.
-- **Modèles** : Linéaire/Logistique, Arbre de décision, Random Forest, Gradient Boosting, **XGBoost**.
-- **Fine-tuning** : `GridSearchCV` (validation croisée) — le modèle optimisé remplace la baseline.
-- **Explicabilité** : `SHAP` (importance globale + waterfall) sur les modèles à base d'arbres.
+| File | Responsibility |
+|------|----------------|
+| `backend/app.py` | Routes: session, per-stage diagnose/recommend/run, predict, export, `/api/rl/train` |
+| `backend/llm_agent.py` | Groq refinement agent (OpenAI-compatible REST) + deterministic heuristic fallback |
+| `backend/env_loader.py` | `.env` loading + TLS guard (mitmproxy CA → certifi when the proxy is down) |
+| `backend/pipeline/context.py` | Target + problem-type detection (regression / classification / clustering / anomaly) |
+| `backend/pipeline/session.py` | **Replayable** session state (snapshots + downstream invalidation) |
+| `backend/pipeline/stages/*.py` | One stage per module (uniform `default_config`/`config_schema`/`diagnose`/`run` contract); `tune.py` (GridSearchCV), `explain.py` (SHAP) |
+| `backend/rl/` | Reinforcement subsystem: `gridworld.py`, `qlearning.py`, `plots.py` (NumPy only) |
 
 ### Frontend (React + Vite, port 5173)
-| Composant | Rôle |
+| Component | Role |
 |-----------|------|
-| `Dashboard.jsx` | Orchestration du flux + état de session (persisté en `localStorage`) |
-| `StageStepper.jsx` | Stepper des 8 étapes (statut fait / actif / à rejouer) |
-| `StagePanel.jsx` | Panneau d'étape (onglets) : diagnostics, reco agent, config, résultat, graphes |
-| `Copilot.jsx` | Copilote d'analyse : assistants contextuels + journal mémoire + niveau Novice/Expert |
-| `AssistButton.jsx` · `AssistAnswer.jsx` | Bouton `✦` par sous-étape/graphe · réponse IA inline |
-| `PlotModal.jsx` · `ColumnTable.jsx` | Modale de zoom des graphes · tables de décision |
-| `AgentRecommendation.jsx` · `ConfigControls.jsx` · `DiagnosticsView.jsx` | Affinage proposé · contrôles depuis le schéma · diagnostics génériques |
+| `Dashboard.jsx` | Flow orchestration + session state (persisted in `localStorage`) |
+| `StagePanel.jsx` | Stage panel (tabs): diagnostics, agent recommendation, config, result, charts |
+| `Copilot.jsx` | Analysis copilot: contextual assistants + memory journal + Novice/Expert level |
+| `ReinforcementView.jsx` | "Reinforcement" tab: settings, metrics, policy/value/reward plots |
+| `PlotModal.jsx` · `ColumnTable.jsx` | Chart zoom modal · decision tables |
 
-## Démarrer
+## Notebook fidelity (Workshop Day 1 / Day 2, corrected notebooks)
+
+- **4-way typology**: quantitative continuous / discrete / **nominal** / **ordinal** categorical.
+- **Ordered ordinal encoding**: quality grades (`Po<Fa<TA<Gd<Ex`) keep their semantic order
+  (the notebook's `qual_map`), not alphabetical order; nominals are One-Hot encoded.
+- **Outlier exclusion** driven by univariate analysis, expert-configurable.
+- **Models**: Linear/Logistic, Decision Tree, Random Forest, Gradient Boosting, **XGBoost**.
+- **Fine-tuning** `GridSearchCV`; **Explainability** `SHAP` (importance + waterfall).
+
+## Getting started
 
 ### 1. Backend
 ```bash
 cd backend
 python -m pip install -r requirements.txt
-# Clé Groq (sinon repli heuristique déterministe) :
-cp .env.example .env   # puis renseigner GROQ_API_KEY
+cp .env.example .env          # then set GROQ_API_KEY (otherwise a heuristic fallback is used)
 python -m uvicorn app:app --port 8000
 ```
 
@@ -79,33 +82,27 @@ python -m uvicorn app:app --port 8000
 ```bash
 cd frontend
 npm install
-npm run dev     # http://localhost:5173 (proxy vers le backend :8000)
+npm run dev                   # http://localhost:5173 (proxied to the backend :8000)
 ```
 
-## Agent d'affinage (Groq)
-
-- À chaque étape, `llm_agent.recommend()` envoie à Groq l'objectif de l'étape, le
-  schéma de configuration et les **diagnostics chiffrés réels** ; le modèle renvoie
-  un JSON strict (résumé, justifications, `suggested_config`, risque, confiance).
-- La config suggérée est **validée contre le schéma** avant tout usage (aucune clé
-  ni valeur invalide ne peut atteindre `run`).
-- Si Groq est indisponible (clé absente, réseau), un **repli heuristique déterministe**
-  prend le relais — clairement étiqueté `source: "heuristic-fallback"`.
-- Modèle par défaut : `openai/gpt-oss-120b` (7 modèles sélectionnables ; configurable via `GROQ_MODEL`).
-- Mêmes mécanismes pour `interpret` (conclusion d'un résultat) et `assist` (explication d'un
-  élément/graphe précis) ; tous **ré-injectent le journal mémoire** de la session.
-
-## API (extrait)
-| Méthode | Route | Effet |
-|---------|-------|-------|
-| POST | `/api/session/start` (upload) · `/api/session/start-demo/{name}` | Crée une session, détecte cible/type |
-| GET | `/api/session/{sid}/stage/{stage}` | Schéma + diagnostics + dernier résultat |
-| POST | `/api/session/{sid}/stage/{stage}/recommend` | Affinage de l'agent |
-| POST | `/api/session/{sid}/stage/{stage}/run` | Exécute / rejoue l'étape |
-| POST | `/api/session/{sid}/autorun` | Exécute toutes les étapes (config par défaut) |
-| POST | `/api/session/{sid}/predict` · GET `/download-model` | Inférence · export `.pkl` |
+## API (excerpt)
+| Method | Route | Effect |
+|--------|-------|--------|
+| POST | `/api/session/start` (upload) · `/api/session/start-demo/{name}` | Create a session, detect target/type |
+| GET | `/api/session/{sid}/stage/{stage}` | Schema + diagnostics + last result |
+| POST | `/api/session/{sid}/stage/{stage}/run` · `/recommend` · `/assist` | Run · refine · explain an element |
+| POST | `/api/session/{sid}/autorun` | Run all stages (default config) |
+| POST | `/api/rl/train` | Train a Q-learning agent on GridWorld → metrics + plots |
 
 ## Tests
 ```bash
-cd backend && python -m pytest tests/test_api.py -q   # 36 tests, sans réseau
+cd backend && python -m pytest tests/test_api.py -q   # 41 tests, no network
 ```
+
+## License
+
+This project is **source-available, for noncommercial use only**, under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted under
+this license — for a commercial license, contact the copyright holder. Note: a
+"noncommercial" license is not "open source" in the strict (OSI) sense, which forbids any
+field-of-use restriction; the accurate term here is *source-available*.

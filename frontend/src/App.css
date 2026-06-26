@@ -40,6 +40,12 @@
   color: var(--accent-primary);
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .header-nav {
   display: flex;
   gap: 2rem;

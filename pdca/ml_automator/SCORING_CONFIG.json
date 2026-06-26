@@ -1,0 +1,8 @@
+{
+  "domains": {
+    "architecture": { "weight": 25 },
+    "security": { "weight": 25 },
+    "code_hygiene": { "weight": 25 },
+    "testing": { "weight": 25 }
+  }
+}

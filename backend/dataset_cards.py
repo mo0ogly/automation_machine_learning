@@ -69,6 +69,64 @@ CARDS = {
         ],
     },
 
+    # ── New: prompt-injection detection (text -> tabular features) ───────
+    "prompt_injection.csv": {
+        "title": "Détection d'injection de prompt — prévoir les attaques",
+        "type": "Classification binaire (injection / benign)",
+        "synthetic": True,
+        "rows": 1000, "cols": 18,
+        "target": "label — injection / benign",
+        "source": (
+            "Corpus synthétique d'injection indirecte (1000 segments), aligné OWASP LLM 2025 "
+            "(LLM01:2025) et Greshake et al. (2023). Brut : data/sources/prompt-injection-corpus.jsonl."
+        ),
+        "summary": (
+            "Détecter les instructions malveillantes dissimulées dans de la donnée qu'un agent LLM "
+            "ingère (e-mails, pages web, passages RAG, sorties d'outils). Le corpus brut est du texte ; "
+            "comme la plateforme est tabulaire, chaque texte est converti en variables de surface "
+            "interprétables et SANS fuite (longueur, mots-déclencheurs, marqueurs de délimiteurs, "
+            "caractères de largeur nulle, blobs base64, URLs…), plus le canal et la langue. Objectif : "
+            "apprendre la frontière entre instruction de confiance et donnée non fiable."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables (features de surface)", "table": [
+                ["text_length / word_count / line_count", "Taille du segment (caractères, mots, lignes)"],
+                ["avg_word_length / max_token_length", "Longueur moyenne / max d'un token (tokens longs = base64/URL)"],
+                ["uppercase_ratio / digit_ratio / punct_ratio", "Densité de majuscules, chiffres, ponctuation"],
+                ["trigger_keyword_count", "Mots d'annulation/d'ordre (ignore, disregard, instructions…), multilingue"],
+                ["role_keyword_count", "Réassignation de rôle (system, admin, developer mode, root…)"],
+                ["delimiter_marker_count", "Faux délimiteurs / barrières de prompt (```, <|, [INST], END OF…)"],
+                ["zero_width_count / non_ascii_ratio", "Signaux d'obfuscation (espaces de largeur nulle, homoglyphes)"],
+                ["url_count / has_base64_blob", "Présence d'URL / de charge encodée en base64"],
+                ["carrier", "Canal porteur (email, web_page, rag_chunk, tool_output…) — observable"],
+                ["language", "Langue du document hôte : en / fr / pt — observable"],
+                ["label", "Cible : injection / benign (550 / 450)"],
+            ]},
+            {"heading": "Cible & absence de fuite", "text": (
+                "Cible binaire label (injection 55% / benign 45%). Les métadonnées du corpus brut qui "
+                "décrivent la charge (technique, owasp_llm, obfuscation, severity, boundary, "
+                "payload_span, cross_lingual, code_switched, benign_subtype) sont nulles ssi le texte "
+                "est bénin : les utiliser pour prédire label = fuite de cible. Elles sont donc retirées. "
+                "Seules les variables calculées depuis le texte (observables à l'inférence) et le canal / "
+                "la langue (présents pour les deux classes) sont conservés."
+            )},
+            {"heading": "Pourquoi un modèle bat les mots-clés", "text": (
+                "Le corpus inclut des hard negatives (texte bénin contenant des mots déclencheurs) et un "
+                "sous-type injection_discussion (texte qui parle d'injection sans la perpétrer). Une "
+                "règle mono-mot s'effondre dessus : ici trigger_keyword_count > 0 seul donne ~0.50 "
+                "d'accuracy. Un modèle qui combine les variables sépare correctement attaque et donnée "
+                "bénigne, y compris sur ces confuseurs."
+            )},
+            {"heading": "Recommandations ML", "text": (
+                "One-hot pour carrier / language, le reste est numérique. Découpage stratifié sur label. "
+                "Repère sans fuite (RandomForest, CV 5 plis) : accuracy ≈ 0.98, F1 macro ≈ 0.98 — plafond "
+                "élevé sur découpage aléatoire car les charges synthétiques sont régulières. Pour un test "
+                "exigeant, évaluer la généralisation inter-langue (entraîner en, tester fr/pt) ou "
+                "régénérer le CSV via data/generators/prompt_injection.py."
+            )},
+        ],
+    },
+
     # ── Existing demos ──────────────────────────────────────────────────
     "house_price_data.csv": {
         "title": "Prix immobiliers — Ames Housing",

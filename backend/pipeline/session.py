@@ -216,6 +216,26 @@ class SessionStore:
         if self._persistence is not None:
             self._persistence.drop(session_id)
 
+    def list(self) -> list:
+        """Metadata for every known session, newest first (CRUD menu)."""
+        if self._persistence is not None:
+            return self._persistence.list_meta()
+        # Pure in-memory fallback (persistence disabled): no durable summary.
+        return [
+            {"id": s.id, "filename": s.filename, "created_at": s.created_at,
+             "updated_at": s.created_at, "size_bytes": None, "summary": None}
+            for s in sorted(self._sessions.values(), key=lambda s: s.created_at, reverse=True)
+        ]
+
+    def rename(self, session_id: str, name: str) -> Optional[Session]:
+        """Set a session's display name (its ``filename``) and persist it."""
+        s = self.get(session_id)
+        if s is None:
+            return None
+        s.filename = name
+        self.save(s)
+        return s
+
 
 def _build_default_store() -> SessionStore:
     """Wire the shared store, honouring the persistence env toggles."""

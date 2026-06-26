@@ -83,6 +83,8 @@ def list_demo_datasets():
     return {"datasets": [
         {"name": "cyber_risk.csv", "type": "Classification multiclasse",
          "description": "Risque cyber — priorisation d'actifs (4 niveaux, synthétique)"},
+        {"name": "prompt_injection.csv", "type": "Classification binaire",
+         "description": "Détection d'injection de prompt — prévoir les attaques (synthétique)"},
         {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
         {"name": "breastcancer.csv", "type": "Classification binaire",
@@ -106,6 +108,17 @@ def dataset_card(name: str):
 
 
 # ── session lifecycle ───────────────────────────────────────────────────
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 Mo — rejeté AVANT parsing (garde DoS mémoire)
+
+
+async def _read_capped(file) -> bytes:
+    """Read an upload but reject oversized bodies before pandas parses them."""
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 25 Mo).")
+    return raw
+
+
 def _read_csv(file_bytes: bytes) -> pd.DataFrame:
     try:
         return pd.read_csv(io.BytesIO(file_bytes))
@@ -128,7 +141,7 @@ def _session_payload(session) -> dict:
 
 @app.post("/api/session/start")
 async def session_start(file: UploadFile = File(...)):
-    df = _read_csv(await file.read())
+    df = _read_csv(await _read_capped(file))
     session = SESSIONS.create(file.filename, df)
     return _session_payload(session)
 
@@ -151,10 +164,33 @@ def session_start_demo(dataset_name: str):
     return _session_payload(session)
 
 
+@app.get("/api/sessions")
+def list_sessions():
+    """Every persisted session (newest first) with lightweight metadata — CRUD menu."""
+    return to_native({"sessions": SESSIONS.list()})
+
+
 @app.get("/api/session/{session_id}")
 def session_info(session_id: str):
     session = _require_session(session_id)
     return _session_payload(session)
+
+
+@app.patch("/api/session/{session_id}")
+def rename_session(session_id: str, body: dict = Body(default={})):
+    name = (body.get("filename") or body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Le nom ne peut pas être vide.")
+    session = SESSIONS.rename(session_id, name)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session inconnue ou expirée.")
+    return _session_payload(session)
+
+
+@app.delete("/api/session/{session_id}")
+def delete_session(session_id: str):
+    SESSIONS.drop(session_id)
+    return {"deleted": session_id}
 
 
 # ── per-stage helpers ───────────────────────────────────────────────────
@@ -566,7 +602,9 @@ async def predict_batch(session_id: str, file: UploadFile = File(...)):
     """Score an uploaded CSV of new rows -> enriched CSV + a distribution summary."""
     session = _require_trained(session_id)
     try:
-        df = pd.read_csv(io.BytesIO(await file.read()))
+        df = pd.read_csv(io.BytesIO(await _read_capped(file)))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"CSV illisible : {e}")
     if df.empty:

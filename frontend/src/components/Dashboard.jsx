@@ -5,6 +5,7 @@ import StagePanel from './StagePanel';
 import AiBackendButton from './AiBackendButton';
 import AiBackendsPanel from './AiBackendsPanel';
 import DatasetCardModal from './DatasetCardModal';
+import SessionsMenu from './SessionsMenu';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import './components.css';
@@ -19,7 +20,7 @@ const PTYPE_LABELS = {
   clustering: 'Clustering', anomaly: "Détection d'anomalies",
 };
 
-const Dashboard = () => {
+const Dashboard = ({ aiRefresh }) => {
   const [session, setSession] = useState(null);
   const [activeStage, setActiveStage] = useState(null);
   const [stageData, setStageData] = useState(null);
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [demoDatasets, setDemoDatasets] = useState([]);
   const [agent, setAgent] = useState(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const [cardName, setCardName] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -56,6 +58,12 @@ const Dashboard = () => {
         .catch(() => { try { localStorage.removeItem('ml_session'); } catch (e) { /* ignore */ } });
     }
   }, []);
+
+  // Re-read the active backend when it is changed from the global config menu.
+  useEffect(() => {
+    if (!aiRefresh) return;
+    fetch(API_URL + '/api/agent-status').then((r) => r.json()).then(setAgent).catch(() => {});
+  }, [aiRefresh]);
 
   const firstStageId = (s) => (s && s.stages && s.stages.length ? s.stages[0].stage_id : 'clean');
 
@@ -331,6 +339,10 @@ const Dashboard = () => {
             ))}
           </div>
 
+          <button type="button" className="btn btn-secondary mt-2" onClick={() => setSessionsOpen(true)}>
+            Mes sessions enregistrées
+          </button>
+
           {agent ? (
             <div className={agent.configured ? 'agent-chip agent-ok' : 'agent-chip agent-off'}>
               {agent.configured
@@ -348,6 +360,11 @@ const Dashboard = () => {
         ) : null}
         {cardName ? (
           <DatasetCardModal apiBase={API_URL} name={cardName} onClose={() => setCardName(null)} />
+        ) : null}
+        {sessionsOpen ? (
+          <SessionsMenu apiBase={API_URL} currentId={null}
+            onOpen={(d) => { setSessionsOpen(false); openSession(d); }}
+            onClose={() => setSessionsOpen(false)} />
         ) : null}
       </div>
     );
@@ -388,7 +405,10 @@ const Dashboard = () => {
             <AiBackendButton agent={agent} onOpen={() => setAiPanelOpen(true)} />
           ) : null}
         </div>
-        <button className="btn btn-secondary" onClick={reset}>Nouvelle analyse</button>
+        <div className="lab-bar-actions">
+          <button className="btn btn-secondary" onClick={() => setSessionsOpen(true)}>Mes sessions</button>
+          <button className="btn btn-secondary" onClick={reset}>Nouvelle analyse</button>
+        </div>
       </div>
 
       {(assistAnswers['type_probleme'] || assistAnswers['paradigme'] || assistAnswers['cible']) ? (
@@ -455,6 +475,12 @@ const Dashboard = () => {
       </div>
       {aiPanelOpen ? (
         <AiBackendsPanel apiBase={API_URL} onClose={() => setAiPanelOpen(false)} onChanged={refreshAgent} />
+      ) : null}
+      {sessionsOpen ? (
+        <SessionsMenu apiBase={API_URL} currentId={session.session_id}
+          onOpen={(d) => { setSessionsOpen(false); openSession(d); }}
+          onClose={() => setSessionsOpen(false)}
+          onDeleted={() => { setSessionsOpen(false); reset(); }} />
       ) : null}
     </div>
   );

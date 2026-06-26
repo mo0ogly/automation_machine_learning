@@ -265,11 +265,16 @@ def predict_rows(session, rows: list) -> list:
                     j = int(np.linalg.norm(cents - row, axis=1).argmin())
                     out.append({"prediction": int(uniq[j]), "kind": "cluster", "method": "centroid"})
     elif pt == ANOMALY:
-        preds = model.predict(X) if hasattr(model, "predict") else [None] * len(X)
-        score = model.decision_function(X) if hasattr(model, "decision_function") else [None] * len(X)
-        for i, p in enumerate(preds):
-            out.append({"prediction": (None if p is None else ("anomalie" if int(p) == -1 else "normal")),
-                        "score": _native(score[i]), "kind": "anomaly"})
+        if hasattr(model, "predict"):
+            preds = model.predict(X)
+            score = model.decision_function(X) if hasattr(model, "decision_function") else [None] * len(X)
+            for i, p in enumerate(preds):
+                out.append({"prediction": ("anomalie" if int(p) == -1 else "normal"),
+                            "score": _native(score[i]), "kind": "anomaly"})
+        else:  # LocalOutlierFactor(novelty=False) cannot score new points — be explicit, not silent
+            for _ in range(len(X)):
+                out.append({"prediction": None, "kind": "anomaly",
+                            "unsupported": "Ce modèle (LOF) ne score pas de nouveaux points en direct."})
     else:  # regression
         for p in model.predict(X):
             out.append({"prediction": float(p)})
@@ -303,7 +308,9 @@ def sensitivity(session, base_row: dict, feature: str, points: int = 21) -> dict
             r = dict(base_row); r[feature] = v; rows.append(r); xs.append(v)
     preds = predict_rows(session, rows)
     pt = schema["problem_type"]
-    y = [(_proba_of(p, predict_one(session, base_row)["prediction"]) if pt == CLASSIFICATION
+    # base label computed ONCE (was re-evaluated per sweep point -> O(N) pipeline re-runs)
+    base_label = predict_one(session, base_row)["prediction"] if pt == CLASSIFICATION else None
+    y = [(_proba_of(p, base_label) if pt == CLASSIFICATION
           else (p.get("score") if pt == ANOMALY else p.get("prediction"))) for p in preds]
     return {"feature": feature, "kind": field["kind"], "problem_type": pt,
             "x": xs, "y": [_native(v) for v in y],
@@ -349,12 +356,22 @@ def tornado(session, base_row: dict, top_k: int = _PRIMARY_K) -> dict:
 
 
 # ── public: batch scoring + model card ───────────────────────────────────────
+def _csv_safe(v):
+    """Defuse CSV/Excel formula injection in exported string cells (OWASP CSV injection)."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def _score_summary(pt: str, predictions: list) -> dict:
     vals = [v for v in predictions if v is not None]
-    if pt == REGRESSION and vals:
-        arr = np.asarray(vals, dtype=float)
-        return {"n": len(predictions), "kind": "regression", "min": float(arr.min()),
-                "max": float(arr.max()), "mean": float(arr.mean()), "median": float(np.median(arr))}
+    if pt == REGRESSION:                       # keep the regression shape even if all None
+        arr = np.asarray(vals, dtype=float) if vals else None
+        return {"n": len(predictions), "kind": "regression",
+                "min": float(arr.min()) if arr is not None else None,
+                "max": float(arr.max()) if arr is not None else None,
+                "mean": float(arr.mean()) if arr is not None else None,
+                "median": float(np.median(arr)) if arr is not None else None}
     counts: dict = {}
     for v in predictions:
         k = "—" if v is None else str(v)
@@ -373,6 +390,9 @@ def score_dataframe(session, df):
         enriched["confidence"] = [max((d["p"] for d in p.get("proba", [])), default=None) for p in preds]
     elif pt == ANOMALY:
         enriched["anomaly_score"] = [p.get("score") for p in preds]
+    for c in enriched.columns:                  # defuse CSV/Excel formula injection in the export
+        if enriched[c].dtype == object:
+            enriched[c] = enriched[c].map(_csv_safe)
     return enriched, _score_summary(pt, [p.get("prediction") for p in preds])
 
 
@@ -387,7 +407,7 @@ def model_card(session) -> dict:
     if pt == REGRESSION:
         present = ("Je prédis " + str(ctx.target_col) + " à partir de " + str(n_fields)
                    + " caractéristiques"
-                   + (", avec une marge d'erreur typique de ±" + str(round(ts["rmse"])) if ts.get("rmse") else "")
+                   + (", avec une marge d'erreur typique de ±" + str(round(ts["rmse"])) if ts.get("rmse") is not None else "")
                    + ".")
     elif pt == CLASSIFICATION:
         present = "Je classe " + str(ctx.target_col) + " parmi " + str(len(ts.get("classes", []))) + " catégories."

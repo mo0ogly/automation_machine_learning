@@ -1,0 +1,11 @@
+{
+  "perimetre": "ml_automator",
+  "frontend": {
+    "components": ["Dashboard.jsx", "OodaLoop.jsx", "WorkflowStages.jsx", "AgentStatus.jsx"],
+    "styles": ["App.css", "index.css", "components.css"]
+  },
+  "backend": {
+    "files": ["app.py", "agent_orchestrator.py"],
+    "endpoints": ["/health", "/api/analyze"]
+  }
+}

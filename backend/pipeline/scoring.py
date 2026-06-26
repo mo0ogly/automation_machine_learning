@@ -391,7 +391,7 @@ def score_dataframe(session, df):
     elif pt == ANOMALY:
         enriched["anomaly_score"] = [p.get("score") for p in preds]
     for c in enriched.columns:                  # defuse CSV/Excel formula injection in the export
-        if enriched[c].dtype == object:
+        if not pd.api.types.is_numeric_dtype(enriched[c]):   # object OR pandas str/string dtype
             enriched[c] = enriched[c].map(_csv_safe)
     return enriched, _score_summary(pt, [p.get("prediction") for p in preds])
 

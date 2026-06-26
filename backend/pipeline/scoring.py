@@ -214,6 +214,22 @@ def transform_rows(session, rows: list) -> pd.DataFrame:
     return X.tail(n).reset_index(drop=True)   # the appended rows (no drops -> order stable)
 
 
+def _cluster_centroids(session):
+    """Centroids per cluster from the training matrix + labels (for models lacking
+    ``.predict`` — DBSCAN, Agglomerative). Noise (-1) is ignored."""
+    sep, mdl = session.get_run("separate"), session.get_run("model")
+    Xf = sep.artifacts.get("X_full") if sep else None
+    labels = mdl.artifacts.get("labels") if mdl else None
+    if Xf is None or labels is None:
+        return None, None
+    Xf = np.asarray(Xf, dtype=float)
+    labels = np.asarray(labels)
+    uniq = [c for c in sorted(set(labels.tolist())) if c != -1]
+    if not uniq:
+        return None, None
+    return np.vstack([Xf[labels == c].mean(axis=0) for c in uniq]), uniq
+
+
 def predict_rows(session, rows: list) -> list:
     """Predict for raw input rows; output shape adapts to the problem type."""
     ctx = session.ctx
@@ -238,9 +254,16 @@ def predict_rows(session, rows: list) -> list:
                                  "p": float(proba[i][j])} for j in range(proba.shape[1])]
             out.append(rec)
     elif pt == CLUSTERING:
-        preds = model.predict(X) if hasattr(model, "predict") else [None] * len(X)
-        for p in preds:
-            out.append({"prediction": (None if p is None else int(p)), "kind": "cluster"})
+        if hasattr(model, "predict"):
+            out += [{"prediction": int(p), "kind": "cluster"} for p in model.predict(X)]
+        else:  # DBSCAN / Agglomerative: assign to the nearest training centroid
+            cents, uniq = _cluster_centroids(session)
+            if cents is None:
+                out += [{"prediction": None, "kind": "cluster"} for _ in range(len(X))]
+            else:
+                for row in np.asarray(X, dtype=float):
+                    j = int(np.linalg.norm(cents - row, axis=1).argmin())
+                    out.append({"prediction": int(uniq[j]), "kind": "cluster", "method": "centroid"})
     elif pt == ANOMALY:
         preds = model.predict(X) if hasattr(model, "predict") else [None] * len(X)
         score = model.decision_function(X) if hasattr(model, "decision_function") else [None] * len(X)
@@ -323,3 +346,65 @@ def tornado(session, base_row: dict, top_k: int = _PRIMARY_K) -> dict:
                      "delta": _native((vhi or 0) - (vlo or 0))})
     bars.sort(key=lambda b: -abs(b["delta"] or 0))
     return {"problem_type": pt, "base_prediction": base_pred, "bars": bars}
+
+
+# ── public: batch scoring + model card ───────────────────────────────────────
+def _score_summary(pt: str, predictions: list) -> dict:
+    vals = [v for v in predictions if v is not None]
+    if pt == REGRESSION and vals:
+        arr = np.asarray(vals, dtype=float)
+        return {"n": len(predictions), "kind": "regression", "min": float(arr.min()),
+                "max": float(arr.max()), "mean": float(arr.mean()), "median": float(np.median(arr))}
+    counts: dict = {}
+    for v in predictions:
+        k = "—" if v is None else str(v)
+        counts[k] = counts.get(k, 0) + 1
+    return {"n": len(predictions), "kind": "categorical",
+            "distribution": [{"label": k, "count": c} for k, c in sorted(counts.items(), key=lambda x: -x[1])]}
+
+
+def score_dataframe(session, df):
+    """Score every row of a RAW dataframe; return (enriched_df, summary)."""
+    pt = session.ctx.problem_type
+    preds = predict_rows(session, df.to_dict(orient="records"))
+    enriched = df.copy()
+    enriched["prediction"] = [p.get("prediction") for p in preds]
+    if pt == CLASSIFICATION:
+        enriched["confidence"] = [max((d["p"] for d in p.get("proba", [])), default=None) for p in preds]
+    elif pt == ANOMALY:
+        enriched["anomaly_score"] = [p.get("score") for p in preds]
+    return enriched, _score_summary(pt, [p.get("prediction") for p in preds])
+
+
+def model_card(session) -> dict:
+    """A presentable dossier of the trained model: what it does + how good it is."""
+    ctx = session.ctx
+    ev, mdl, sep = session.get_run("evaluate"), session.get_run("model"), session.get_run("separate")
+    schema = serving_schema(session)
+    ts = schema.get("target_stats", {})
+    pt = ctx.problem_type
+    n_fields = len(schema["fields"])
+    if pt == REGRESSION:
+        present = ("Je prédis " + str(ctx.target_col) + " à partir de " + str(n_fields)
+                   + " caractéristiques"
+                   + (", avec une marge d'erreur typique de ±" + str(round(ts["rmse"])) if ts.get("rmse") else "")
+                   + ".")
+    elif pt == CLASSIFICATION:
+        present = "Je classe " + str(ctx.target_col) + " parmi " + str(len(ts.get("classes", []))) + " catégories."
+    elif pt == CLUSTERING:
+        present = "Je range chaque observation dans un segment à partir de " + str(n_fields) + " caractéristiques."
+    else:
+        present = "Je détecte les observations anormales à partir de " + str(n_fields) + " caractéristiques."
+    return {
+        "present": present,
+        "target": ctx.target_col,
+        "problem_type": pt,
+        "algorithm": (mdl.result.get("diagnostics", {}).get("algorithm") if mdl else None),
+        "n_features": len(sep.artifacts.get("feature_names", [])) if sep else None,
+        "n_rows": int(len(session.raw_df)),
+        "created_at": getattr(session, "created_at", None),
+        "metrics": ev.result.get("report", {}) if ev else {},
+        "top_features": [f["name"] for f in schema["fields"][:8]],
+        "target_stats": ts,
+        "stages_run": [s["stage_id"] for s in session.stage_status() if s["ran"]],
+    }

@@ -698,4 +698,44 @@ def test_exploitation_analyze_personas(monkeypatch):
         assert d["source"] in ("llm", "heuristic-fallback")
         assert isinstance(d["points"], list) and d["points"]
         assert d["model_summary"]["problem_type"] == "regression"
+
+
+# ── model exploitation phase 2 : batch / card / unsupervised live ──────────
+def test_exploitation_model_card():
+    sid = _trained_house()
+    d = client.get(f"/api/session/{sid}/model-card").json()
+    assert d["problem_type"] == "regression" and d["target"] == "SalePrice"
+    assert d["algorithm"] and "R²" in d["metrics"]
+    assert d["present"].startswith("Je prédis")
+    assert d["top_features"] and "model" in d["stages_run"]
+
+
+def test_exploitation_batch_csv_scoring():
+    sid = _trained_house()
+    csv = "OverallQual,GrLivArea,YearBuilt,GarageArea\n3,900,1950,0\n10,3000,2009,850\n"
+    r = client.post(f"/api/session/{sid}/predict/batch", files={"file": ("rows.csv", csv, "text/csv")})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["n_rows"] == 2 and "prediction" in d["columns"]
+    assert d["summary"]["kind"] == "regression"
+    assert "prediction" in d["csv"]                       # enriched CSV returned
+    assert d["preview"][1]["prediction"] > d["preview"][0]["prediction"]  # better house -> higher
+
+
+def test_exploitation_clustering_live_predict():
+    sid = _start_demo("client_data.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")            # default KMeans (has .predict)
+    sch = client.get(f"/api/session/{sid}/serving-schema").json()
+    assert sch["problem_type"] == "clustering"
+    d = client.post(f"/api/session/{sid}/predict", json=sch["baseline"]).json()
+    assert d["kind"] == "cluster" and d["prediction"] is not None
+
+
+def test_exploitation_agglomerative_centroid_fallback():
+    sid = _start_demo("client_data.csv")["session_id"]
+    _run_clustering_chain(sid, {"cluster_algo": "agglomerative", "n_clusters": 3})  # no .predict
+    sch = client.get(f"/api/session/{sid}/serving-schema").json()
+    d = client.post(f"/api/session/{sid}/predict", json=sch["baseline"]).json()
+    assert d["kind"] == "cluster" and d["prediction"] is not None
+    assert d.get("method") == "centroid"                  # nearest-centroid path exercised
     assert client.get("/api/dataset-card/nope.csv").status_code == 404

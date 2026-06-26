@@ -740,3 +740,25 @@
 .xp-v-bad { background: rgba(239,68,68,0.18); color: var(--status-error); }
 .xp-recos { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px dashed rgba(139,92,246,0.3); }
 .xp-recos-title { font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.2rem; }
+
+/* phase 2: OOD guard, model card, batch scoring */
+.xp-num-ood { border-color: var(--status-warning) !important; color: var(--status-warning); }
+.xp-ood { font-size: 0.68rem; color: var(--status-warning); }
+.xp-grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 960px) { .xp-grid2 { grid-template-columns: 1fr; } }
+.xp-cardpanel, .xp-batchpanel { padding: 1.1rem 1.25rem; }
+.xp-card .report-cards { margin: 0.5rem 0; }
+.xp-card-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.5rem 0; }
+.xp-card-feats { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem; }
+.xp-card-recipe { font-size: 0.74rem; }
+.xp-file { display: inline-flex; cursor: pointer; margin: 0.2rem 0 0.6rem; }
+.xp-file-busy { opacity: 0.6; pointer-events: none; }
+.xp-batch-res { margin-top: 0.5rem; }
+.xp-batch-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; font-size: 0.85rem; }
+.xp-batch-stats { font-size: 0.78rem; }
+.xp-dist { display: flex; flex-direction: column; gap: 0.3rem; }
+.xp-dist-row { display: grid; grid-template-columns: 90px 1fr 42px; align-items: center; gap: 0.5rem; font-size: 0.76rem; }
+.xp-dist-label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-dist-bar { height: 11px; background: var(--bg-surface-elevated); border-radius: 999px; overflow: hidden; }
+.xp-dist-bar > span { display: block; height: 100%; background: var(--accent-gradient); border-radius: 999px; }
+.xp-dist-c { text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }

@@ -555,6 +555,37 @@ def predict_tornado(session_id: str, body: dict = Body(default={})):
         raise HTTPException(status_code=409, detail=str(e))
 
 
+@app.get("/api/session/{session_id}/model-card")
+def get_model_card(session_id: str):
+    """A presentable dossier of the trained model (what it does + how good)."""
+    return to_native(scoring.model_card(_require_trained(session_id)))
+
+
+@app.post("/api/session/{session_id}/predict/batch")
+async def predict_batch(session_id: str, file: UploadFile = File(...)):
+    """Score an uploaded CSV of new rows -> enriched CSV + a distribution summary."""
+    session = _require_trained(session_id)
+    try:
+        df = pd.read_csv(io.BytesIO(await file.read()))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"CSV illisible : {e}")
+    if df.empty:
+        raise HTTPException(status_code=422, detail="CSV vide.")
+    capped = len(df) > 5000           # keep the round-trip interactive
+    if capped:
+        df = df.head(5000)
+    try:
+        enriched, summary = scoring.score_dataframe(session, df)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return to_native({
+        "summary": summary, "n_rows": int(len(enriched)), "capped": capped,
+        "columns": list(enriched.columns),
+        "preview": enriched.head(20).to_dict(orient="records"),
+        "csv": enriched.to_csv(index=False),
+    })
+
+
 def _model_summary(session) -> dict:
     """Factual model dossier handed to the executive / expert AI personas."""
     ev, mdl, sep = session.get_run("evaluate"), session.get_run("model"), session.get_run("separate")

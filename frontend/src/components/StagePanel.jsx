@@ -115,7 +115,7 @@ function ReportCards({ report }) {
   );
 }
 
-// Model comparison leaderboard (notebook compare cell): ranked candidate models
+// Model comparison leaderboard: ranked candidate models
 // with their test metrics. The expert picks one — "Choisir" sets the algorithm.
 const LB_LABELS = {
   rmse_test: 'RMSE (test)', r2_test: 'R² (test)', r2_train: 'R² (train)',
@@ -200,7 +200,7 @@ function InterpretationView({ data }) {
   );
 }
 
-// Ordinal normalization applied during cleaning (notebook qual_map).
+// Ordinal normalization applied during cleaning (qual_map).
 function NormalizationView({ rows }) {
   if (!rows || !rows.length) return null;
   return (
@@ -219,7 +219,7 @@ function NormalizationView({ rows }) {
 }
 
 // Business reading of the clusters (unsupervised track) — real average values per
-// cluster + majority categoricals + business label (notebook J2 cluster_summary).
+// cluster + majority categoricals + business label.
 function ClusterSummary({ rows, onApplyLabels, busy }) {
   const [names, setNames] = useState({});
   if (!rows || !rows.length) return null;
@@ -270,7 +270,7 @@ function ClusterSummary({ rows, onApplyLabels, busy }) {
   );
 }
 
-// Per-class precision / recall / F1 (notebook J2 classification_report).
+// Per-class precision / recall / F1 (classification_report).
 function ClassReport({ rows }) {
   if (!rows || !rows.length) return null;
   return (
@@ -317,7 +317,7 @@ function AnomalySummary({ rows }) {
   );
 }
 
-// Overfitting control (notebook cell 68): train vs test gap + cross-validation.
+// Overfitting control: train vs test gap + cross-validation.
 function OverfitControl({ data }) {
   if (!data) return null;
   const verdict = data.verdict;

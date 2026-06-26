@@ -3,8 +3,8 @@ explain.py — Stage : EXPLICABILITE (SHAP).
 
 Explains the current model (tuned if available, else baseline) with SHAP:
 a global importance bar (summary) and a single-prediction decomposition
-(waterfall), mirroring the J1 notebook. Uses TreeExplainer for tree models;
-falls back to a clear message for non-tree models. Supervised only.
+(waterfall). Uses TreeExplainer for tree models; falls back to a clear message
+for non-tree models. Supervised only.
 """
 
 import io

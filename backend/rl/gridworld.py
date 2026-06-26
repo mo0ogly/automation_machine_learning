@@ -1,6 +1,6 @@
 """
 gridworld.py — a small deterministic GridWorld environment for the reinforcement
-learning demo (Atelier Jour 2, troisième paradigme).
+learning demo (third paradigm).
 
 The agent starts top-left and must reach the bottom-right goal. Each step costs a
 small penalty, the goal gives a reward, optional traps end the episode with a

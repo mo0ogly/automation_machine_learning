@@ -22,13 +22,13 @@ def detect_target_and_type(df: pd.DataFrame):
     """
     Heuristic detection of (target_col, problem_type).
 
-    Mirrors the workshop datasets (J1 regression / J2 classification / clustering)
+    Recognises the bundled demo datasets (regression / classification / clustering)
     and falls back to generic structural heuristics for arbitrary uploads.
     Returns ``(None, 'clustering')`` when no supervised target is identifiable.
     """
     cols_lower = {c.lower(): c for c in df.columns}
 
-    # Known workshop datasets first.
+    # Known demo datasets first.
     if "saleprice" in cols_lower:
         return cols_lower["saleprice"], REGRESSION
     if "diagnosis" in cols_lower:

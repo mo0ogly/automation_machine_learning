@@ -116,8 +116,8 @@ def config_schema(ctx):
 def _leaderboard(art, ptype, n_est, max_depth):
     """Fit every candidate model on train, score on the held-out test set, rank them.
 
-    This mirrors the notebook's model-comparison cell: the expert reads RMSE/R²
-    (or Accuracy/F1) per model and picks the best family before fine-tuning.
+    The expert reads RMSE/R² (or Accuracy/F1) per model and picks the best
+    family before fine-tuning.
     """
     X_tr, y_tr, X_te, y_te = art["X_train"], art["y_train"], art["X_test"], art["y_test"]
     rows = []

@@ -24,8 +24,8 @@ All **3 learning paradigms** are covered:
 - **Reinforcement** — Q-learning on a GridWorld environment (one or several goals, visible
   traps), in a dedicated "Reinforcement" tab.
 
-> **Detailed architecture & handoff guide** (core, agentic layer, notebook fidelity,
-> 3 paradigms & Workshop Day 2): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> **Detailed architecture** (core, agentic layer, 3 paradigms):
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ### Agentic layer (assisted mode)
 
@@ -59,11 +59,11 @@ All **3 learning paradigms** are covered:
 | `ReinforcementView.jsx` | "Reinforcement" tab: settings, metrics, policy/value/reward plots |
 | `PlotModal.jsx` · `ColumnTable.jsx` | Chart zoom modal · decision tables |
 
-## Notebook fidelity (Workshop Day 1 / Day 2, corrected notebooks)
+## Modeling & data handling
 
 - **4-way typology**: quantitative continuous / discrete / **nominal** / **ordinal** categorical.
 - **Ordered ordinal encoding**: quality grades (`Po<Fa<TA<Gd<Ex`) keep their semantic order
-  (the notebook's `qual_map`), not alphabetical order; nominals are One-Hot encoded.
+  (a dedicated lookup table), not alphabetical order; nominals are One-Hot encoded.
 - **Outlier exclusion** driven by univariate analysis, expert-configurable.
 - **Models**: Linear/Logistic, Decision Tree, Random Forest, Gradient Boosting, **XGBoost**.
 - **Fine-tuning** `GridSearchCV`; **Explainability** `SHAP` (importance + waterfall).

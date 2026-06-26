@@ -283,7 +283,7 @@ const Dashboard = () => {
           </div>
 
           <div className="card mt-2">
-            <h3 className="text-sm text-secondary mb-2">Ou un jeu d'atelier (J1 / J2)</h3>
+            <h3 className="text-sm text-secondary mb-2">Ou un jeu de démonstration</h3>
             {demoDatasets.map((ds) => (
               <button key={ds.name} className="btn btn-demo" onClick={() => startDemo(ds.name)} disabled={busy}>
                 <strong>{ds.type}</strong><br />

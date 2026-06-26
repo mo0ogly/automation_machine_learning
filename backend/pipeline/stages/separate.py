@@ -119,8 +119,8 @@ def run(df, config, ctx):
     if leakage:
         warnings.append("Fuite possible — variable(s) quasi-identique(s) à la cible : "
                         + ", ".join(d["column"] for d in leakage) + ".")
-    warnings.append("Note : mises à l'échelle/encodages ont été ajustés sur l'ensemble des données "
-                    "(ordre atelier). Pour la production, préférez un Pipeline ajusté sur le train seul.")
+    warnings.append("Note : mises à l'échelle/encodages ont été ajustés sur l'ensemble des données. "
+                    "Pour la production, préférez un Pipeline ajusté sur le train seul.")
 
     test_size = float(cfg["test_size"])
     rs = int(cfg["random_state"])

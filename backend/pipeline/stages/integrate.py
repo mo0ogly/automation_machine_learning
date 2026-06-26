@@ -99,7 +99,7 @@ def diagnose(df, ctx):
     plots = [_corr_heatmap(df, ctx.target_col)]
     if tcorr:
         plots.append(_target_corr_bar(tcorr))
-        # Analyse bivariée (notebook J1) : nuage de points variable la plus liée vs cible.
+        # Analyse bivariée : nuage de points variable la plus liée vs cible.
         if ctx.problem_type == REGRESSION:
             plots.append(_bivariate_scatter(df, ctx.target_col, tcorr[0]["column"]))
     return {

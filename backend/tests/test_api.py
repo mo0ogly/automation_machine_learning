@@ -83,7 +83,7 @@ def test_autorun_classification():
     body = r.json()
     assert body["ran"][-1] == "evaluate", body
     assert "Accuracy" in body["metrics"]
-    # notebook J2 classification metrics: precision/recall + per-class report
+    # classification metrics: precision/recall + per-class report
     ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
     rep = ev["result"]["report"]
     assert "Précision (pondéré)" in rep and "Rappel (pondéré)" in rep
@@ -93,7 +93,7 @@ def test_autorun_classification():
 
 
 def test_autorun_multiclass_stars():
-    """Multiclass classification end-to-end (Atelier J2 part 2, Stars.csv — 6 classes)."""
+    """Multiclass classification end-to-end (Stars.csv — 6 classes)."""
     body = _start_demo("Stars.csv")
     assert body["context"]["problem_type"] == "classification"
     sid = body["session_id"]
@@ -123,7 +123,7 @@ def test_autorun_clustering_business_labels():
     ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
     summary = ev["result"]["diagnostics"]["cluster_summary"]
     assert len(summary) >= 2
-    # notebook J2 cluster reading: real average values + majority categoricals + label
+    # cluster reading: real average values + majority categoricals + label
     assert all("label_metier" in r and "moyennes" in r and "majoritaires" in r for r in summary)
     assert all(r["moyennes"] for r in summary)                       # raw means present
     labels = {r["label_metier"] for r in summary}
@@ -132,7 +132,7 @@ def test_autorun_clustering_business_labels():
 
 
 def test_clustering_elbow_in_model_view():
-    """Modelling exposes the elbow-method curve + recommended K for clustering (J2)."""
+    """Modelling exposes the elbow-method curve + recommended K for clustering."""
     sid = _start_demo("client_data.csv")["session_id"]
     for stg in ("clean", "transform", "integrate", "separate"):
         client.post(f"/api/session/{sid}/stage/{stg}/run", json={"config": {}})
@@ -333,7 +333,7 @@ def test_integrate_feature_decision_table():
 
 
 def test_model_leaderboard_in_view():
-    """Modelling exposes a ranked comparison of candidate models (notebook compare cell)."""
+    """Modelling exposes a ranked comparison of candidate models."""
     sid = _start_demo("house_price_data.csv")["session_id"]
     for stg in ("clean", "transform", "integrate", "separate"):
         r = client.post(f"/api/session/{sid}/stage/{stg}/run", json={"config": {}})
@@ -349,7 +349,7 @@ def test_model_leaderboard_in_view():
 
 
 def test_clean_categorical_values_and_extreme_rows():
-    """Cleaning surfaces distinct categorical values + extreme rows (notebook 18, 29-30)."""
+    """Cleaning surfaces distinct categorical values + extreme rows."""
     sid = _start_demo("house_price_data.csv")["session_id"]
     view = client.get(f"/api/session/{sid}/stage/clean").json()
     cv = view["diagnostics"]["valeurs_categorielles"]
@@ -361,7 +361,7 @@ def test_clean_categorical_values_and_extreme_rows():
 
 
 def test_transform_eda_plots_by_type():
-    """Transformation surfaces univariate-by-type + bivariate plots (notebook 33-41)."""
+    """Transformation surfaces univariate-by-type + bivariate plots."""
     sid = _start_demo("house_price_data.csv")["session_id"]
     client.post(f"/api/session/{sid}/stage/clean/run", json={"config": {}})
     view = client.get(f"/api/session/{sid}/stage/transform").json()
@@ -373,7 +373,7 @@ def test_transform_eda_plots_by_type():
 
 
 def test_evaluate_overfitting_control():
-    """Evaluation reports the train/test gap + 5-fold CV (notebook cell 68)."""
+    """Evaluation reports the train/test gap + 5-fold CV."""
     sid = _start_demo("house_price_data.csv")["session_id"]
     client.post(f"/api/session/{sid}/autorun")
     ev = client.get(f"/api/session/{sid}/stage/evaluate").json()

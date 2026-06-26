@@ -25,8 +25,8 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Renforcement** — Q-learning sur un environnement GridWorld (un ou plusieurs buts,
   pièges visibles), onglet « Renforcement » dédié.
 
-> **Architecture détaillée & guide de reprise** (socle, couche agentique, fidélité
-> notebook, 3 paradigmes & Atelier Jour 2) : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> **Architecture détaillée** (socle, couche agentique, 3 paradigmes) :
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ### Couche agentique (mode assisté)
 
@@ -60,11 +60,11 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 | `ReinforcementView.jsx` | Onglet « Renforcement » : réglages, métriques, politique/valeur/récompense |
 | `PlotModal.jsx` · `ColumnTable.jsx` | Modale de zoom des graphes · tables de décision |
 
-## Fidélité aux ateliers J1/J2 (notebooks corrigés)
+## Modélisation & traitement des données
 
 - **Typologie en 4 voies** : quantitative continue / discrète / catégorielle **nominale** / **ordinale**.
 - **Encodage ordinal ordonné** : les notes de qualité (`Po<Fa<TA<Gd<Ex`) gardent leur ordre
-  sémantique (`qual_map` du notebook), pas l'ordre alphabétique ; les nominales en One-Hot.
+  sémantique (table de correspondance dédiée), pas l'ordre alphabétique ; les nominales en One-Hot.
 - **Exclusion d'aberrants** pilotée par l'analyse univariée, configurable par l'expert.
 - **Modèles** : Linéaire/Logistique, Arbre de décision, Random Forest, Gradient Boosting, **XGBoost**.
 - **Fine-tuning** `GridSearchCV` ; **Explicabilité** `SHAP` (importance + waterfall).

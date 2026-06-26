@@ -1,13 +1,13 @@
 """
 eda_plots.py — Univariate & bivariate exploratory plots, ONE figure per chart.
 
-Faithful to the corrected J1 notebook's "Analyse des variables descriptives"
-(cells 33-36) and "Analyse bivariée" (cells 40-41), but each variable is its own
-figure (not packed into a grid) so the labels stay readable in the thumbnail and
-every chart gets its own caption + per-graph AI explainer.
+Covers the "Analyse des variables descriptives" and "Analyse bivariée" sections,
+but each variable is its own figure (not packed into a grid) so the labels stay
+readable in the thumbnail and every chart gets its own caption + per-graph AI
+explainer.
 
 These run on the *cleaned* frame (Transformation's input): ordinals are already
-encoded to integers, nominals are still text — exactly the notebook's state.
+encoded to integers, nominals are still text.
 """
 
 from .plotting import style_plot, fig_to_base64, message_plot
@@ -61,7 +61,7 @@ def univariate_plots(df, t):
 
 
 def bivariate_plots(df, target, t):
-    """One boxplot per variable vs the target (notebook cells 40-41)."""
+    """One boxplot per variable vs the target."""
     import matplotlib.pyplot as plt
     import seaborn as sns
     style_plot()

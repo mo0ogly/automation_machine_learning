@@ -1,8 +1,8 @@
 """
 transform.py — Stage 2 : TRANSFORMATION.
 
-Reshape feature values into a model-friendly space, following the corrected J1
-notebook's 4-way variable typology (see pipeline.typology):
+Reshape feature values into a model-friendly space, following the 4-way variable
+typology (see pipeline.typology):
 
     quantitative continue / discrète  -> impute + scale
     catégorielle ORDINALE             -> ranked integers (order preserved) + scale
@@ -11,9 +11,9 @@ notebook's 4-way variable typology (see pipeline.typology):
 This fixes the earlier bug where a generic OrdinalEncoder encoded quality grades
 (Po<Fa<TA<Gd<Ex) in arbitrary alphabetical order, destroying their meaning.
 
-Note on leakage: scalers/encoders are fit on the full frame here (the workshop
-order is clean -> transform -> integrate -> separate). The Separation stage emits
-a leakage note; for production, fit inside a train-only Pipeline.
+Note on leakage: scalers/encoders are fit on the full frame here (the stage order
+is clean -> transform -> integrate -> separate). The Separation stage emits a
+leakage note; for production, fit inside a train-only Pipeline.
 """
 
 import numpy as np
@@ -72,7 +72,7 @@ def diagnose(df, ctx):
     plots = []
     if skew:
         plots.append(_skew_plot(df, skew[0]["column"]))
-    # Analyse univariée par type + bivariée vs cible (notebook J1, cellules 33-41).
+    # Analyse univariée par type + bivariée vs cible.
     uni, _ = eda.univariate_plots(df, t)
     plots.extend(uni)
     plots.extend(eda.bivariate_plots(df, ctx.target_col, t))

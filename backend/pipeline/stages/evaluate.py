@@ -67,7 +67,7 @@ def run(session, config):
                    "MSE": round(mse, 2)}
         plots = [_pred_scatter(y_test, y_pred), _residual_plot(y_test, y_pred)]
     else:
-        # Notebook J2 evaluate_classification: accuracy + precision/recall + per-class report.
+        # Classification: accuracy + precision/recall + per-class report.
         metrics = {
             "Accuracy": round(float(accuracy_score(y_test, y_pred)), 4),
             "Précision (pondéré)": round(float(precision_score(y_test, y_pred, average="weighted", zero_division=0)), 4),
@@ -79,7 +79,7 @@ def run(session, config):
         class_report = _per_class_report(y_test, y_pred, le)
         plots = [_confusion_plot(y_test, y_pred, labels)]
 
-    # Overfitting control: train vs test gap + 5-fold cross-validation (notebook 68).
+    # Overfitting control: train vs test gap + 5-fold cross-validation.
     control, warn = _overfit_control(model, art, ptype)
     if control:
         plots.append(_overfit_plot(control, ptype))
@@ -103,7 +103,7 @@ def run(session, config):
 
 
 def _per_class_report(y_test, y_pred, le):
-    """Per-class precision / recall / F1 / support (notebook classification_report)."""
+    """Per-class precision / recall / F1 / support (classification_report)."""
     rep = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
     rows = []
     for k, v in rep.items():
@@ -123,7 +123,7 @@ def _per_class_report(y_test, y_pred, le):
 
 
 def _overfit_control(model, art, ptype):
-    """Train/test gap + 5-fold CV — the overfitting & robustness check (notebook cell 68)."""
+    """Train/test gap + 5-fold CV — the overfitting & robustness check."""
     X_tr, y_tr = art.get("X_train"), art.get("y_train")
     X_te, y_te = art.get("X_test"), art.get("y_test")
     if X_tr is None or X_te is None:
@@ -198,14 +198,14 @@ def _evaluate_clustering(session, model, art, mrun, config=None):
     Xv = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=feature_names)
     profiles, sizes, means = _cluster_profiles(Xv, labels)  # standardised σ — for the profile plot
 
-    # Notebook cell 12: read each cluster in REAL units. We join the Cleaning output
+    # Read each cluster in REAL units. We join the Cleaning output
     # (pre-scaling values, categoricals still text) to the cluster labels by position
     # (row order is preserved across clean→…→separate in the unsupervised track).
     clean_run = session.get_run("clean")
     raw_df = clean_run.output_df if clean_run is not None else None
     rows, num_cols = _cluster_profiles_raw(raw_df, labels, sizes)
 
-    blabels = _business_labels(rows, num_cols, profiles)  # notebook raw thresholds; σ fallback
+    blabels = _business_labels(rows, num_cols, profiles)  # raw thresholds; σ fallback
     # Cluster decision table: an expert-provided name (config.cluster_labels) overrides
     # the auto label, generalising the business labels beyond the client dataset.
     overrides = (config or {}).get("cluster_labels") or {}
@@ -247,7 +247,7 @@ def _cluster_profiles(Xv, labels):
 
 
 def _cluster_profiles_raw(raw_df, labels, sizes, max_card=15):
-    """Raw (pre-scaling) feature means + majority categorical per cluster (notebook 12)."""
+    """Raw (pre-scaling) feature means + majority categorical per cluster."""
     labels = list(labels)
     if raw_df is None or len(raw_df) != len(labels):  # can't align → empty (generic labels follow)
         return ([{"cluster": int(c), "taille": int(sizes.get(c, 0)), "means": {}, "majoritaires": {}}
@@ -267,7 +267,7 @@ def _cluster_profiles_raw(raw_df, labels, sizes, max_card=15):
 
 
 def _business_labels(rows, num_cols, profiles):
-    """Notebook raw-threshold labels for the client dataset (cell 18); generic σ otherwise."""
+    """Raw-threshold labels for the client dataset; generic σ otherwise."""
     has_client = "revenu_annuel_k" in num_cols and "panier_moyen" in num_cols
     out = {}
     for r in rows:

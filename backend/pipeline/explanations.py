@@ -1,6 +1,6 @@
 """
 explanations.py — Pedagogical narrative per stage (the "logique de construction
-du dataset" from the J1/J2 workshop notebooks).
+du dataset").
 
 Each stage carries a short explanation, adapted to the learning track:
 - SUPERVISED (regression / classification): a known target Y, train/test split,

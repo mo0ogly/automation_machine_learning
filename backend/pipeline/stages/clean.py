@@ -1,7 +1,7 @@
 """
 clean.py — Stage 1 : NETTOYAGE.
 
-Faithful to the corrected J1 notebook's cleaning section:
+Cleaning section:
 - COLUMN SELECTION (`colonne_a_garder`) — the expert decides, column by column,
   which columns stay or go. A per-column table gives a recommendation + reason,
   but the final choice is the expert's (checkboxes in the UI).
@@ -120,7 +120,7 @@ def config_schema(df, ctx):
         select("impute_cat", "Imputation catégorielle",
                [("constant", 'Constante ("None" = absence)'), ("most_frequent", "Modalité la plus fréquente"),
                 ("drop_rows", "Supprimer les lignes")],
-               "constant", "Remplissage des trous catégoriels (le notebook utilise « None » = absence)."),
+               "constant", "Remplissage des trous catégoriels (« None » = absence)."),
         select("outlier_method", "Valeurs aberrantes",
                [("none", "Ne rien faire"), ("iqr_clip", "Borner (IQR)"), ("iqr_remove", "Supprimer (IQR)")],
                "none", "Traitement des valeurs hors bornes de Tukey."),
@@ -135,7 +135,7 @@ def config_schema(df, ctx):
 
 
 def _categorical_values(df, max_cols=12, max_vals=12):
-    """Distinct values of each categorical column (notebook cell 18)."""
+    """Distinct values of each categorical column."""
     rows = []
     cat_cols = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])]
     for c in cat_cols[:max_cols]:
@@ -146,7 +146,7 @@ def _categorical_values(df, max_cols=12, max_vals=12):
 
 
 def _extreme_rows(df, target, n=5, max_feats=4):
-    """Rows with the largest target value (notebook cells 29-30 — anomaly spotting)."""
+    """Rows with the largest target value (anomaly spotting)."""
     if not target or target not in df.columns or not pd.api.types.is_numeric_dtype(df[target]):
         return []
     num = [c for c in df.columns if c != target and pd.api.types.is_numeric_dtype(df[c])]
@@ -238,7 +238,7 @@ def run(df, config, ctx):
         if imputed_num:
             log.append(f"{imputed_num} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
 
-    # 4. Categorical imputation (notebook: NA = absence -> "None").
+    # 4. Categorical imputation (NA = absence -> "None").
     imputed_cat = 0
     if cfg["impute_cat"] == "drop_rows":
         before = len(df)

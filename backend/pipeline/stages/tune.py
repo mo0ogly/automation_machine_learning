@@ -2,9 +2,9 @@
 tune.py — Stage : FINE-TUNING (GridSearchCV).
 
 Refines the chosen algorithm's hyperparameters by cross-validated grid search on
-the training split, mirroring the J1 notebook's GridSearchCV step. The resulting
-tuned model supersedes the baseline for Evaluation and Explicability
-(``session.current_model()``). Supervised only.
+the training split (GridSearchCV). The resulting tuned model supersedes the
+baseline for Evaluation and Explicability (``session.current_model()``).
+Supervised only.
 """
 
 import numpy as np

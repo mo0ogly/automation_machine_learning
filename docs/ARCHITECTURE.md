@@ -1,8 +1,8 @@
 # Architecture & guide de reprise — ML Automator
 
 Document de référence pour comprendre tout le travail réalisé (pipeline agentique,
-copilote, mémoire, IA par graphe) et **le reprendre pour l'Atelier Jour 2 (ML non
-supervisé)**. Les identifiants de code restent en anglais ; les explications en français.
+copilote, mémoire, IA par graphe) et **le reprendre pour étendre le ML non
+supervisé**. Les identifiants de code restent en anglais ; les explications en français.
 
 ---
 
@@ -141,7 +141,7 @@ onglet caché / bfcache et laissait des graphes vides).
 
 | Méthode | Route | Rôle |
 |---------|-------|------|
-| POST | `/api/session/start` · `/start-demo/{name}` | Crée une session (upload CSV ou jeu d'atelier) |
+| POST | `/api/session/start` · `/start-demo/{name}` | Crée une session (upload CSV ou jeu de démo) |
 | GET | `/api/session/{id}` | Résumé de session (restauration au reload) |
 | GET | `/api/session/{id}/stage/{stage}` | Vue d'étape (schema, diagnostics, plots, result) |
 | POST | `/stage/{stage}/run` · `/recommend` · `/interpret` · **`/assist`** | Exécuter / affiner / interpréter / **expliquer un élément** |
@@ -165,26 +165,26 @@ onglet caché / bfcache et laissait des graphes vides).
 
 ---
 
-## 8. Fidélité au notebook Jour 1 (régression)
+## 8. Pipeline supervisé (régression)
 
-| Cellules notebook | Implémenté dans |
-|-------------------|-----------------|
+| Étape | Implémenté dans |
+|-------|-----------------|
 | Sélection colonnes (`colonne_a_garder`) | `clean` — table de décision `dropped_columns` |
 | `qual_map` (encodage ordinal) | `clean` (`normalize_ordinals`) + `typology.encode_ordinal` |
-| Valeurs distinctes catégorielles (18), lignes extrêmes (29-30) | `clean.diagnose` |
-| Analyse univariée par type (33-36) | `eda_plots.univariate_plots` |
-| Analyse bivariée boxplots (40-41) | `eda_plots.bivariate_plots` |
-| Corrélation / scatter (39) | `integrate.diagnose` |
-| Comparaison de modèles (57-58) | `model` — leaderboard |
-| Surapprentissage train/test/CV (68) | `evaluate._overfit_control` |
-| SHAP (60-62) | `explain` |
-| GridSearch (64) | `tune` |
+| Valeurs distinctes catégorielles, lignes extrêmes | `clean.diagnose` |
+| Analyse univariée par type | `eda_plots.univariate_plots` |
+| Analyse bivariée boxplots | `eda_plots.bivariate_plots` |
+| Corrélation / scatter | `integrate.diagnose` |
+| Comparaison de modèles | `model` — leaderboard |
+| Surapprentissage train/test/CV | `evaluate._overfit_control` |
+| SHAP | `explain` |
+| GridSearch | `tune` |
 
 ---
 
-## 9. Atelier Jour 2 — déjà en place (supervisé + non supervisé)
+## 9. Pistes supervisée & non supervisée — déjà en place
 
-Le Jour 2 a **deux pistes**, toutes deux couvertes par les jeux de démo (`GET /api/demo-datasets`) :
+**Deux pistes**, toutes deux couvertes par les jeux de démo (`GET /api/demo-datasets`) :
 
 | Jeu | `problem_type` | Piste |
 |-----|----------------|-------|
@@ -197,8 +197,8 @@ Le Jour 2 a **deux pistes**, toutes deux couvertes par les jeux de démo (`GET /
 Le même pipeline 8 étapes traite la classification ; seules les métriques et figures de
 l'évaluation diffèrent (branche `ptype != REGRESSION` dans `evaluate.run`) :
 
-| Notebook J2 classification | Implémenté dans |
-|----------------------------|-----------------|
+| Étape classification | Implémenté dans |
+|----------------------|-----------------|
 | `accuracy_score` | `evaluate` — métrique `Accuracy` |
 | `precision/recall/f1` pondérés | `evaluate` — `Précision/Rappel/F1 (pondéré)` (`average="weighted"`) |
 | `classification_report` (par classe) | `evaluate._per_class_report` → `diagnostics["rapport_par_classe"]` (précision/rappel/f1/support, **vrais noms de classe** via `label_encoder.inverse_transform`) → composant `ClassReport` |
@@ -211,15 +211,15 @@ clair. Test de bout en bout : `test_autorun_multiclass_stars`.
 
 ### 9.b Clustering non supervisé (segmentation client)
 
-| Cellule J2 (segmentation client) | Couvert par |
-|----------------------------------|-------------|
+| Étape (segmentation client) | Couvert par |
+|-----------------------------|-------------|
 | Chargement + `describe` | `clean.diagnose` (overview, typologie) |
 | Préparation `features_num` (one-hot `drop_first`, drop `client_id`) | `transform` + `integrate` (table de décision, corr inter-variables) |
 | Méthode du coude (inertie vs k) | `model._inertia_curve` + `model._elbow_plot` (« Méthode du coude — choix de K ») ; `k_recommande` via `_knee_k` |
 | `KMeans(k=3)` | `model._fit_clustering` (k choisi par l'expert, ou recommandé) |
-| **Algorithmes au choix** (au-delà du notebook) | `select cluster_algo` : KMeans · **DBSCAN** (densité, gère le bruit `label -1`, aide `model._kdistance_plot`) · **Agglomératif** (hiérarchique). Silhouette robuste (sur clusters denses) côté `evaluate`. |
+| **Algorithmes au choix** | `select cluster_algo` : KMeans · **DBSCAN** (densité, gère le bruit `label -1`, aide `model._kdistance_plot`) · **Agglomératif** (hiérarchique). Silhouette robuste (sur clusters denses) côté `evaluate`. |
 | Lecture en **valeurs brutes** (`groupby(cluster).mean` sur les unités réelles) | `evaluate._cluster_profiles_raw` — jointure par position de la sortie `clean` (avant scaling) aux labels ; moyennes numériques **+ modalités catégorielles majoritaires** |
-| Libellés métier des clusters | `evaluate._business_labels` — **seuils bruts du notebook** : `revenu_annuel_k>65 & panier_moyen>100` → « Premium fidèle » ; `sensibilite_promo>70 & age<35` → « Digital promo » ; sinon « Famille pragmatique ». Repli générique (σ) pour un autre jeu. |
+| Libellés métier des clusters | `evaluate._business_labels` — **seuils bruts** : `revenu_annuel_k>65 & panier_moyen>100` → « Premium fidèle » ; `sensibilite_promo>70 & age<35` → « Digital promo » ; sinon « Famille pragmatique ». Repli générique (σ) pour un autre jeu. |
 | Projection PCA 2D | `evaluate._cluster_scatter` |
 | Profil des clusters | `evaluate._profile_plot` (écarts standardisés) |
 | Indices de validité interne | `evaluate._evaluate_clustering` : **silhouette** + **Davies-Bouldin** (plus bas = mieux) + **Calinski-Harabasz** (plus haut = mieux), sur les clusters denses |
@@ -285,9 +285,9 @@ cd backend && python -m pytest tests/test_api.py -q   # 41 tests
 ```
 
 **Jeux de démo** (`GET /api/demo-datasets`, fichiers dans `data/` à la racine, lecture seule) :
-`house_price_data.csv` (régression J1) · `breastcancer.csv` (classif binaire J2) ·
-`Stars.csv` (classif multiclasse J2, 6 classes) · `client_data.csv` (clustering J2) ·
-`transactions.csv` (détection d'anomalies J2). Le renforcement n'utilise pas de CSV
+`house_price_data.csv` (régression) · `breastcancer.csv` (classif binaire) ·
+`Stars.csv` (classif multiclasse, 6 classes) · `client_data.csv` (clustering) ·
+`transactions.csv` (détection d'anomalies). Le renforcement n'utilise pas de CSV
 (environnement généré) — onglet « Renforcement ».
 
 > `transactions.csv` est synthétique et **régénérable à l'identique** :

@@ -72,15 +72,15 @@ def set_agent_model(body: dict = Body(default={})):
 @app.get("/api/demo-datasets")
 def list_demo_datasets():
     return {"datasets": [
-        {"name": "house_price_data.csv", "type": "Régression (J1)",
+        {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
-        {"name": "breastcancer.csv", "type": "Classification binaire (J2)",
+        {"name": "breastcancer.csv", "type": "Classification binaire",
          "description": "Diagnostic — bénin / malin"},
-        {"name": "Stars.csv", "type": "Classification multiclasse (J2)",
+        {"name": "Stars.csv", "type": "Classification multiclasse",
          "description": "Type d'étoile — 6 classes"},
-        {"name": "client_data.csv", "type": "Clustering (J2)",
+        {"name": "client_data.csv", "type": "Clustering",
          "description": "Segmentation clients"},
-        {"name": "transactions.csv", "type": "Détection d'anomalies (J2)",
+        {"name": "transactions.csv", "type": "Détection d'anomalies",
          "description": "Transactions — anomalies / fraude (non supervisé)"},
     ]}
 

@@ -1,8 +1,7 @@
 """
-typology.py — 4-way variable typology (workshop notebook J1).
+typology.py — 4-way variable typology.
 
-The corrected J1 notebook classifies features into four families and treats each
-differently:
+Features are classified into four families and each is treated differently:
 
     col_quant  -> quantitative continue   (numeric, many distinct values)
     col_scred  -> quantitative discrète    (numeric, few distinct values)
@@ -12,7 +11,7 @@ differently:
 The critical correctness point: an ORDINAL column (quality grade Po<Fa<TA<Gd<Ex)
 must be encoded preserving its order, not with an arbitrary alphabetical
 ``OrdinalEncoder``. This module detects ordinals via known vocabularies and
-encodes them exactly like the notebook's ``qual_map`` (NA/absent -> 0).
+encodes them exactly like the ordered ``qual_map`` (NA/absent -> 0).
 """
 
 import pandas as pd
@@ -73,7 +72,7 @@ def classify(df: pd.DataFrame, target_col=None, ordinal_overrides=None) -> dict:
 def encode_ordinal(series: pd.Series, order) -> pd.Series:
     """Map an ordinal column to ranked integers (1..n); absent/unknown -> 0.
 
-    Reproduces the notebook's ``qual_map = {"NA":0,"Po":1,"Fa":2,"TA":3,"Gd":4,"Ex":5}``.
+    Uses the ordered map ``qual_map = {"NA":0,"Po":1,"Fa":2,"TA":3,"Gd":4,"Ex":5}``.
     """
     rank = {str(v): i + 1 for i, v in enumerate(order)}
     return series.astype(str).map(rank).fillna(0).astype(float)

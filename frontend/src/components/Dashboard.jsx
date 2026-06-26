@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Copilot from './Copilot';
 import StageStepper from './StageStepper';
 import StagePanel from './StagePanel';
-import ModelSelector from './ModelSelector';
+import AiBackendButton from './AiBackendButton';
+import AiBackendsPanel from './AiBackendsPanel';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import './components.css';
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [demoDatasets, setDemoDatasets] = useState([]);
   const [agent, setAgent] = useState(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -227,6 +229,12 @@ const Dashboard = () => {
     setAssistLoading(false);
   };
 
+  // Re-fetch agent status after the AI backends panel changes the active backend.
+  const refreshAgent = async () => {
+    try { setAgent(await fetch(API_URL + '/api/agent-status').then((r) => r.json())); }
+    catch (e) { /* keep current agent on failure */ }
+  };
+
   const setLevelRemote = (lvl) => {
     setLevel(lvl);
     if (session) {
@@ -320,15 +328,18 @@ const Dashboard = () => {
           {agent ? (
             <div className={agent.configured ? 'agent-chip agent-ok' : 'agent-chip agent-off'}>
               {agent.configured
-                ? 'Agent Groq actif'
-                : 'Agent Groq non configuré — recommandations heuristiques'}
+                ? 'Agent IA actif'
+                : 'Aucun backend IA configuré — recommandations heuristiques'}
             </div>
           ) : null}
-          {agent && agent.configured ? (
-            <ModelSelector agent={agent} apiBase={API_URL} onChange={setAgent} />
+          {agent ? (
+            <AiBackendButton agent={agent} onOpen={() => setAiPanelOpen(true)} />
           ) : null}
           {error ? <div className="banner banner-block mt-2">{error}</div> : null}
         </div>
+        {aiPanelOpen ? (
+          <AiBackendsPanel apiBase={API_URL} onClose={() => setAiPanelOpen(false)} onChanged={refreshAgent} />
+        ) : null}
       </div>
     );
   }
@@ -364,10 +375,8 @@ const Dashboard = () => {
                 label={'Rôle de la cible « ' + session.context.target_col + ' »'} />
             </span>
           ) : null}
-          {agent && agent.configured ? (
-            <ModelSelector agent={agent} apiBase={API_URL} onChange={setAgent} />
-          ) : agent ? (
-            <span className="tag tag-warn">agent heuristique</span>
+          {agent ? (
+            <AiBackendButton agent={agent} onOpen={() => setAiPanelOpen(true)} />
           ) : null}
         </div>
         <button className="btn btn-secondary" onClick={reset}>Nouvelle analyse</button>
@@ -435,6 +444,9 @@ const Dashboard = () => {
           />
         </main>
       </div>
+      {aiPanelOpen ? (
+        <AiBackendsPanel apiBase={API_URL} onClose={() => setAiPanelOpen(false)} onChanged={refreshAgent} />
+      ) : null}
     </div>
   );
 };

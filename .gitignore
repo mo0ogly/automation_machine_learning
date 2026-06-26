@@ -38,3 +38,6 @@ data/*.pdf
 .DS_Store
 Thumbs.db
 *.log
+
+# ─── Backends IA (clés write-only, ne pas committer) ─────
+backend/ai_backends.json

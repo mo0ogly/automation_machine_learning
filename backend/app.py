@@ -28,6 +28,7 @@ from pipeline import plotting
 from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_IDS
 from pipeline.stages.base import to_native
 import llm_agent
+import routes_ai
 from pydantic import BaseModel
 from rl import GridWorld, train_qlearning, summarise
 from rl import plots as rl_plots
@@ -47,6 +48,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Multi-provider AI-backend management (catalog, CRUD, key, test). See routes_ai.py.
+app.include_router(routes_ai.router)
 
 
 # ── basic / meta ────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ deterministic metrics, reproducibility) and the **fluency of LLMs** (reasoning, 
 recommendations, natural-language explanations) — to get the best of both.
 
 Concretely: a machine-learning model built in **explicit, inspectable and replayable
-stages**, where an **LLM copilot** (Groq for now) *observes* the numeric diagnostics and
+stages**, where an **LLM copilot** (multi-provider, OpenAI-compatible) *observes* the numeric diagnostics and
 *orients* with recommendations grounded in the real numbers, while the **expert** *decides*
 and *acts*.
 
@@ -131,9 +131,11 @@ cd backend && python -m pytest tests/test_api.py -q   # 44 tests, no network
 
 ## Roadmap
 
-- **LLM providers** — **Groq for now** (OpenAI-compatible REST). Coming: OpenAI, Anthropic,
-  and a **local** mode (Ollama) to run without the cloud. The agent already speaks an
-  OpenAI-compatible protocol, so adding a provider is a configuration switch.
+- **LLM providers** — **done**: a settings panel (the `⚙ Moteur IA` button) manages multiple
+  OpenAI-compatible backends (Groq, OpenAI, Mistral, DeepSeek, Ollama/local), driven by a
+  server-side provider **catalog**, with per-backend **write-only keys** (or the provider env
+  var) and a connectivity **Test**. Next: Anthropic (its messages API differs) + a LiteLLM
+  gateway preset.
 - **Session persistence** — **done**: sessions are mirrored to SQLite (`backend/sessions.db`)
   and survive a backend restart (toggle with `ML_PERSIST_SESSIONS`). Next: a shared store
   (Redis/Postgres) for a multi-process backend.

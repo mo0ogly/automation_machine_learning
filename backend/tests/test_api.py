@@ -550,3 +550,62 @@ def test_persistence_disabled_is_pure_memory(tmp_path):
     live = _populated_session()
     store.save(live)                                 # no-op
     assert SessionStore(persistence=SessionPersistence(db_path=db)).get(live.id) is None
+
+
+# ── multi-provider AI backends (catalog + store + routes) ──────────────────
+def test_ai_providers_catalog():
+    """The provider catalog drives the UI dropdowns (single source of truth)."""
+    r = client.get("/api/ai/providers")
+    assert r.status_code == 200, r.text
+    provs = {p["id"]: p for p in r.json()["providers"]}
+    assert "groq" in provs and "openai_compat" in provs
+    assert provs["groq"]["models"]                      # groq has curated models
+    assert provs["openai_compat"]["base_url"] == "required"  # needs an endpoint
+    assert "env_present" in provs["groq"]               # UI shows ready providers
+
+
+def test_ai_store_crud(tmp_path, monkeypatch):
+    """The store: create / key (write-only) / resolve / openai_compat base_url / delete."""
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)   # no auto-seed, no env key
+    from ai_store import AiStore
+    store = AiStore(path=str(tmp_path / "ai.json"))
+    assert store.list_backends() == []                  # nothing seeded without a key
+
+    b = store.create({"id": "b1", "provider": "groq", "model": "llama-3.1-8b-instant"})
+    assert b["active"] is True and b["key_configured"] is False
+    r = store.resolve()
+    assert r["api_base"].startswith("https://api.groq.com") and r["key"] is None
+    store.set_secret("b1", "sk-test")
+    assert store.list_backends()[0]["key_configured"] is True
+    assert store.resolve()["key"] == "sk-test"          # resolvable internally only
+
+    with pytest.raises(ValueError):                     # openai_compat needs a base_url
+        store.create({"id": "b2", "provider": "openai_compat", "model": "llama3.1"})
+    store.create({"id": "b2", "provider": "openai_compat", "model": "llama3.1",
+                  "base_url": "http://localhost:11434/v1"})
+    assert store.resolve("b2")["api_base"] == "http://localhost:11434/v1"
+
+    store.delete("b1")
+    assert [x["id"] for x in store.list_backends()] == ["b2"]
+    assert store.active_id() == "b2"                    # active moved off the deleted one
+
+
+def test_ai_backends_route_roundtrip():
+    """Create / key (never returned) / activate / delete over HTTP."""
+    client.delete("/api/ai/backends/rt-test")           # tolerate a stale leftover
+    r = client.post("/api/ai/backends", json={"id": "rt-test", "provider": "openai_compat",
+                                              "model": "llama3.1", "base_url": "http://localhost:11434/v1"})
+    assert r.status_code == 200, r.text
+    assert any(b["id"] == "rt-test" for b in client.get("/api/ai/backends").json()["backends"])
+
+    sk = client.post("/api/ai/backends/rt-test/secret", json={"key": "sk-xyz"})
+    assert sk.status_code == 200 and sk.json()["key_configured"] is True
+    # The key is write-only: it never appears in any listing.
+    listing = client.get("/api/ai/backends").json()["backends"]
+    assert all("key" not in b and "secret" not in b for b in listing)
+
+    act = client.post("/api/ai/active", json={"id": "rt-test"})
+    assert act.status_code == 200 and act.json()["active"] == "rt-test"
+
+    client.delete("/api/ai/backends/rt-test")           # cleanup -> active reverts
+    assert not any(b["id"] == "rt-test" for b in client.get("/api/ai/backends").json()["backends"])

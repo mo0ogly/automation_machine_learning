@@ -21,65 +21,72 @@ import httpx
 
 import env_loader
 import agent_prompts
+import ai_providers
+import ai_store
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = env_loader.get("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = env_loader.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
-# Curated chat models selectable from the UI (id, friendly label, indicative Groq
-# price input/output per 1M tokens). The active model is switchable at runtime via
-# set_model(); it resets to GROQ_MODEL on restart.
-AVAILABLE_MODELS = [
-    {"id": "openai/gpt-oss-120b", "label": "GPT OSS 120B", "price": "$0.15 / $0.60"},
-    {"id": "openai/gpt-oss-20b", "label": "GPT OSS 20B", "price": "$0.075 / $0.30"},
-    {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "label": "Llama 4 Scout 17B", "price": "$0.11 / $0.34"},
-    {"id": "qwen/qwen3-32b", "label": "Qwen3 32B", "price": "$0.29 / $0.59"},
-    {"id": "qwen/qwen3.6-27b", "label": "Qwen 3.6 27B", "price": "$0.60 / $3.00"},
-    {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B", "price": "$0.59 / $0.79"},
-    {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B", "price": "$0.05 / $0.08"},
-]
-_VALID_IDS = {m["id"] for m in AVAILABLE_MODELS}
-_active_model = DEFAULT_MODEL if DEFAULT_MODEL in _VALID_IDS else "openai/gpt-oss-120b"
+
+def _active():
+    """Resolved params ``{api_base, key, model, provider, id}`` for the active AI
+    backend, or ``None`` when none is configured."""
+    return ai_store.STORE.resolve()
+
+
+def _usable() -> bool:
+    """True when the active backend resolves to a reachable endpoint AND a key."""
+    r = _active()
+    return bool(r and r.get("key") and r.get("api_base"))
 
 
 def get_active_model() -> str:
-    return _active_model
+    r = _active()
+    return r["model"] if r else GROQ_MODEL
 
 
 def set_model(model_id: str) -> bool:
-    """Switch the active agent model (must be one of AVAILABLE_MODELS). Returns success."""
-    global _active_model
-    if model_id not in _VALID_IDS:
+    """Switch the active backend's model (free-text allowed). Returns success."""
+    active = ai_store.STORE.active_id()
+    if not active or not str(model_id or "").strip():
         return False
-    _active_model = model_id
-    return True
+    try:
+        ai_store.STORE.update_model(active, model_id)
+        return True
+    except Exception:
+        return False
 
 
 def available_models() -> list:
-    return AVAILABLE_MODELS
+    """Curated models of the active backend's provider (UI dropdown)."""
+    r = _active()
+    prov = ai_providers.get_provider(r["provider"]) if r else None
+    models = prov["models"] if prov else []
+    return [{"id": m, "label": m} for m in models]
 
 # The agent's prompt (system instructions + per-stage few-shot examples) lives in
 # agent_prompts.py — see build_messages().
 
 
 def agent_status() -> dict:
-    """Agent configuration for the UI: active model + the selectable list."""
-    key = env_loader.get("GROQ_API_KEY")
+    """Agent configuration for the UI: the active backend + the provider catalog."""
+    r = _active()
     return {
-        "configured": bool(key),
+        "configured": _usable(),
+        "provider": r["provider"] if r else None,
         "model": get_active_model(),
-        "provider": "groq",
-        "available_models": AVAILABLE_MODELS,
+        "backend_id": r["id"] if r else None,
+        "available_models": available_models(),
+        "providers": ai_providers.public_catalog(),
     }
 
 
 def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
               schema: list, current_config: dict, journal: str = "") -> dict:
     """Produce a refinement recommendation for one stage."""
-    key = env_loader.get("GROQ_API_KEY")
-    if not key:
+    if not _usable():
         rec = _heuristic(stage_meta["stage_id"], diagnostics, current_config, problem_type)
         rec.update({"source": "heuristic-fallback", "available": False,
-                    "reason": "GROQ_API_KEY absente — recommandation heuristique déterministe.",
+                    "reason": "Aucun backend IA configuré — recommandation heuristique déterministe.",
                     "model": None})
         rec["suggested_config"] = sanitize_config(schema, rec.get("suggested_config", {}))
         return rec
@@ -87,7 +94,7 @@ def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
     messages = agent_prompts.build_messages(
         stage_meta, problem_type, _compact_schema(schema), current_config, diagnostics, journal)
     try:
-        content = _call_groq(key, messages)
+        content = _call_llm(messages)
         parsed = json.loads(_extract_json(content))
         suggested = sanitize_config(schema, parsed.get("suggested_config", {}))
         return {
@@ -103,7 +110,7 @@ def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
     except Exception as e:  # network, JSON, API — degrade gracefully but honestly.
         rec = _heuristic(stage_meta["stage_id"], diagnostics, current_config, problem_type)
         rec.update({"source": "heuristic-fallback", "available": False,
-                    "reason": f"Agent Groq indisponible ({type(e).__name__}) — repli heuristique.",
+                    "reason": f"Agent IA indisponible ({type(e).__name__}) — repli heuristique.",
                     "model": get_active_model()})
         rec["suggested_config"] = sanitize_config(schema, rec.get("suggested_config", {}))
         return rec
@@ -111,12 +118,11 @@ def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
 
 def interpret(stage_title: str, problem_type: str, payload: dict, journal: str = "") -> dict:
     """Generate a natural-language interpretation/conclusion of a stage's results."""
-    key = env_loader.get("GROQ_API_KEY")
-    if not key:
+    if not _usable():
         return {"source": "none", "available": False, "model": None, "verdict": "", "confidence": 0.0,
-                "interpretation": ["Interprétation IA indisponible (GROQ_API_KEY absente)."]}
+                "interpretation": ["Interprétation IA indisponible (aucun backend IA configuré)."]}
     try:
-        content = _call_groq(key, agent_prompts.build_interpret_messages(stage_title, problem_type, payload, journal))
+        content = _call_llm(agent_prompts.build_interpret_messages(stage_title, problem_type, payload, journal))
         p = json.loads(_extract_json(content))
         return {"source": "llm", "available": True, "model": get_active_model(),
                 "interpretation": [str(x) for x in p.get("interpretation", [])][:6],
@@ -132,12 +138,11 @@ def assist(stage_title: str, problem_type: str, topic: str, focus: dict,
            schema: list = None, current_config: dict = None) -> dict:
     """Explain a specific sub-step element to the analyst, and (when relevant)
     propose an APPLICABLE config change so the advice is one-click actionable."""
-    key = env_loader.get("GROQ_API_KEY")
-    if not key:
+    if not _usable():
         return _assist_heuristic(topic, focus, level)
     try:
         compact = _compact_schema(schema) if schema else None
-        content = _call_groq(key, agent_prompts.build_assist_messages(
+        content = _call_llm(agent_prompts.build_assist_messages(
             stage_title, problem_type, topic, focus, journal, level, compact, current_config))
         p = json.loads(_extract_json(content))
         suggested = sanitize_config(schema, p.get("suggested_config", {})) if schema else {}
@@ -148,7 +153,7 @@ def assist(stage_title: str, problem_type: str, topic: str, focus: dict,
                 "confidence": _clamp_float(p.get("confidence", 0.5), 0.0, 1.0)}
     except Exception as e:
         out = _assist_heuristic(topic, focus, level)
-        out["reason"] = f"Agent Groq indisponible ({type(e).__name__}) — explication déterministe."
+        out["reason"] = f"Agent IA indisponible ({type(e).__name__}) — explication déterministe."
         return out
 
 
@@ -171,8 +176,12 @@ def _assist_heuristic(topic: str, focus: dict, level: str) -> dict:
             "suggested_config": {}, "confidence": 0.0}
 
 
-def _call_groq(key: str, messages: list) -> str:
-    model = get_active_model()
+def _call_llm(messages: list) -> str:
+    """POST the chat request to the active OpenAI-compatible backend."""
+    r = _active()
+    if not r or not r.get("key") or not r.get("api_base"):
+        raise RuntimeError("Aucun backend IA utilisable.")
+    model = r["model"]
     payload = {
         "model": model,
         "messages": messages,
@@ -181,13 +190,14 @@ def _call_groq(key: str, messages: list) -> str:
         "response_format": {"type": "json_object"},
     }
     # Reasoning models: keep reasoning minimal, else it can exhaust the token budget
-    # and Groq's JSON validation fails (observed on qwen3.6-27b).
+    # and JSON validation fails (observed on gpt-oss / qwen via Groq).
     if "gpt-oss" in model:
         payload["reasoning_effort"] = "low"
     elif "qwen" in model:
         payload["reasoning_effort"] = "none"
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    resp = httpx.post(GROQ_URL, json=payload, headers=headers, timeout=40.0)
+    headers = {"Authorization": f"Bearer {r['key']}", "Content-Type": "application/json"}
+    url = r["api_base"].rstrip("/") + "/chat/completions"
+    resp = httpx.post(url, json=payload, headers=headers, timeout=40.0)
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"]
 

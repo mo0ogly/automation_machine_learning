@@ -9,5 +9,16 @@ with a temp-file DB, so they are unaffected by this toggle.
 """
 
 import os
+import tempfile
+from pathlib import Path
 
 os.environ.setdefault("ML_PERSIST_SESSIONS", "0")
+
+# Point the AI-backends store at a throwaway temp file (and start clean) so the
+# suite never touches the real backend/ai_backends.json.
+_ai_store = Path(tempfile.gettempdir()) / "mlauto_test_ai_backends.json"
+os.environ.setdefault("ML_AI_STORE", str(_ai_store))
+try:
+    _ai_store.unlink()
+except FileNotFoundError:
+    pass

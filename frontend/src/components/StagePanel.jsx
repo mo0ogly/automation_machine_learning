@@ -442,7 +442,8 @@ export default function StagePanel(props) {
                     onAssist={onAssist} busy={assistBusy} />
                 </div>
                 <AssistAnswer topic="decision" answers={assistAnswers} onApply={onApplyAssist} />
-                <ConfigControls schema={stage.schema} config={config} onChange={onConfigChange} highlight={highlight} />
+                <ConfigControls schema={stage.schema} config={config} onChange={onConfigChange} highlight={highlight}
+                  onAssist={onAssist} assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
               </>
             ) : null}
 

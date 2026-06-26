@@ -1,5 +1,7 @@
 import React from 'react';
 import ColumnTable from './ColumnTable';
+import AssistButton from './AssistButton';
+import AssistAnswer from './AssistAnswer';
 
 // Renders a single config control from a backend schema descriptor.
 function Control({ ctrl, value, onChange }) {
@@ -67,7 +69,8 @@ function Control({ ctrl, value, onChange }) {
 
 // Renders the full config form for a stage. `highlight` marks the keys the
 // agent just proposed, so the expert sees what changed.
-export default function ConfigControls({ schema, config, onChange, highlight = {} }) {
+export default function ConfigControls({ schema, config, onChange, highlight = {},
+  onAssist, assistBusy, assistAnswers, onApplyAssist }) {
   if (!schema || !schema.length) {
     return <p className="muted">Aucun paramètre à régler pour cette étape.</p>;
   }
@@ -83,6 +86,13 @@ export default function ConfigControls({ schema, config, onChange, highlight = {
           {simple.map((ctrl) => (
             <div key={ctrl.name} className={highlight[ctrl.name] ? 'cfg-cell cfg-highlight' : 'cfg-cell'}>
               <Control ctrl={ctrl} value={config[ctrl.name]} onChange={onChange} />
+              {onAssist ? (
+                <div className="cfg-assist">
+                  <AssistButton topic={'param:' + ctrl.name} label={ctrl.label} text="IA"
+                    onAssist={onAssist} busy={assistBusy} />
+                </div>
+              ) : null}
+              <AssistAnswer topic={'param:' + ctrl.name} answers={assistAnswers} onApply={onApplyAssist} />
             </div>
           ))}
         </div>

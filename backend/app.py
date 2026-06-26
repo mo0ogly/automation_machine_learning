@@ -269,6 +269,12 @@ def _cap(v, n=12):
 
 def _assist_focus(topic, diag, result, schema):
     """Resolve the compact data subset the assistant should explain for `topic`."""
+    if topic.startswith("param:"):  # per-field config helper -> give that field's descriptor
+        fname = topic.split(":", 1)[1]
+        field = next((c for c in (schema or []) if c.get("name") == fname), None)
+        if field:
+            keep = ("name", "label", "help", "type", "options", "min", "max", "step", "default")
+            return {"parametre": {k: field[k] for k in keep if k in field}}
     if topic == "decision":
         out = []
         for t in [c for c in schema if c.get("type") == "column_table"]:

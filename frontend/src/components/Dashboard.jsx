@@ -3,6 +3,8 @@ import Copilot from './Copilot';
 import StageStepper from './StageStepper';
 import StagePanel from './StagePanel';
 import ModelSelector from './ModelSelector';
+import AssistButton from './AssistButton';
+import AssistAnswer from './AssistAnswer';
 import './components.css';
 
 // API base: configurable at build time (Docker passes VITE_API_URL), defaults to
@@ -320,13 +322,27 @@ const Dashboard = () => {
         <div className="lab-meta">
           <strong>{session.filename}</strong>
           <span>{session.overview.rows} lignes · {session.overview.cols} colonnes</span>
-          <span className={session.context.supervised ? 'tag tag-sup' : 'tag tag-unsup'}>
-            {session.context.supervised ? 'Supervisé' : 'Non supervisé'}
+          <span className="badge-ia">
+            <span className={session.context.supervised ? 'tag tag-sup' : 'tag tag-unsup'}>
+              {session.context.supervised ? 'Supervisé' : 'Non supervisé'}
+            </span>
+            <AssistButton topic="paradigme" text="IA" busy={assistLoading} onAssist={askAssist}
+              label={session.context.supervised ? 'Pourquoi supervisé ?' : 'Pourquoi non supervisé ?'} />
           </span>
-          <span className="tag tag-type">
-            {PTYPE_LABELS[session.context.problem_type] || session.context.problem_type}
+          <span className="badge-ia">
+            <span className="tag tag-type">
+              {PTYPE_LABELS[session.context.problem_type] || session.context.problem_type}
+            </span>
+            <AssistButton topic="type_probleme" text="IA" busy={assistLoading} onAssist={askAssist}
+              label={'Explique le type « ' + (PTYPE_LABELS[session.context.problem_type] || session.context.problem_type) + ' »'} />
           </span>
-          {session.context.target_col ? <span className="tag">cible : {session.context.target_col}</span> : null}
+          {session.context.target_col ? (
+            <span className="badge-ia">
+              <span className="tag">cible : {session.context.target_col}</span>
+              <AssistButton topic="cible" text="IA" busy={assistLoading} onAssist={askAssist}
+                label={'Rôle de la cible « ' + session.context.target_col + ' »'} />
+            </span>
+          ) : null}
           {agent && agent.configured ? (
             <ModelSelector agent={agent} apiBase={API_URL} onChange={setAgent} />
           ) : agent ? (
@@ -335,6 +351,14 @@ const Dashboard = () => {
         </div>
         <button className="btn btn-secondary" onClick={reset}>Nouvelle analyse</button>
       </div>
+
+      {(assistAnswers['type_probleme'] || assistAnswers['paradigme'] || assistAnswers['cible']) ? (
+        <div className="badge-ia-answers">
+          <AssistAnswer topic="paradigme" answers={assistAnswers} />
+          <AssistAnswer topic="type_probleme" answers={assistAnswers} />
+          <AssistAnswer topic="cible" answers={assistAnswers} />
+        </div>
+      ) : null}
 
       <StageStepper stages={session.stages} status={session.status}
         activeStage={activeStage} onSelect={(id) => loadStage(session.session_id, id)} />

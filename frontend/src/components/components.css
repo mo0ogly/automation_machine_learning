@@ -45,6 +45,11 @@
 .assist-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.22); }
 .assist-btn:disabled { opacity: 0.5; cursor: default; }
 
+/* ── Per-badge AI helpers (in the session bar) ── */
+.badge-ia { display: inline-flex; align-items: center; gap: 0.3rem; }
+.badge-ia .assist-btn { padding: 0.12rem 0.4rem; font-size: 0.66rem; }
+.badge-ia-answers { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.5rem 0 0; }
+
 /* ── Copilot panel (assisted mode + journal memory) ── */
 .copilot { display: flex; flex-direction: column; gap: 0.75rem; }
 .copilot-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }

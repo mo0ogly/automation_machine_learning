@@ -1,0 +1,22 @@
+{
+  "perimetre": "le joyau — studio d'exploitation du modele (ExploitView + scoring.py + routes /predict* /analyze /model-card + personas LLM)",
+  "cycle": 1,
+  "date": "2026-06-26",
+  "benchmark_externe": "prompt-injection-corpus.jsonl (1000 segments, detection IPI data_to_instruction, OWASP LLM01:2025)",
+  "methode": "3 agents d'audit paralleles (correction / securite / frontend+tests) + harnais securite live (Groq) + validation detecteur vs corpus",
+  "scores": {
+    "security":      { "avant": 42, "apres": 66, "delta": 24 },
+    "correctness":   { "avant": 52, "apres": 68, "delta": 16 },
+    "frontend_ux":   { "avant": 71, "apres": 80, "delta": 9 },
+    "testing":       { "avant": 64, "apres": 74, "delta": 10 },
+    "completeness":  { "avant": 85, "apres": 85, "delta": 0 }
+  },
+  "ponderation": { "security": 0.25, "correctness": 0.30, "frontend_ux": 0.20, "testing": 0.15, "completeness": 0.10 },
+  "score_global": { "avant": 58, "apres": 72, "delta": 14 },
+  "preuve_securite": {
+    "frontiere_data_to_instruction": "150/150 payloads atteignaient le prompt verbatim AVANT -> 0/150 APRES (sanitize_label + wrap_untrusted, verifie)",
+    "llm_live_resistance": "gpt-oss-120b a resiste 10/10 payloads echantillonnes AVANT le fix (defense fragile car dependante du modele, d'ou le fix structurel)",
+    "detecteur_motifs_vs_corpus": { "accuracy": 0.57, "precision": 0.68, "recall": 0.40, "f1": 0.51, "fp_hard_negative": "59/180", "note": "= baseline keyword du README §8 ; defense primaire = sanitisation structurelle, pas le detecteur" }
+  },
+  "tests": { "avant": 57, "apres": 62, "ajoutes": 5 }
+}

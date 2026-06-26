@@ -4,6 +4,7 @@ import StageStepper from './StageStepper';
 import StagePanel from './StagePanel';
 import AiBackendButton from './AiBackendButton';
 import AiBackendsPanel from './AiBackendsPanel';
+import DatasetCardModal from './DatasetCardModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import './components.css';
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const [demoDatasets, setDemoDatasets] = useState([]);
   const [agent, setAgent] = useState(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [cardName, setCardName] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -318,10 +320,14 @@ const Dashboard = () => {
           <div className="card mt-2">
             <h3 className="text-sm text-secondary mb-2">Ou un jeu de démonstration</h3>
             {demoDatasets.map((ds) => (
-              <button key={ds.name} className="btn btn-demo" onClick={() => startDemo(ds.name)} disabled={busy}>
-                <strong>{ds.type}</strong><br />
-                <span className="demo-desc">{ds.description}</span>
-              </button>
+              <div key={ds.name} className="demo-row">
+                <button className="btn btn-demo" onClick={() => startDemo(ds.name)} disabled={busy}>
+                  <strong>{ds.type}</strong><br />
+                  <span className="demo-desc">{ds.description}</span>
+                </button>
+                <button type="button" className="demo-info-btn" title="Voir la fiche du jeu de données"
+                  onClick={() => setCardName(ds.name)}>i</button>
+              </div>
             ))}
           </div>
 
@@ -339,6 +345,9 @@ const Dashboard = () => {
         </div>
         {aiPanelOpen ? (
           <AiBackendsPanel apiBase={API_URL} onClose={() => setAiPanelOpen(false)} onChanged={refreshAgent} />
+        ) : null}
+        {cardName ? (
+          <DatasetCardModal apiBase={API_URL} name={cardName} onClose={() => setCardName(null)} />
         ) : null}
       </div>
     );

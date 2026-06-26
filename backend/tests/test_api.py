@@ -609,3 +609,25 @@ def test_ai_backends_route_roundtrip():
 
     client.delete("/api/ai/backends/rt-test")           # cleanup -> active reverts
     assert not any(b["id"] == "rt-test" for b in client.get("/api/ai/backends").json()["backends"])
+
+
+# ── dataset cards + cyber-risk demo ────────────────────────────────────────
+def test_cyber_demo_loads_clean():
+    """The cyber demo loads as classification on risk_label, with the key and the
+    leaking second target (asset_id, risk_score) dropped at load."""
+    body = _start_demo("cyber_risk.csv")
+    assert body["context"]["problem_type"] == "classification"
+    assert body["context"]["target_col"] == "risk_label"
+    assert body["overview"]["cols"] == 18               # 20 - asset_id - risk_score
+
+
+def test_every_demo_has_a_data_card():
+    """Each demo dataset has a renderable card; an unknown one 404s."""
+    demos = client.get("/api/demo-datasets").json()["datasets"]
+    assert any(d["name"] == "cyber_risk.csv" for d in demos)
+    for d in demos:
+        r = client.get("/api/dataset-card/" + d["name"])
+        assert r.status_code == 200, d["name"]
+        c = r.json()
+        assert c["title"] and c["summary"] and c["target"] and c["sections"]
+    assert client.get("/api/dataset-card/nope.csv").status_code == 404

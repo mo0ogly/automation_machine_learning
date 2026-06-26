@@ -29,6 +29,7 @@ from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_
 from pipeline.stages.base import to_native
 import llm_agent
 import routes_ai
+import dataset_cards
 from pydantic import BaseModel
 from rl import GridWorld, train_qlearning, summarise
 from rl import plots as rl_plots
@@ -40,6 +41,9 @@ EXPORT_DIR = Path(__file__).parent / "exports"
 
 # Demo datasets that must be treated as unsupervised anomaly detection (no target).
 _ANOMALY_DEMOS = {"transactions.csv"}
+# Columns dropped at load for a clean demo: a non-predictive key, and a second
+# target that would leak (cyber_risk ships both risk_score and risk_label).
+_DEMO_DROP = {"cyber_risk.csv": ["asset_id", "risk_score"]}
 
 app.add_middleware(
     CORSMiddleware,
@@ -76,6 +80,8 @@ def set_agent_model(body: dict = Body(default={})):
 @app.get("/api/demo-datasets")
 def list_demo_datasets():
     return {"datasets": [
+        {"name": "cyber_risk.csv", "type": "Classification multiclasse",
+         "description": "Risque cyber — priorisation d'actifs (4 niveaux, synthétique)"},
         {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
         {"name": "breastcancer.csv", "type": "Classification binaire",
@@ -87,6 +93,15 @@ def list_demo_datasets():
         {"name": "transactions.csv", "type": "Détection d'anomalies",
          "description": "Transactions — anomalies / fraude (non supervisé)"},
     ]}
+
+
+@app.get("/api/dataset-card/{name}")
+def dataset_card(name: str):
+    """Rich data card for a demo dataset (summary, schema, target, ML notes, source)."""
+    card = dataset_cards.get(name)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Pas de fiche pour ce jeu de données.")
+    return card
 
 
 # ── session lifecycle ───────────────────────────────────────────────────
@@ -123,6 +138,9 @@ def session_start_demo(dataset_name: str):
     if not csv_path.exists():
         raise HTTPException(status_code=404, detail=f"Dataset '{dataset_name}' introuvable.")
     df = _read_csv(csv_path.read_bytes())
+    drop = [c for c in _DEMO_DROP.get(dataset_name, []) if c in df.columns]
+    if drop:  # remove a non-predictive key / a leaking second target before detection
+        df = df.drop(columns=drop)
     session = SESSIONS.create(dataset_name, df)
     if dataset_name in _ANOMALY_DEMOS:  # dedicated unsupervised anomaly-detection demo
         from pipeline.context import ANOMALY

@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import PlotModal from './PlotModal';
 import './components.css';
 
-const API_URL = 'http://localhost:8000';
+// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
+// the local dev backend so `npm run dev` keeps working unchanged.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Q-learning hyperparameters exposed to the expert (bounds mirror the backend).
 const FIELDS = [

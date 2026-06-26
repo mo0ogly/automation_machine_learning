@@ -1,0 +1,7 @@
+# Frontend image build context (./frontend) — exclude what the build regenerates.
+node_modules
+dist
+.vite
+*.log
+Dockerfile
+.dockerignore

@@ -5,7 +5,9 @@ import StagePanel from './StagePanel';
 import ModelSelector from './ModelSelector';
 import './components.css';
 
-const API_URL = 'http://localhost:8000';
+// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
+// the local dev backend so `npm run dev` keeps working unchanged.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Human-readable label for the detected problem type (badge in the session bar).
 const PTYPE_LABELS = {

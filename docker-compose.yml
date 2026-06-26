@@ -1,0 +1,52 @@
+# automation_machine_learning — local stack (backend FastAPI + frontend nginx).
+#
+#   ./mlauto.sh up         # build if needed + start, wait until healthy
+#   ./mlauto.sh logs       # follow logs
+#   ./mlauto.sh down       # stop
+#   docker compose up -d   # (equivalent, raw)
+#
+# The browser loads the frontend on :5173 and calls the backend on :8000 — both
+# published to the host. Sessions persist on the mlauto-data volume (SQLite), so
+# they survive `down` + rebuild. Ports and the Groq key come from .env (copy
+# .env.example -> .env); every value has a safe default.
+name: mlauto
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: automation-machine-learning-backend:latest
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      ML_PERSIST_SESSIONS: ${ML_PERSIST_SESSIONS:-1}
+      ML_SESSION_DB: /data/sessions.db
+    volumes:
+      - mlauto-data:/data          # SQLite session store — survives restarts
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Default the bundle's API base at the host-published backend port.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:${BACKEND_PORT:-8000}}
+    image: automation-machine-learning-frontend:latest
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    restart: unless-stopped
+
+volumes:
+  mlauto-data:

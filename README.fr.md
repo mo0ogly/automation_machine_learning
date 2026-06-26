@@ -84,19 +84,37 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 
 ## Démarrer
 
-### 1. Backend
+### Option A — Docker (recommandé)
+
+Toute la stack (backend FastAPI + frontend nginx) en une commande. Nécessite
+Docker Desktop / Docker Engine avec le plugin compose.
+
 ```bash
+cp .env.example .env          # optionnel : renseigner GROQ_API_KEY (repli heuristique sinon)
+
+./mlauto.sh up                # build + démarrage, attend que ce soit sain   (Linux/macOS/Git Bash)
+.\mlauto.ps1 up               # idem, sous Windows PowerShell
+```
+
+Puis ouvrir **http://localhost:5173**. Autres verbes : `down`, `restart`,
+`build`, `rebuild`, `logs [svc]`, `status`, `health`, `shell [svc]`, `test`,
+`clean` (`./mlauto.sh help`). Les sessions persistent sur le volume
+`mlauto-data` (SQLite) et survivent à `down` + rebuild. Ports surchargeables
+dans `.env` (`BACKEND_PORT` / `FRONTEND_PORT`).
+
+### Option B — local (sans Docker)
+
+```bash
+# Backend
 cd backend
 python -m pip install -r requirements.txt
 cp .env.example .env          # puis renseigner GROQ_API_KEY (sinon repli heuristique)
 python -m uvicorn app:app --port 8000
-```
 
-### 2. Frontend
-```bash
+# Frontend (second terminal)
 cd frontend
 npm install
-npm run dev                   # http://localhost:5173 (proxy vers le backend :8000)
+npm run dev                   # http://localhost:5173 (appelle le backend :8000)
 ```
 
 ## API (extrait)

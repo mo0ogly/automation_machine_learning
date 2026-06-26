@@ -1,8 +1,9 @@
 import React from 'react';
+import AssistButton from './AssistButton';
 
 // Horizontal pipeline stepper: Nettoyage -> Transformation -> Integration
 // -> Separation -> Model -> Evaluation. Reflects per-stage status.
-export default function StageStepper({ stages, status, activeStage, onSelect }) {
+export default function StageStepper({ stages, status, activeStage, onSelect, onAssistStage, assistBusy }) {
   const statusMap = {};
   (status || []).forEach((s) => { statusMap[s.stage_id] = s; });
 
@@ -22,11 +23,18 @@ export default function StageStepper({ stages, status, activeStage, onSelect }) 
 
         return (
           <React.Fragment key={st.stage_id}>
-            <button className={cls} onClick={() => onSelect(st.stage_id)} title={st.objective}>
-              <span className="step-badge">{st.index}</span>
-              <span className="step-title">{st.title}</span>
-              <span className="step-state">{state}</span>
-            </button>
+            <span className="step-wrap">
+              <button className={cls} onClick={() => onSelect(st.stage_id)} title={st.objective}>
+                <span className="step-badge">{st.index}</span>
+                <span className="step-title">{st.title}</span>
+                <span className="step-state">{state}</span>
+              </button>
+              {onAssistStage ? (
+                <AssistButton topic={'etape:' + st.stage_id} text="IA" busy={assistBusy}
+                  label={'Explique l\'étape « ' + st.title + ' »'}
+                  onAssist={(t, l) => onAssistStage(st.stage_id, t, l)} />
+              ) : null}
+            </span>
             {idx < stages.length - 1 ? (
               <span className={idx === 3 ? 'step-arrow step-arrow-major' : 'step-arrow'}>›</span>
             ) : null}

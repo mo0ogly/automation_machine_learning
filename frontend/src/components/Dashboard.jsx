@@ -206,6 +206,27 @@ const Dashboard = () => {
     setAssistLoading(false);
   };
 
+  // Stage-targeted assist: explain a specific pipeline stage from the stepper,
+  // even when it isn't the active one. Answer keyed by "etape:<id>".
+  const askAssistStage = async (stageId, topic, label) => {
+    if (!session) return;
+    setAssistLoading(true); setError(null);
+    try {
+      const res = await fetch(API_URL + '/api/session/' + session.session_id + '/stage/' + stageId + '/assist',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, label, level, config: {} }) });
+      const data = await res.json();
+      if (!res.ok) setError(data.detail || 'Assistant indisponible');
+      else {
+        setAssistAnswers((prev) => ({ ...prev, [topic]: data }));
+        await refreshJournal(session.session_id);
+      }
+    } catch (e) {
+      setError('Assistant injoignable.');
+    }
+    setAssistLoading(false);
+  };
+
   const setLevelRemote = (lvl) => {
     setLevel(lvl);
     if (session) {
@@ -361,7 +382,16 @@ const Dashboard = () => {
       ) : null}
 
       <StageStepper stages={session.stages} status={session.status}
-        activeStage={activeStage} onSelect={(id) => loadStage(session.session_id, id)} />
+        activeStage={activeStage} onSelect={(id) => loadStage(session.session_id, id)}
+        onAssistStage={askAssistStage} assistBusy={assistLoading} />
+
+      {session.stages.some((s) => assistAnswers['etape:' + s.stage_id]) ? (
+        <div className="badge-ia-answers">
+          {session.stages.map((s) => (
+            <AssistAnswer key={s.stage_id} topic={'etape:' + s.stage_id} answers={assistAnswers} />
+          ))}
+        </div>
+      ) : null}
 
       {error ? <div className="banner banner-block">{error}</div> : null}
 

@@ -630,4 +630,72 @@ def test_every_demo_has_a_data_card():
         assert r.status_code == 200, d["name"]
         c = r.json()
         assert c["title"] and c["summary"] and c["target"] and c["sections"]
+
+
+# ── model exploitation : serving / what-if / AI analysis ───────────────────
+def _trained_house():
+    sid = _start_demo("house_price_data.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    return sid
+
+
+def test_exploitation_regression_serving_and_whatif():
+    sid = _trained_house()
+
+    # serving-schema exposes the ORIGINAL columns (far fewer than the 180+ encoded ones)
+    sch = client.get(f"/api/session/{sid}/serving-schema").json()
+    assert sch["problem_type"] == "regression" and sch["target"] == "SalePrice"
+    assert 0 < len(sch["fields"]) < 120
+    assert "OverallQual" in [f["name"] for f in sch["fields"]]
+    assert sch["baseline"] and "rmse" in sch["target_stats"]
+
+    # predict from RAW inputs: in-range + monotonic (the old bug gave ~495k for a raw mid row)
+    low = client.post(f"/api/session/{sid}/predict",
+                      json={"OverallQual": 3, "GrLivArea": 900, "YearBuilt": 1950, "GarageArea": 0}).json()["prediction"]
+    high = client.post(f"/api/session/{sid}/predict",
+                       json={"OverallQual": 10, "GrLivArea": 3000, "YearBuilt": 2009, "GarageArea": 850}).json()["prediction"]
+    assert 10_000 < low < 400_000
+    assert 100_000 < high < 800_000
+    assert high > low * 1.3
+
+    # sensitivity: a bigger living area never lowers the predicted price
+    sens = client.post(f"/api/session/{sid}/predict/sensitivity",
+                       json={"base": {"OverallQual": 7}, "feature": "GrLivArea", "points": 5}).json()
+    assert sens["feature"] == "GrLivArea" and len(sens["y"]) == 5
+    assert sens["y"][-1] >= sens["y"][0]
+
+    # tornado: local impacts, sorted by magnitude
+    torn = client.post(f"/api/session/{sid}/predict/tornado",
+                       json={"base": {"OverallQual": 7, "GrLivArea": 1710}, "top_k": 6}).json()
+    assert "base_prediction" in torn and len(torn["bars"]) >= 1
+    mags = [abs(b["delta"]) for b in torn["bars"]]
+    assert mags == sorted(mags, reverse=True)
+
+
+def test_exploitation_predict_requires_trained_model():
+    sid = _start_demo("house_price_data.csv")["session_id"]  # no autorun -> no model
+    assert client.get(f"/api/session/{sid}/serving-schema").status_code == 409
+    assert client.post(f"/api/session/{sid}/predict", json={}).status_code == 409
+
+
+def test_exploitation_classification_predict_has_proba():
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    sch = client.get(f"/api/session/{sid}/serving-schema").json()
+    assert sch["problem_type"] == "classification"
+    d = client.post(f"/api/session/{sid}/predict", json=sch["baseline"]).json()
+    assert "prediction" in d and "proba" in d
+    assert abs(sum(p["p"] for p in d["proba"]) - 1.0) < 0.05
+
+
+def test_exploitation_analyze_personas(monkeypatch):
+    import llm_agent
+    monkeypatch.setattr(llm_agent, "_usable", lambda: False)  # deterministic, no network
+    sid = _trained_house()
+    for persona in ("executive", "expert"):
+        d = client.post(f"/api/session/{sid}/analyze", json={"persona": persona}).json()
+        assert d["persona"] == persona
+        assert d["source"] in ("llm", "heuristic-fallback")
+        assert isinstance(d["points"], list) and d["points"]
+        assert d["model_summary"]["problem_type"] == "regression"
     assert client.get("/api/dataset-card/nope.csv").status_code == 404

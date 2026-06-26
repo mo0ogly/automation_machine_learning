@@ -112,7 +112,7 @@ def diagnose(df, ctx):
     }
 
 
-def run(df, config, ctx):
+def run(df, config, ctx, make_plots=True):
     cfg = {**default_config(df, ctx), **(config or {})}
     df_in = df
     df = df.copy()
@@ -156,7 +156,7 @@ def run(df, config, ctx):
     df = df.reset_index(drop=True)
     n_in = len([c for c in df_in.columns if c != target])
     n_final = len([c for c in df.columns if c != target])
-    plots = [_corr_heatmap(df, target)]
+    plots = [_corr_heatmap(df, target)] if make_plots else []
 
     result = {
         "report": {

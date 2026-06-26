@@ -25,6 +25,7 @@ from pipeline import SESSIONS
 from pipeline import diagnostics as dg
 from pipeline import explanations
 from pipeline import plotting
+from pipeline import scoring
 from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_IDS
 from pipeline.stages.base import to_native
 import llm_agent
@@ -505,21 +506,92 @@ def rl_explain(body: dict = Body(default={})):
     return to_native({**out, "param": param})
 
 
-# ── deployment ──────────────────────────────────────────────────────────
-@app.post("/api/session/{session_id}/predict")
-def predict(session_id: str, features: dict = Body(default={})):
+# ── exploitation : le modèle en action ────────────────────────────────────
+def _require_trained(session_id: str):
     session = _require_session(session_id)
-    sep, mdl = session.get_run("separate"), session.get_run("model")
-    if sep is None or mdl is None:
+    if session.get_run("separate") is None or session.get_run("model") is None:
         raise HTTPException(status_code=409, detail="Entraînez le modèle (Séparation + Modélisation) d'abord.")
-    feature_names = sep.artifacts.get("feature_names", [])
-    row = {f: features.get(f, 0) for f in feature_names}
-    X = pd.DataFrame([row])[feature_names]
-    pred = mdl.artifacts["model"].predict(X)[0]
-    le = sep.artifacts.get("label_encoder")
-    if le is not None:
-        pred = le.inverse_transform([int(pred)])[0]
-    return to_native({"prediction": pred, "feature_names": feature_names})
+    return session
+
+
+@app.get("/api/session/{session_id}/serving-schema")
+def serving_schema(session_id: str):
+    """Dynamic, dataset-agnostic input form: one control per ORIGINAL column."""
+    return to_native(scoring.serving_schema(_require_trained(session_id)))
+
+
+@app.post("/api/session/{session_id}/predict")
+def predict(session_id: str, body: dict = Body(default={})):
+    """Predict from friendly RAW inputs (re-applies the training transforms)."""
+    session = _require_trained(session_id)
+    row = body.get("features") if isinstance(body.get("features"), dict) else body
+    try:
+        return to_native(scoring.predict_one(session, row or {}))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/predict/sensitivity")
+def predict_sensitivity(session_id: str, body: dict = Body(default={})):
+    """Sweep one feature across its range -> the model's response curve."""
+    session = _require_trained(session_id)
+    feature = body.get("feature")
+    if not feature:
+        raise HTTPException(status_code=422, detail="Champ 'feature' requis.")
+    try:
+        return to_native(scoring.sensitivity(session, body.get("base") or {}, feature,
+                                             int(body.get("points") or 21)))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/predict/tornado")
+def predict_tornado(session_id: str, body: dict = Body(default={})):
+    """Local one-at-a-time impact of each top feature on THIS prediction."""
+    session = _require_trained(session_id)
+    try:
+        return to_native(scoring.tornado(session, body.get("base") or {}, int(body.get("top_k") or 8)))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+def _model_summary(session) -> dict:
+    """Factual model dossier handed to the executive / expert AI personas."""
+    ev, mdl, sep = session.get_run("evaluate"), session.get_run("model"), session.get_run("separate")
+    schema = scoring.serving_schema(session)
+    report = ev.result.get("report", {}) if ev else {}
+    diag = ev.result.get("diagnostics", {}) if ev else {}
+    return {
+        "problem_type": session.ctx.problem_type,
+        "target": session.ctx.target_col,
+        "algorithm": (mdl.result.get("diagnostics", {}).get("algorithm") if mdl else None),
+        "n_features": len(sep.artifacts.get("feature_names", [])) if sep else None,
+        "n_rows": int(len(session.raw_df)),
+        "metrics": report,
+        "overfit": diag.get("controle_surapprentissage") if isinstance(diag, dict) else None,
+        "per_class": diag.get("rapport_par_classe") if isinstance(diag, dict) else None,
+        "top_features": [f["name"] for f in schema["fields"][:8]],
+        "leakage": bool(sep.result.get("diagnostics", {}).get("leakage_candidates")) if sep else False,
+        "target_stats": schema.get("target_stats"),
+    }
+
+
+@app.post("/api/session/{session_id}/analyze")
+def analyze(session_id: str, body: dict = Body(default={})):
+    """AI analysis of the trained model, as an executive brief or an expert review."""
+    session = _require_trained(session_id)
+    persona = "expert" if str(body.get("persona") or "").lower() == "expert" else "executive"
+    ms = _model_summary(session)
+    fn = llm_agent.expert_review if persona == "expert" else llm_agent.executive_brief
+    out = fn(ms, session.journal_summary())
+    try:  # surface the analysis in the Copilot journal
+        session.add_insight("exploit", "analyze:" + persona,
+                            "Revue expert" if persona == "expert" else "Synthèse exécutive",
+                            out.get("points", []), out.get("source", "llm"), out.get("model"))
+        SESSIONS.save(session)
+    except Exception:
+        pass
+    return to_native({**out, "persona": persona, "model_summary": ms})
 
 
 @app.get("/api/session/{session_id}/download-model")

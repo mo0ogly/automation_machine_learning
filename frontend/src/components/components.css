@@ -657,3 +657,86 @@
   border-radius: 6px; color: var(--text-primary); }
 .cluster-name-input:focus { outline: none; border-color: var(--accent-primary); }
 .cluster-apply { margin-top: 0.6rem; }
+
+/* ── Model exploitation studio ("Le modèle en action") ── */
+.xp-wrap { display: flex; flex-direction: column; gap: 1rem; }
+.xp-empty { padding: 1.5rem; }
+.xp-empty h2 { margin: 0 0 0.5rem; }
+.xp-hero { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.4rem; }
+.xp-title { margin: 0.4rem 0 0; font-size: 1.25rem; line-height: 1.4; }
+.xp-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 960px) { .xp-grid { grid-template-columns: 1fr; } }
+.xp-right { display: flex; flex-direction: column; gap: 1rem; }
+.xp-sim, .xp-result, .xp-impact, .xp-ai { padding: 1.1rem 1.25rem; }
+.xp-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.85rem; }
+.xp-sec-head h3 { margin: 0; font-size: 1rem; }
+.xp-scenarios { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.xp-scenarios .btn { padding: 0.3rem 0.6rem; font-size: 0.72rem; }
+
+.xp-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.7rem 0.9rem; }
+.xp-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.xp-field-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.xp-field-head label { font-size: 0.78rem; color: var(--text-secondary); }
+.xp-num { width: 84px; background: var(--bg-surface-elevated); border: 1px solid var(--border-highlight);
+  color: var(--text-primary); border-radius: 6px; padding: 0.2rem 0.4rem; font-size: 0.78rem; text-align: right; }
+.xp-select { background: var(--bg-surface-elevated); border: 1px solid var(--border-highlight);
+  color: var(--text-primary); border-radius: 6px; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
+.xp-field input[type="range"] { width: 100%; accent-color: var(--accent-primary); }
+.xp-more { background: none; border: none; color: var(--accent-secondary); cursor: pointer;
+  font-size: 0.78rem; padding: 0.6rem 0 0; align-self: flex-start; }
+
+/* gauge (regression) */
+.xp-gauge { text-align: center; padding: 0.4rem 0; }
+.xp-gauge-value { font-size: 2rem; font-weight: 800; color: var(--status-success); }
+.xp-gauge-pm { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 0.1rem; }
+.xp-gauge-track { position: relative; height: 10px; border-radius: 999px; margin: 1rem 0 0.35rem;
+  background: linear-gradient(90deg, rgba(59,130,246,0.25), rgba(16,185,129,0.35)); }
+.xp-gauge-band { position: absolute; top: 0; height: 100%; background: rgba(16,185,129,0.30); border-radius: 999px; }
+.xp-gauge-marker { position: absolute; top: -4px; width: 4px; height: 18px; border-radius: 3px;
+  background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.7); transform: translateX(-50%); }
+.xp-gauge-scale { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-tertiary); }
+
+/* probability bars (classification) */
+.xp-proba { display: flex; flex-direction: column; gap: 0.4rem; }
+.xp-proba-head { font-size: 0.85rem; margin-bottom: 0.3rem; }
+.xp-proba-row { display: grid; grid-template-columns: 90px 1fr 38px; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+.xp-proba-label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-proba-bar { height: 12px; background: var(--bg-surface-elevated); border-radius: 999px; overflow: hidden; }
+.xp-proba-bar > span { display: block; height: 100%; background: var(--accent-primary); border-radius: 999px; }
+.xp-proba-pct { text-align: right; color: var(--text-secondary); }
+.xp-proba-win .xp-proba-bar > span { background: var(--accent-gradient); }
+.xp-proba-win .xp-proba-label { color: var(--text-primary); font-weight: 700; }
+
+/* cluster / anomaly badge */
+.xp-badge-result { text-align: center; padding: 1rem 0; }
+.xp-badge-k { font-size: 0.78rem; color: var(--text-tertiary); }
+.xp-badge-v { font-size: 1.8rem; font-weight: 800; color: var(--accent-primary); }
+.xp-badge-v.xp-anom { color: var(--status-error); }
+.xp-badge-v.xp-normal { color: var(--status-success); }
+
+/* tornado (local impact) */
+.xp-tornado { display: flex; flex-direction: column; gap: 0.35rem; }
+.xp-torn-row { display: grid; grid-template-columns: 110px 1fr 78px; align-items: center; gap: 0.5rem; font-size: 0.76rem; }
+.xp-torn-name { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-torn-track { height: 11px; background: var(--bg-surface-elevated); border-radius: 999px; overflow: hidden; }
+.xp-torn-fill { display: block; height: 100%; border-radius: 999px; }
+.xp-torn-fill.xp-up { background: var(--status-success); }
+.xp-torn-fill.xp-down { background: var(--status-error); }
+.xp-torn-delta { text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.xp-hint { font-size: 0.72rem; color: var(--text-tertiary); margin: 0.5rem 0 0; }
+
+/* AI analysis */
+.xp-ai-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.xp-ai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 0.6rem; }
+.xp-ai-col-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-tertiary); margin-bottom: 0.35rem; }
+.xp-analysis { background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.25);
+  border-left: 3px solid var(--accent-secondary); border-radius: 8px; padding: 0.7rem 0.9rem; }
+.xp-analysis-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.xp-headline { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin: 0.1rem 0 0.5rem; }
+.xp-verdict { margin-left: auto; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; }
+.xp-v-good { background: rgba(16,185,129,0.18); color: var(--status-success); }
+.xp-v-warn { background: rgba(245,158,11,0.18); color: var(--status-warning); }
+.xp-v-bad { background: rgba(239,68,68,0.18); color: var(--status-error); }
+.xp-recos { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px dashed rgba(139,92,246,0.3); }
+.xp-recos-title { font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.2rem; }

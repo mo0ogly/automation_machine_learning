@@ -185,7 +185,7 @@ def diagnose(df, ctx):
     }
 
 
-def run(df, config, ctx):
+def run(df, config, ctx, make_plots=True):
     cfg = {**default_config(df, ctx), **(config or {})}
     df_in = df
     df = df.copy()
@@ -314,8 +314,10 @@ def run(df, config, ctx):
     if after["missing_pct"] > 0:
         warnings.append(f"Il reste {after['missing_pct']}% de valeurs manquantes.")
 
-    style_plot()
-    plots = [fig_to_base64(_before_after_missing(df_in, df, target))]
+    plots = []
+    if make_plots:
+        style_plot()
+        plots = [fig_to_base64(_before_after_missing(df_in, df, target))]
 
     result = {
         "report": {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import Dashboard from './components/Dashboard'
 import ReinforcementView from './components/ReinforcementView'
+import ExploitView from './components/ExploitView'
 
 function App() {
   const [view, setView] = useState('dashboard')
@@ -15,12 +16,16 @@ function App() {
         <nav className="header-nav">
           <button type="button" className={view === 'dashboard' ? 'active' : ''}
             onClick={() => setView('dashboard')}>Pipeline</button>
+          <button type="button" className={view === 'exploit' ? 'active' : ''}
+            onClick={() => setView('exploit')}>Exploiter</button>
           <button type="button" className={view === 'rl' ? 'active' : ''}
             onClick={() => setView('rl')}>Renforcement</button>
         </nav>
       </header>
       <main className="app-main">
-        {view === 'rl' ? <ReinforcementView /> : <Dashboard />}
+        {view === 'rl' ? <ReinforcementView />
+          : view === 'exploit' ? <ExploitView />
+            : <Dashboard />}
       </main>
     </div>
   )

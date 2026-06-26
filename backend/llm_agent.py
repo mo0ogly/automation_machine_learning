@@ -176,6 +176,107 @@ def _assist_heuristic(topic: str, focus: dict, level: str) -> dict:
             "suggested_config": {}, "confidence": 0.0}
 
 
+# ── model exploitation : executive + expert personas ──────────────────────
+def executive_brief(model_summary: dict, journal: str = "") -> dict:
+    """Plain-language brief for a NON-technical decision-maker: what the model does,
+    is it trustworthy, where it fails, and a usage verdict."""
+    return _persona_analysis("executive", model_summary, journal)
+
+
+def expert_review(model_summary: dict, journal: str = "") -> dict:
+    """Critical, rigorous review for a data scientist: algorithm fit, metrics in
+    context, overfitting, feature critique, leakage/bias/drift, next experiments."""
+    return _persona_analysis("expert", model_summary, journal)
+
+
+def _persona_messages(persona: str, ms: dict, journal: str) -> list:
+    if persona == "expert":
+        system = (
+            "Tu es un data scientist senior qui réalise une revue critique et rigoureuse d'un modèle, "
+            "en français. À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), évalue : "
+            "pertinence de l'algorithme, lecture des métriques en contexte, diagnostic de surapprentissage, "
+            "critique des variables influentes, risques (fuite de données, biais, dérive temporelle), et "
+            "prochaines expériences concrètes. Sois précis et chiffré quand les données le permettent. "
+            'Réponds en JSON strict : {"headline": "synthèse technique en une phrase", '
+            '"verdict": "verdict technique court", "points": ["4 à 6 constats critiques précis"], '
+            '"recommendations": ["3 à 5 actions concrètes priorisées"], "confidence": 0.0..1.0}.'
+        )
+    else:
+        system = (
+            "Tu es un consultant en science des données qui s'adresse à un décideur NON technique, en français. "
+            "À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), explique simplement : "
+            "à quoi sert concrètement ce modèle, sa fiabilité, ses limites, et un verdict d'usage. ZÉRO jargon. "
+            'Réponds en JSON strict : {"headline": "à quoi sert le modèle, en une phrase claire", '
+            '"verdict": "Déployable" | "À utiliser avec prudence" | "Pas encore prêt", '
+            '"points": ["4 à 6 phrases courtes orientées valeur métier et risque"], '
+            '"recommendations": ["2 à 4 précautions d\'usage"], "confidence": 0.0..1.0}.'
+        )
+    user = "Éléments factuels du modèle :\n" + json.dumps(ms or {}, ensure_ascii=False, indent=2)
+    if journal:
+        user += "\n\nMémoire de session (décisions prises) :\n" + journal
+    user += "\n\nRéponds en JSON strict, en français."
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _persona_analysis(persona: str, model_summary: dict, journal: str = "") -> dict:
+    ms = model_summary or {}
+    if not _usable():
+        return _persona_heuristic(persona, ms)
+    try:
+        p = json.loads(_extract_json(_call_llm(_persona_messages(persona, ms, journal))))
+        return {"source": "llm", "available": True, "model": get_active_model(), "persona": persona,
+                "headline": str(p.get("headline", "")).strip(),
+                "verdict": str(p.get("verdict", "")).strip(),
+                "points": [str(x) for x in p.get("points", [])][:6],
+                "recommendations": [str(x) for x in p.get("recommendations", [])][:5],
+                "confidence": _clamp_float(p.get("confidence", 0.5), 0.0, 1.0)}
+    except Exception as e:
+        out = _persona_heuristic(persona, ms)
+        out["reason"] = f"Agent IA indisponible ({type(e).__name__}) — synthèse déterministe."
+        return out
+
+
+def _persona_heuristic(persona: str, ms: dict) -> dict:
+    """Deterministic fallback: surface the real metrics, invent nothing."""
+    pt = ms.get("problem_type")
+    m = ms.get("metrics") or {}
+    feats = ms.get("top_features") or []
+    pts, recs = [], []
+    verdict = "À utiliser avec prudence"
+    if pt == "regression":
+        r2, rmse = m.get("R²"), m.get("RMSE")
+        if r2 is not None:
+            pts.append(f"Le modèle explique {round(float(r2) * 100)}% de la variation du résultat (R²={r2}).")
+            verdict = "Déployable" if float(r2) >= 0.85 else "À utiliser avec prudence"
+        if rmse is not None:
+            pts.append(f"Erreur typique d'environ {rmse} par prédiction (RMSE).")
+    elif pt == "classification":
+        acc, f1 = m.get("Accuracy"), m.get("F1 (pondéré)")
+        if acc is not None:
+            pts.append(f"Prédiction correcte dans {round(float(acc) * 100)}% des cas (exactitude).")
+            verdict = "Déployable" if float(acc) >= 0.85 else "À utiliser avec prudence"
+        if f1 is not None:
+            pts.append(f"F1 pondéré = {f1}.")
+    else:
+        pts.append("Modèle non supervisé : pas de métrique d'exactitude standard.")
+    if feats:
+        pts.append("Variables les plus influentes : " + ", ".join(str(f) for f in feats[:5]) + ".")
+    gap = (ms.get("overfit") or {}).get("ecart_overfit")
+    if gap is not None:
+        ok = abs(float(gap)) < 0.1
+        pts.append(f"Écart train-test = {gap} (surapprentissage {'maîtrisé' if ok else 'à surveiller'}).")
+    if ms.get("leakage"):
+        recs.append("Vérifier une possible fuite de données (variable quasi-identique à la cible).")
+    recs.append("Valider sur des données récentes avant tout usage réel.")
+    if persona == "expert":
+        recs.append("Comparer d'autres algorithmes et renforcer la validation croisée.")
+    return {"source": "heuristic-fallback", "available": False, "model": None, "persona": persona,
+            "headline": ("À quoi sert ce modèle — synthèse déterministe."
+                         if persona == "executive" else "Revue déterministe du modèle."),
+            "verdict": verdict, "points": pts or ["Données insuffisantes pour une synthèse."],
+            "recommendations": recs, "confidence": 0.0}
+
+
 def _call_llm(messages: list) -> str:
     """POST the chat request to the active OpenAI-compatible backend."""
     r = _active()

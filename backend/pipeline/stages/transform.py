@@ -91,7 +91,7 @@ def diagnose(df, ctx):
     }
 
 
-def run(df, config, ctx):
+def run(df, config, ctx, make_plots=True):
     cfg = {**default_config(df, ctx), **(config or {})}
     df_in = df
     df = df.copy()
@@ -177,9 +177,11 @@ def run(df, config, ctx):
         log.append(f"{len(scaled)} variable(s) mise(s) à l'échelle ({cfg['scaler']}).")
 
     df = df.reset_index(drop=True)
-    pre_skew = dg.skewness(df_in, target)
-    plots = [_before_after_dist(df_in, df, pre_skew[0]["column"])] if pre_skew else \
-            [message_plot("Transformation appliquée.")]
+    plots = []
+    if make_plots:
+        pre_skew = dg.skewness(df_in, target)
+        plots = [_before_after_dist(df_in, df, pre_skew[0]["column"])] if pre_skew else \
+                [message_plot("Transformation appliquée.")]
 
     result = {
         "report": {

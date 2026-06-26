@@ -1,10 +1,16 @@
-# ML Automator — pipeline ML agentique, expert-in-the-loop
+# automation_machine_learning
 
 > **Français** · [English](README.md)
 
-Construction d'un modèle de machine learning décomposée en **étapes explicites,
-inspectables et rejouables**, où un agent LLM (Groq) propose un affinage à chaque
-étape et où l'expert valide ou ajuste — dans une boucle OODA.
+**Marier deux mondes** : la **rigueur du machine learning classique** (modèles statistiques,
+métriques déterministes, reproductibilité) et la **fluidité des LLM** (raisonnement,
+recommandations contextuelles, explications en langage naturel) — pour en tirer le meilleur
+des deux.
+
+Concrètement : un modèle de machine learning construit en **étapes explicites, inspectables
+et rejouables**, où un **LLM copilote** (Groq pour l'instant) *observe* les diagnostics
+chiffrés et *oriente* par des recommandations ancrées sur les vrais nombres, pendant que
+l'**expert** *décide* et *agit*.
 
 ```
 Nettoyage → Transformation → Intégration → Séparation → Modèle → Fine-tuning → Évaluation → Explicabilité
@@ -14,6 +20,12 @@ Nettoyage → Transformation → Intégration → Séparation → Modèle → Fi
 Chaque étape : **Observe** (diagnostics déterministes) → **Orient** (recommandation
 de l'agent, ancrée sur les vrais chiffres) → **Decide** (l'expert règle la config) →
 **Act** (exécuter / rejouer). Rejouer une étape invalide automatiquement les étapes aval.
+
+> **« OODA » et « agentique », sans survente.** La boucle Observe-Orient-Decide-Act est un
+> *cadre conceptuel* (pas l'OODA militaire strict de Boyd). Et c'est « agentique » au sens où
+> un agent LLM intervient à chaque étape **avec une mémoire de session ré-injectée** — mais en
+> **human-in-the-loop** : le LLM propose, l'expert tranche. Ce n'est **pas** un agent autonome
+> qui agirait sans supervision ; le contrôle reste à l'humain.
 
 Les **3 paradigmes** d'apprentissage sont couverts :
 
@@ -99,6 +111,14 @@ npm run dev                   # http://localhost:5173 (proxy vers le backend :80
 ```bash
 cd backend && python -m pytest tests/test_api.py -q   # 41 tests, sans réseau
 ```
+
+## Roadmap
+
+- **Providers LLM** — **Groq pour l'instant** (REST compatible OpenAI). À venir : OpenAI,
+  Anthropic, et un mode **local** (Ollama) pour tourner sans cloud. L'agent parle déjà un
+  protocole compatible OpenAI, donc l'ajout d'un provider est un branchement de configuration.
+- **Persistance des sessions** — actuellement en mémoire ; externalisation prévue (SQLite/Redis).
+- **Non supervisé** — Davies-Bouldin / Calinski-Harabasz sont là ; dendrogramme agglomératif à venir.
 
 ## Licence
 

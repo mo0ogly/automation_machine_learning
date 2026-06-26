@@ -10,7 +10,7 @@ function App() {
       <header className="app-header glass-panel">
         <div className="logo">
           <div className="logo-icon animate-pulse"></div>
-          <h1>ML Automator <span>OODA</span></h1>
+          <h1>automation_<span>machine_learning</span></h1>
         </div>
         <nav className="header-nav">
           <button type="button" className={view === 'dashboard' ? 'active' : ''}

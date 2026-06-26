@@ -1,10 +1,15 @@
-# ML Automator — agentic, expert-in-the-loop ML pipeline
+# automation_machine_learning
 
 > **English** · [Français](README.fr.md)
 
-Building a machine-learning model broken down into **explicit, inspectable and
-replayable stages**, where an LLM agent (Groq) proposes a refinement at each stage and
-the expert validates or adjusts — inside an OODA loop.
+**Marrying two worlds**: the **rigor of classical machine learning** (statistical models,
+deterministic metrics, reproducibility) and the **fluency of LLMs** (reasoning, contextual
+recommendations, natural-language explanations) — to get the best of both.
+
+Concretely: a machine-learning model built in **explicit, inspectable and replayable
+stages**, where an **LLM copilot** (Groq for now) *observes* the numeric diagnostics and
+*orients* with recommendations grounded in the real numbers, while the **expert** *decides*
+and *acts*.
 
 ```
 Clean → Transform → Integrate → Separate → Model → Fine-tuning → Evaluate → Explainability
@@ -13,6 +18,12 @@ Clean → Transform → Integrate → Separate → Model → Fine-tuning → Eva
 Each stage: **Observe** (deterministic diagnostics) → **Orient** (agent recommendation,
 grounded in the real numbers) → **Decide** (the expert sets the config) → **Act**
 (run / replay). Replaying a stage automatically invalidates the downstream ones.
+
+> **"OODA" and "agentic", without overselling.** The Observe-Orient-Decide-Act loop is a
+> *conceptual frame* (not Boyd's strict military OODA). And it is "agentic" in the sense that
+> an LLM agent steps in at every stage **with a re-injected session memory** — but
+> **human-in-the-loop**: the LLM proposes, the expert decides. It is **not** an autonomous
+> agent acting without supervision; control stays with the human.
 
 All **3 learning paradigms** are covered:
 
@@ -98,6 +109,14 @@ npm run dev                   # http://localhost:5173 (proxied to the backend :8
 ```bash
 cd backend && python -m pytest tests/test_api.py -q   # 41 tests, no network
 ```
+
+## Roadmap
+
+- **LLM providers** — **Groq for now** (OpenAI-compatible REST). Coming: OpenAI, Anthropic,
+  and a **local** mode (Ollama) to run without the cloud. The agent already speaks an
+  OpenAI-compatible protocol, so adding a provider is a configuration switch.
+- **Session persistence** — currently in-memory; externalization planned (SQLite/Redis).
+- **Unsupervised** — Davies-Bouldin / Calinski-Harabasz are in; agglomerative dendrogram next.
 
 ## License
 

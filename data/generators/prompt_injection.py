@@ -33,6 +33,7 @@ import pandas as pd
 
 SRC = Path(__file__).resolve().parent.parent / "sources" / "prompt-injection-corpus.jsonl"
 OUT = Path(__file__).resolve().parent.parent / "prompt_injection.csv"
+OUT_TECH = Path(__file__).resolve().parent.parent / "prompt_injection_technique.csv"
 
 # Imperative / override vocabulary across the three corpus languages (en/fr/pt).
 TRIGGER_WORDS = [
@@ -88,24 +89,53 @@ def features(text: str) -> dict:
     }
 
 
-def build() -> pd.DataFrame:
-    rows = []
+def _records():
     with SRC.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            row = features(rec["text"])
-            row["carrier"] = rec["carrier"]        # ingestion channel (observable)
-            row["language"] = rec["language"]      # host-document language (observable)
-            row["label"] = rec["label"]            # target: injection / benign
-            rows.append(row)
+            if line:
+                yield json.loads(line)
+
+
+def _row(rec: dict) -> dict:
+    row = features(rec["text"])
+    row["carrier"] = rec["carrier"]            # ingestion channel (observable)
+    row["language"] = rec["language"]          # host-document language (observable)
+    return row
+
+
+def build() -> pd.DataFrame:
+    """Detection dataset (1000 rows) — target `label` (injection / benign)."""
+    rows = []
+    for rec in _records():
+        row = _row(rec)
+        row["label"] = rec["label"]
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def build_technique() -> pd.DataFrame:
+    """Attack-type dataset (550 injections) — target `technique` (12 classes).
+
+    Restricted to injections: `technique` is null for benign, so the binary
+    detection question is already settled here. The same leak-free surface
+    features are reused — none reveals the technique, which is determined by the
+    payload's intent, not by its label."""
+    rows = []
+    for rec in _records():
+        if rec["label"] != "injection":
+            continue
+        row = _row(rec)
+        row["technique"] = rec["technique"]
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
 if __name__ == "__main__":
     df = build()
     df.to_csv(OUT, index=False, encoding="utf-8")
-    print(f"wrote {OUT} {df.shape}")
-    print(df["label"].value_counts().to_dict())
+    print(f"wrote {OUT} {df.shape} {df['label'].value_counts().to_dict()}")
+
+    dt = build_technique()
+    dt.to_csv(OUT_TECH, index=False, encoding="utf-8")
+    print(f"wrote {OUT_TECH} {dt.shape} ({dt['technique'].nunique()} classes)")

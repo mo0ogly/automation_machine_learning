@@ -92,7 +92,10 @@
 .cfg-menu-sub .cfg-menu-item { color: var(--text-secondary); }
 
 /* ── Prompts IA panel (Monaco console + localisation) ── */
-.prompts-modal { width: min(1180px, 97vw); display: flex; flex-direction: column; max-height: 88vh; }
+/* .ai-modal.prompts-modal: beats .ai-modal's width, and a definite height is
+   required so the inner flex:1 chain (Monaco) gets real space. */
+.ai-modal.prompts-modal { width: min(1180px, 97vw); height: 86vh; max-height: 86vh;
+  display: flex; flex-direction: column; }
 .prompts-body { display: flex; gap: 1rem; flex: 1; min-height: 0; margin-top: 0.5rem; }
 .prompts-list { flex: 0 0 250px; display: flex; flex-direction: column; gap: 0.15rem;
   overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); padding-right: 0.5rem; }

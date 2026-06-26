@@ -40,6 +40,7 @@ const Dashboard = ({ aiRefresh }) => {
   const [agent, setAgent] = useState(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [recentSessions, setRecentSessions] = useState([]);
   const [cardName, setCardName] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -48,6 +49,9 @@ const Dashboard = ({ aiRefresh }) => {
       .then((d) => setDemoDatasets(d.datasets || [])).catch(() => {});
     fetch(API_URL + '/api/agent-status').then((r) => r.json())
       .then(setAgent).catch(() => {});
+    // Recent sessions for the one-click reopen list on the landing screen.
+    fetch(API_URL + '/api/sessions').then((r) => r.json())
+      .then((d) => setRecentSessions(d.sessions || [])).catch(() => {});
     // Restore the previous session after a reload (graphs/results survive).
     let saved = null;
     try { saved = localStorage.getItem('ml_session'); } catch (e) { saved = null; }
@@ -92,6 +96,19 @@ const Dashboard = ({ aiRefresh }) => {
     try { localStorage.setItem('ml_session', data.session_id); } catch (e) { /* ignore */ }
     loadStage(data.session_id, firstStageId(data));
     refreshJournal(data.session_id);
+  };
+
+  // One-click reopen of a recent session by id (landing list).
+  const openSessionById = async (id) => {
+    setError(null);
+    try {
+      const res = await fetch(API_URL + '/api/session/' + id);
+      const data = await res.json();
+      if (!res.ok) { setError(data.detail || 'Session introuvable'); return; }
+      openSession(data);
+    } catch (e) {
+      setError('API injoignable — démarrez le backend (uvicorn) sur :8000.');
+    }
   };
 
   const startUpload = async () => {
@@ -339,9 +356,34 @@ const Dashboard = ({ aiRefresh }) => {
             ))}
           </div>
 
-          <button type="button" className="btn btn-secondary mt-2" onClick={() => setSessionsOpen(true)}>
-            Mes sessions enregistrées
-          </button>
+          {recentSessions.length ? (
+            <div className="card mt-2">
+              <div className="recent-head">
+                <h3 className="text-sm text-secondary mb-2">Sessions récentes</h3>
+                <button type="button" className="ai-link" onClick={() => setSessionsOpen(true)}>
+                  Gérer toutes les sessions…
+                </button>
+              </div>
+              <div className="recent-list">
+                {recentSessions.slice(0, 5).map((s) => {
+                  const sm = s.summary || {};
+                  const when = s.updated_at
+                    ? new Date(s.updated_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+                    : '';
+                  return (
+                    <button key={s.id} type="button" className="recent-row" disabled={busy}
+                      onClick={() => openSessionById(s.id)} title="Rouvrir cette session">
+                      <span className="recent-name">{s.filename || '(sans nom)'}</span>
+                      <span className={sm.model ? 'recent-model recent-model-on' : 'recent-model'}>
+                        {sm.model ? '● ' + sm.model : '○ pas de modèle'}
+                      </span>
+                      <span className="recent-date">{when}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {agent ? (
             <div className={agent.configured ? 'agent-chip agent-ok' : 'agent-chip agent-off'}>

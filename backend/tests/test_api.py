@@ -630,6 +630,12 @@ def test_prompt_injection_demo_loads_binary():
     assert body["overview"]["rows"] == 1000
 
 
+def test_prompt_injection_technique_demo_loads_multiclass():
+    body = _start_demo("prompt_injection_technique.csv")
+    assert body["context"]["target_col"] == "technique"
+    assert body["overview"]["rows"] == 550
+
+
 def test_every_demo_has_a_data_card():
     """Each demo dataset has a renderable card; an unknown one 404s."""
     demos = client.get("/api/demo-datasets").json()["datasets"]

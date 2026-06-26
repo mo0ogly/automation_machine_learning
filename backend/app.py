@@ -88,6 +88,8 @@ def list_demo_datasets():
          "description": "Risque cyber — priorisation d'actifs (4 niveaux, synthétique)"},
         {"name": "prompt_injection.csv", "type": "Classification binaire",
          "description": "Détection d'injection de prompt — prévoir les attaques (synthétique)"},
+        {"name": "prompt_injection_technique.csv", "type": "Classification multiclasse",
+         "description": "Type d'injection de prompt — 12 techniques (synthétique)"},
         {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
         {"name": "breastcancer.csv", "type": "Classification binaire",

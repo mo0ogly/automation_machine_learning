@@ -127,6 +127,57 @@ CARDS = {
         ],
     },
 
+    # ── New: prompt-injection attack-type classification ────────────────
+    "prompt_injection_technique.csv": {
+        "title": "Type d'injection de prompt — quelle technique d'attaque",
+        "type": "Classification multiclasse (12 techniques)",
+        "synthetic": True,
+        "rows": 550, "cols": 18,
+        "target": "technique — 12 mécanismes d'injection",
+        "source": (
+            "Mêmes 550 injections que prompt_injection.csv (corpus synthétique aligné OWASP LLM 2025). "
+            "Brut : data/sources/prompt-injection-corpus.jsonl ; généré par data/generators/prompt_injection.py."
+        ),
+        "summary": (
+            "Second modèle, complémentaire de la détection binaire : une fois qu'on sait qu'un texte "
+            "est une attaque, de quel TYPE s'agit-il ? Restreint aux 550 injections, avec les mêmes "
+            "variables de surface sans fuite, et pour cible le mécanisme (instruction_override, "
+            "data_exfiltration, role_hijack, tool_abuse…). Tâche volontairement plus difficile que la "
+            "détection : illustre la montée en difficulté quand le nombre de classes augmente."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables", "table": [
+                ["text_length / word_count / line_count", "Taille du segment"],
+                ["trigger_keyword_count / role_keyword_count", "Mots d'ordre / de réassignation de rôle"],
+                ["delimiter_marker_count", "Faux délimiteurs / barrières de prompt"],
+                ["url_count / has_base64_blob", "URL (indice d'exfiltration) / charge encodée"],
+                ["zero_width_count / non_ascii_ratio", "Signaux d'obfuscation"],
+                ["uppercase_ratio / digit_ratio / punct_ratio", "Densités typographiques"],
+                ["carrier / language", "Canal porteur et langue (observables)"],
+                ["technique", "Cible : 12 techniques équilibrées (~42–49 exemples chacune)"],
+            ]},
+            {"heading": "Les 12 classes", "text": (
+                "instruction_override, delimiter_injection, role_hijack, system_prompt_leak, "
+                "data_exfiltration, tool_abuse, conditional_trigger, refusal_suppression, fake_authority, "
+                "output_manipulation, misinformation_seed, staged_multistep. Réparties équitablement "
+                "(45 ± 3 par classe), pas de classe minoritaire écrasante."
+            )},
+            {"heading": "Absence de fuite", "text": (
+                "Les colonnes owasp_llm, severity, boundary, payload_span du corpus brut sont des "
+                "corollaires directs de technique — elles sont retirées. Seules les variables calculées "
+                "depuis le texte et le canal / la langue sont conservées : aucune ne désigne la technique, "
+                "qui dépend de l'intention de la charge, pas d'une étiquette annexe."
+            )},
+            {"heading": "Recommandations ML", "text": (
+                "One-hot pour carrier / language. Découpage stratifié sur technique (12 classes). Repère "
+                "sans fuite (RandomForest, CV 5 plis) : accuracy ≈ 0.46, F1 macro ≈ 0.46 — soit ~5,5× le "
+                "hasard (1/12 ≈ 0.083). Suivre la matrice de confusion : les techniques au signal de "
+                "surface marqué (data_exfiltration via URL, delimiter_injection via délimiteurs) se "
+                "séparent mieux que celles définies surtout par la sémantique."
+            )},
+        ],
+    },
+
     # ── Existing demos ──────────────────────────────────────────────────
     "house_price_data.csv": {
         "title": "Prix immobiliers — Ames Housing",

@@ -120,3 +120,18 @@
   border-radius: 8px;
   padding: 1.25rem;
 }
+
+/* Recent sessions (landing — one-click reopen) */
+.recent-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.recent-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.recent-row {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; cursor: pointer;
+  padding: 0.45rem 0.6rem; border-radius: 7px; font-size: 0.8rem; color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); transition: background 0.15s;
+}
+.recent-row:hover:not(:disabled) { background: rgba(59, 130, 246, 0.12); border-color: var(--accent-primary); }
+.recent-row:disabled { opacity: 0.5; cursor: default; }
+.recent-name { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-model { flex: 0 0 auto; font-size: 0.72rem; color: var(--text-tertiary); white-space: nowrap; }
+.recent-model-on { color: var(--status-success); }
+.recent-date { flex: 0 0 auto; font-size: 0.72rem; color: var(--text-tertiary); white-space: nowrap; }

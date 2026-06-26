@@ -117,7 +117,7 @@ export default function ReinforcementView() {
                 <figure key={i} className="plot-fig">
                   <button type="button" className="plot-thumb" title="Agrandir"
                     onClick={() => setZoom({ src: p.img, caption: p.caption })}>
-                    <img src={p.img} alt={p.caption} className="plot-img" decoding="async" loading="lazy" />
+                    <img src={p.img} alt={p.caption} className="plot-img" decoding="async" />
                     <span className="plot-zoom-hint" aria-hidden="true">⤢</span>
                   </button>
                   <figcaption className="plot-cap"><span className="plot-cap-txt">{p.caption}</span></figcaption>

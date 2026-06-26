@@ -28,11 +28,14 @@ const TABS = [
 // Figure image. The freeze on plot-heavy views (many base64 PNGs decoded at once)
 // is avoided natively: `.plot-fig` carries `content-visibility: auto`, so the browser
 // skips rasterising off-screen figures and renders them as they approach the viewport.
-// `decoding="async"` keeps decoding off the main thread. Unlike an IntersectionObserver
-// gate, the <img> is always in the DOM, so a figure never stays blank — even in a
+// `decoding="async"` keeps decoding off the main thread. The <img> is always in the
+// DOM (no IntersectionObserver gate), so a figure never stays blank — even in a
 // background/hidden tab or a bfcache restore where IO callbacks are suspended.
+// NB: no `loading="lazy"` — these are inline base64 data-URIs (no network request to
+// defer), and lazy-loading inside a `content-visibility: auto` subtree leaves the IO
+// callback suspended, so figures rendered blank ~1 time out of 2 until a reflow.
 function PlotImg({ src, alt, className }) {
-  return <img src={src} alt={alt} className={className} decoding="async" loading="lazy" />;
+  return <img src={src} alt={alt} className={className} decoding="async" />;
 }
 
 function Plots({ plots, onZoom, onAssist, assistBusy, assistAnswers, onApplyAssist }) {

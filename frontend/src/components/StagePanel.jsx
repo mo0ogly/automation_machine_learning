@@ -18,6 +18,7 @@ function AIIcon() {
 
 const TABS = [
   { id: 'observe', label: 'Observation' },
+  { id: 'graphs', label: 'Graphiques' },
   { id: 'agent', label: 'Aide IA' },
   { id: 'config', label: 'Réglages' },
   { id: 'result', label: 'Résultat' },
@@ -370,6 +371,9 @@ export default function StagePanel(props) {
   const ran = stage.status && stage.status.ran;
   const stale = stage.status && stage.status.stale;
   const blocked = !!stage.input_error;
+  const diagPlots = stage.diagnose_plots || [];
+  const resultPlots = (stage.result && stage.result.plots) || [];
+  const plotCount = diagPlots.length + resultPlots.length;
   const highlight = {};
   if (reco && reco.suggested_config) Object.keys(reco.suggested_config).forEach((k) => { highlight[k] = true; });
 
@@ -397,6 +401,7 @@ export default function StagePanel(props) {
                   disabled={disabled} onClick={() => setTab(t.id)}>
                   {t.id === 'agent' ? <AIIcon /> : null}{t.label}
                   {t.id === 'result' && hasResult ? <span className="tab-dot" /> : null}
+                  {t.id === 'graphs' && plotCount ? <span className="tab-count">{plotCount}</span> : null}
                 </button>
               );
             })}
@@ -422,9 +427,34 @@ export default function StagePanel(props) {
                     onApplyAssist={onApplyAssist}
                   />
                 ) : null}
-                <Plots plots={stage.diagnose_plots} onZoom={setZoom} onAssist={onAssist}
-                  assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
               </>
+            ) : null}
+
+            {tab === 'graphs' ? (
+              plotCount ? (
+                <>
+                  {diagPlots.length ? (
+                    <>
+                      <div className="substep-bar">
+                        <span className="substep-hint">Graphiques — diagnostics</span>
+                        <AssistButton topic="diagnostics" label="Explique ces graphiques"
+                          onAssist={onAssist} busy={assistBusy} />
+                      </div>
+                      <Plots plots={diagPlots} onZoom={setZoom} onAssist={onAssist}
+                        assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
+                    </>
+                  ) : null}
+                  {resultPlots.length ? (
+                    <>
+                      <div className="substep-bar">
+                        <span className="substep-hint">Graphiques — résultat de l'étape</span>
+                      </div>
+                      <Plots plots={resultPlots} onZoom={setZoom} onAssist={onAssist}
+                        assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
+                    </>
+                  ) : null}
+                </>
+              ) : <p className="muted">Aucun graphique pour cette étape.</p>
             ) : null}
 
             {tab === 'agent' ? (
@@ -490,8 +520,11 @@ export default function StagePanel(props) {
                   {stage.result.log && stage.result.log.length ? (
                     <div className="log-mini">{stage.result.log.map((l, i) => <div key={i}>{'> ' + l}</div>)}</div>
                   ) : null}
-                  <Plots plots={stage.result.plots} onZoom={setZoom} onAssist={onAssist}
-                    assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
+                  {stage.result.plots && stage.result.plots.length ? (
+                    <p className="muted plots-pointer">
+                      {stage.result.plots.length} graphique(s) — voir l'onglet « Graphiques ».
+                    </p>
+                  ) : null}
                   <button className="btn btn-ai" onClick={onInterpret} disabled={interpretLoading}>
                     <AIIcon />{interpretLoading ? 'Analyse…' : "Demander une interprétation à l'IA"}
                   </button>

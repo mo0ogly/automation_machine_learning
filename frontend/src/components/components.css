@@ -424,6 +424,9 @@
 .tab:disabled { opacity: 0.4; cursor: not-allowed; }
 .tab-on { color: var(--text-primary); border-bottom-color: var(--accent-primary); }
 .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-success); }
+.tab-count { min-width: 1.1rem; height: 1.1rem; padding: 0 0.3rem; border-radius: 999px; font-size: 0.68rem;
+  font-weight: 600; line-height: 1.1rem; text-align: center; color: #fff; background: var(--accent-primary); }
+.plots-pointer { margin-top: 0.5rem; font-style: italic; }
 .tab-content { min-height: 140px; margin-bottom: 1.2rem; }
 .stage-actions { display: flex; gap: 0.75rem; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
 

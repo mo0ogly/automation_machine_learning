@@ -30,6 +30,10 @@ node_modules/
 frontend/dist/
 frontend/node_modules/
 
+# ─── Données internes (ne pas committer) ─────────────────
+data/*.ipynb
+data/*.pdf
+
 # ─── OS / editor ─────────────────────────────────────────
 .DS_Store
 Thumbs.db

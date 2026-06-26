@@ -30,6 +30,7 @@ from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_
 from pipeline.stages.base import to_native
 import llm_agent
 import routes_ai
+import routes_prompts
 import dataset_cards
 from pydantic import BaseModel
 from rl import GridWorld, train_qlearning, summarise
@@ -56,6 +57,8 @@ app.add_middleware(
 
 # Multi-provider AI-backend management (catalog, CRUD, key, test). See routes_ai.py.
 app.include_router(routes_ai.router)
+# Read/edit the agent's AI prompts (the "Prompts IA" panel). See routes_prompts.py.
+app.include_router(routes_prompts.router)
 
 
 # ── basic / meta ────────────────────────────────────────────────────────

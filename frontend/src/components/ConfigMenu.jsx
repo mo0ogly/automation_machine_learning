@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 // submenu opens the AI backends panel. Sits next to AiBackendButton (which keeps
 // its role of showing/opening the active backend) and is built to grow more
 // sections later without touching the bar layout.
-export default function ConfigMenu({ onOpenAi }) {
+export default function ConfigMenu({ onOpenAi, onOpenPrompts }) {
   const [open, setOpen] = useState(false);
   const [sub, setSub] = useState(null); // id of the expanded submenu
   const ref = useRef(null);
@@ -43,6 +43,10 @@ export default function ConfigMenu({ onOpenAi }) {
               <button type="button" className="cfg-menu-item" role="menuitem"
                 onClick={() => { close(); onOpenAi(); }}>
                 Backends IA…
+              </button>
+              <button type="button" className="cfg-menu-item" role="menuitem"
+                onClick={() => { close(); onOpenPrompts(); }}>
+                Prompts IA…
               </button>
             </div>
           ) : null}

@@ -13,7 +13,7 @@ function Spark() {
 // shown in the Copilot panel.
 export default function AssistButton({ topic, label, onAssist, busy, text = 'Expliquer' }) {
   return (
-    <button type="button" className="assist-btn" disabled={busy}
+    <button type="button" className="assist-btn" disabled={busy} data-prompt-loc="assist"
       title={'Demander à l’IA : ' + label} onClick={() => onAssist(topic, label)}>
       <Spark />{busy ? '…' : text}
     </button>

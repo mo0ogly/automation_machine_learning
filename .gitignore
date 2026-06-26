@@ -41,3 +41,4 @@ Thumbs.db
 
 # ─── Backends IA (clés write-only, ne pas committer) ─────
 backend/ai_backends.json
+backend/prompt_overrides.json

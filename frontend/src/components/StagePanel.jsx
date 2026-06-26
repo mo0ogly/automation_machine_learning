@@ -459,7 +459,8 @@ export default function StagePanel(props) {
 
             {tab === 'agent' ? (
               <>
-                <button className="btn btn-ai" onClick={onAsk} disabled={recoLoading || busy}>
+                <button className="btn btn-ai" onClick={onAsk} disabled={recoLoading || busy}
+                  data-prompt-loc="recommend">
                   <AIIcon />{recoLoading ? 'Analyse…' : "Demander un affinage à l'IA"}
                 </button>
                 <AgentRecommendation reco={reco} loading={recoLoading} onApply={onApply}
@@ -525,7 +526,8 @@ export default function StagePanel(props) {
                       {stage.result.plots.length} graphique(s) — voir l'onglet « Graphiques ».
                     </p>
                   ) : null}
-                  <button className="btn btn-ai" onClick={onInterpret} disabled={interpretLoading}>
+                  <button className="btn btn-ai" onClick={onInterpret} disabled={interpretLoading}
+                    data-prompt-loc="interpret">
                     <AIIcon />{interpretLoading ? 'Analyse…' : "Demander une interprétation à l'IA"}
                   </button>
                   <InterpretationView data={interpretation} />

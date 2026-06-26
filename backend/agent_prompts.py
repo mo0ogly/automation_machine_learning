@@ -16,7 +16,9 @@ output format, few-shot examples, positive framing, minimal-change bias.
 
 import json
 
-SYSTEM_PROMPT = (
+import prompt_store
+
+DEFAULT_SYSTEM_PROMPT = (
     "# RÔLE\n"
     "Tu es un data scientist senior. Tu affines la configuration d'UNE étape d'un pipeline de "
     "machine learning, à partir de diagnostics chiffrés réels du jeu de données. Tu es rigoureux, "
@@ -46,7 +48,7 @@ SYSTEM_PROMPT = (
 
 # One representative few-shot example per stage : (diagnostics_in, recommendation_out).
 # Diagnostics are trimmed to what justifies the recommendation.
-STAGE_EXAMPLES = {
+DEFAULT_STAGE_EXAMPLES = {
     "clean": (
         {"overview": {"missing_pct": 6.6, "duplicated_rows": 0},
          "typologie": [{"type": "Catégorielle ordinale", "count": 10}],
@@ -123,17 +125,22 @@ STAGE_EXAMPLES = {
 
 
 def _example_messages(stage_id: str, problem_type: str) -> list:
-    ex = STAGE_EXAMPLES.get(stage_id)
-    if not ex:
+    base = DEFAULT_STAGE_EXAMPLES.get(stage_id)
+    if not base:
         return []
-    diag_in, reco_out = ex
+    # Resolve a possible UI override; few-shots are stored as {"input", "output"}.
+    ex = prompt_store.STORE.resolve("fewshot_" + stage_id, {"input": base[0], "output": base[1]})
+    try:
+        diag_in, reco_out = ex["input"], ex["output"]
+    except (KeyError, TypeError):
+        diag_in, reco_out = base
     user = ("EXEMPLE — entrée :\n"
             + json.dumps({"problem_type": problem_type, "diagnostics": diag_in}, ensure_ascii=False))
     assistant = json.dumps(reco_out, ensure_ascii=False)
     return [{"role": "user", "content": user}, {"role": "assistant", "content": assistant}]
 
 
-INTERPRET_SYSTEM = (
+DEFAULT_INTERPRET_SYSTEM = (
     "Tu es un data scientist senior. À partir des RÉSULTATS chiffrés d'une étape de machine "
     "learning, rédige une INTERPRÉTATION honnête en français : ce que disent les chiffres, ce qui "
     "est bon ou préoccupant, et la conclusion pratique pour la suite.\n\n"
@@ -153,10 +160,11 @@ def build_interpret_messages(stage_title: str, problem_type: str, payload: dict,
     if journal:
         parts.append(journal)
     parts.append("RÉSULTATS à interpréter (JSON) :\n" + json.dumps(payload, ensure_ascii=False))
-    return [{"role": "system", "content": INTERPRET_SYSTEM}, {"role": "user", "content": "\n\n".join(parts)}]
+    system = prompt_store.STORE.resolve("interpret_system", DEFAULT_INTERPRET_SYSTEM)
+    return [{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
-ASSIST_SYSTEM = (
+DEFAULT_ASSIST_SYSTEM = (
     "Tu es un assistant d'analyse de données spécialisé, en binôme avec un analyste. Il te demande de "
     "l'aider à COMPRENDRE un élément précis d'une étape (un tableau, un graphique, un diagnostic chiffré). "
     "Explique en français, pédagogiquement et honnêtement, en t'appuyant sur les CHIFFRES fournis.\n\n"
@@ -196,7 +204,8 @@ def build_assist_messages(stage_title: str, problem_type: str, topic: str, focus
         parts.append("SCHÉMA de configuration applicable + CONFIG ACTUELLE (pour suggested_config) :\n"
                      + json.dumps({"config_schema": compact_schema, "current_config": current_config or {}},
                                   ensure_ascii=False))
-    return [{"role": "system", "content": ASSIST_SYSTEM}, {"role": "user", "content": "\n\n".join(parts)}]
+    system = prompt_store.STORE.resolve("assist_system", DEFAULT_ASSIST_SYSTEM)
+    return [{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
 def build_messages(stage_meta: dict, problem_type: str, compact_schema: list,
@@ -213,8 +222,113 @@ def build_messages(stage_meta: dict, problem_type: str, compact_schema: list,
             "diagnostics": diagnostics,
         }, ensure_ascii=False)
     )
+    system = prompt_store.STORE.resolve("recommend_system", DEFAULT_SYSTEM_PROMPT)
     return (
-        [{"role": "system", "content": SYSTEM_PROMPT}]
+        [{"role": "system", "content": system}]
         + _example_messages(stage_meta.get("stage_id", ""), problem_type)
         + [{"role": "user", "content": user_content}]
     )
+
+
+# ── Prompt catalog (for the "Prompts IA" panel) ──────────────────────────
+# Each entry advertises where the prompt is used in the UI ("localisation") so
+# the panel can point the analyst to the exact spot. ``loc`` matches the
+# ``data-prompt-loc`` attribute carried by the triggering element in the front.
+
+_STAGE_LABELS = {
+    "clean": "Nettoyage", "transform": "Transformation", "integrate": "Intégration",
+    "separate": "Séparation", "model": "Modèle", "tune": "Fine-tuning",
+    "evaluate": "Évaluation", "explain": "Explicabilité",
+}
+
+_RECO_LOC = {
+    "view": "Pipeline",
+    "trigger": "Bouton « Demander à l'agent » dans le panneau d'étape",
+    "endpoint": "POST /api/session/{id}/stage/{stage}/recommend",
+    "component": "frontend/src/components/AgentRecommendation.jsx",
+    "loc": "recommend",
+}
+
+# Static metadata for the three system prompts. Few-shot entries are appended
+# programmatically below (one per stage).
+_SYSTEM_ENTRIES = [
+    {
+        "id": "recommend_system", "kind": "text", "label": "Agent — instructions système",
+        "description": "Rôle, méthode et contrat de sortie de l'agent qui propose l'affinage d'une étape.",
+        "localisation": _RECO_LOC,
+    },
+    {
+        "id": "interpret_system", "kind": "text", "label": "Interprétation — instructions système",
+        "description": "Cadre la lecture chiffrée et honnête des résultats d'une étape exécutée.",
+        "localisation": {
+            "view": "Pipeline",
+            "trigger": "Bouton « Interpréter » après l'exécution d'une étape",
+            "endpoint": "POST /api/session/{id}/stage/{stage}/interpret",
+            "component": "frontend/src/components/StagePanel.jsx",
+            "loc": "interpret",
+        },
+    },
+    {
+        "id": "assist_system", "kind": "text", "label": "Assistant « IA » — instructions système",
+        "description": "Explique un élément précis (tableau, graphe, diagnostic) et propose une action applicable.",
+        "localisation": {
+            "view": "Pipeline / Renforcement",
+            "trigger": "Boutons « IA » sur les badges, les étapes et les graphiques",
+            "endpoint": "POST /api/session/{id}/stage/{stage}/assist",
+            "component": "frontend/src/components/AssistAnswer.jsx",
+            "loc": "assist",
+        },
+    },
+]
+
+
+def get_default(prompt_id: str):
+    """Default value (text or JSON) for a catalog prompt id, or ``None``."""
+    if prompt_id == "recommend_system":
+        return DEFAULT_SYSTEM_PROMPT
+    if prompt_id == "interpret_system":
+        return DEFAULT_INTERPRET_SYSTEM
+    if prompt_id == "assist_system":
+        return DEFAULT_ASSIST_SYSTEM
+    if prompt_id.startswith("fewshot_"):
+        base = DEFAULT_STAGE_EXAMPLES.get(prompt_id[len("fewshot_"):])
+        return {"input": base[0], "output": base[1]} if base else None
+    return None
+
+
+def _entries() -> list:
+    entries = [dict(e) for e in _SYSTEM_ENTRIES]
+    for stage_id in DEFAULT_STAGE_EXAMPLES:
+        label = _STAGE_LABELS.get(stage_id, stage_id)
+        loc = dict(_RECO_LOC)
+        loc["trigger"] = "Exemple few-shot injecté avant la recommandation de l'étape « " + label + " »"
+        entries.append({
+            "id": "fewshot_" + stage_id, "kind": "json",
+            "label": "Few-shot — " + label,
+            "description": "Exemple (diagnostics → recommandation idéale) guidant l'agent pour l'étape « " + label + " ».",
+            "localisation": loc,
+        })
+    return entries
+
+
+def catalog() -> list:
+    """Full prompt catalog with default + current value and override flag, for the
+    Prompts IA panel. ``value``/``default`` are strings (text) or JSON (few-shot)."""
+    out = []
+    for e in _entries():
+        default = get_default(e["id"])
+        out.append({
+            **e,
+            "default": default,
+            "value": prompt_store.STORE.resolve(e["id"], default),
+            "overridden": prompt_store.STORE.is_overridden(e["id"]),
+        })
+    return out
+
+
+def is_valid_id(prompt_id: str) -> bool:
+    return any(e["id"] == prompt_id for e in _entries())
+
+
+def kind_of(prompt_id: str):
+    return next((e["kind"] for e in _entries() if e["id"] == prompt_id), None)

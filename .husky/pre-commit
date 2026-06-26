@@ -1,0 +1,63 @@
+#!/bin/sh
+# Pre-commit hook for PromptForge PDCA remediation
+# Checks: Python syntax, import safety, no placeholder patterns
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "${YELLOW}[pre-commit] Running checks...${NC}"
+
+# Check Python files for syntax errors
+echo "${YELLOW}[1/3] Python syntax check...${NC}"
+python_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py)$' || true)
+if [ ! -z "$python_files" ]; then
+  for file in $python_files; do
+    if python -m py_compile "$file" 2>/dev/null; then
+      echo "  ${GREEN}✓${NC} $file"
+    else
+      echo "  ${RED}✗${NC} $file (syntax error)"
+      exit 1
+    fi
+  done
+else
+  echo "  No Python files to check"
+fi
+
+# Check for CLAUDE.md violations (fake streaming, stubs, placeholders)
+# Excludes .claude/skills/** — skills are agent instructions (docs + helper
+# scripts), not AEGIS production code. Some imported skills ship .py files
+# with example snippets. Production code lives in backend/ and frontend/src/.
+echo "${YELLOW}[2/3] CLAUDE.md compliance check...${NC}"
+violation_patterns="asyncio.sleep|FALLBACK|setTimeout.*fake|simulate|placeholder"
+violations=$(git diff --cached -- . ':(exclude,glob).claude/skills/**' | grep -E "$violation_patterns" || true)
+if [ ! -z "$violations" ]; then
+  echo "  ${RED}✗${NC} Found CLAUDE.md violations (fake patterns, stubs, placeholders)"
+  echo "$violations"
+  exit 1
+else
+  echo "  ${GREEN}✓${NC} No fake patterns detected"
+fi
+
+# Check for sensitive data (API keys, secrets in code)
+# Same exclusion as step 2: .claude/skills/** contains agent instructions and
+# helper scripts that reference env vars like self.api_key = os.getenv(...),
+# which are patterns (not real secrets).
+echo "${YELLOW}[3/3] Security check (no secrets)...${NC}"
+secret_patterns="api.key|password=|secret=|token=.*Bearer|OPENAI_API_KEY.*="
+secrets=$(git diff --cached -- . ':(exclude,glob).claude/skills/**' | grep -E "$secret_patterns" || true)
+if [ ! -z "$secrets" ]; then
+  echo "  ${RED}✗${NC} Found potential secrets in code"
+  echo "$secrets"
+  exit 1
+else
+  echo "  ${GREEN}✓${NC} No secrets detected"
+fi
+
+echo ""
+echo "${GREEN}[pre-commit] All checks passed!${NC}"
+exit 0

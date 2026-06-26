@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "omc-aegis",
+  "version": "0.1.0",
+  "description": "AEGIS research director - autonomous lab orchestration for LLM security research.",
+  "owner": {
+    "name": "AEGIS (poc_medical)"
+  },
+  "plugins": [
+    {
+      "name": "omc-aegis",
+      "version": "0.1.0",
+      "description": "Autonomous research director: OODA loop, safety floor, 9 core skills.",
+      "source": "./",
+      "category": "research",
+      "tags": [
+        "research",
+        "orchestration",
+        "llm-security",
+        "ooda",
+        "aegis"
+      ]
+    }
+  ]
+}

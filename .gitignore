@@ -1,0 +1,30 @@
+# ─── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# ─── Secrets / env ───────────────────────────────────────
+.env
+backend/.env
+*.local
+
+# ─── ML artefacts ────────────────────────────────────────
+backend/exports/
+*.pkl
+*.joblib
+
+# ─── App runtime state (regenerated) ─────────────────────
+backend/_alire/
+
+# ─── Node / Vite ─────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/node_modules/
+
+# ─── OS / editor ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log

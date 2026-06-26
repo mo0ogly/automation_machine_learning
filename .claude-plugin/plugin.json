@@ -1,0 +1,28 @@
+{
+  "name": "omc-aegis",
+  "version": "0.1.0",
+  "description": "AEGIS autonomous research director for Claude Code - OODA loop, safety floor, multi-level memory. Generated from .claude/skills/ (single source).",
+  "author": {
+    "name": "AEGIS (poc_medical, ENS 2026)"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "research",
+    "orchestration",
+    "llm-security"
+  ],
+  "skills": [
+    "./skills/research-director/",
+    "./skills/aegis-research-lab/",
+    "./skills/bibliography-maintainer/",
+    "./skills/fiche-attaque/",
+    "./skills/aegis-prompt-forge/",
+    "./skills/aegis-validation-pipeline/",
+    "./skills/experimentalist/",
+    "./skills/experiment-planner/",
+    "./skills/thesis-writer/"
+  ],
+  "commands": "./commands/"
+}

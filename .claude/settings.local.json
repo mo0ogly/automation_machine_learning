@@ -1,0 +1,86 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Agent",
+      "TodoWrite",
+      "WebSearch",
+      "WebFetch",
+      "Skill(*)",
+      "mcp__Claude_in_Chrome__*",
+      "mcp__Claude_Preview__*",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__mcp-registry__*",
+      "mcp__scheduled-tasks__*",
+      "mcp__7f3d25bd-0093-4c94-bf87-9c4a1960ce98__*",
+      "PowerShell(& \"C:\\\\Users\\\\pizzif\\\\Documents\\\\GitHub\\\\poc_medical\\\\aegis.ps1\" start frontend 2>&1)",
+      "PowerShell(Get-Command ollama -ErrorAction SilentlyContinue)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/frustration-detector.cjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/process_guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/secret-scanner.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/file_size_check.cjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/auto_wiki_rebuild.cjs"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_primer.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "skipDangerousModePermissionPrompt": true
+}

@@ -101,7 +101,7 @@ def list_demo_datasets():
         {"name": "prompt_injection_technique.csv", "type": "Classification multiclasse",
          "description": "Type d'injection de prompt — 12 techniques (synthétique)"},
         {"name": "prompt_injection_mixed.csv", "type": "Classification binaire",
-         "description": "Détection d'injection — corpus mixte synthétique + médical AEGIS"},
+         "description": "Corpus mixte synthétique + médical AEGIS — recherche multi-label (détection saturée)"},
         {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
         {"name": "breastcancer.csv", "type": "Classification binaire",

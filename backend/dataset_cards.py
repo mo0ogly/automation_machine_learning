@@ -124,6 +124,12 @@ CARDS = {
                 "exigeant, évaluer la généralisation inter-langue (entraîner en, tester fr/pt) ou "
                 "régénérer le CSV via data/generators/prompt_injection.py."
             )},
+            {"heading": "Vue Exploiter — jeu recommandé", "text": (
+                "C'est LE jeu à utiliser pour la vue Exploiter (what-if). Le modèle (~0.97) n'est pas "
+                "saturé : la probabilité prédite RÉPOND aux variations d'entrée (ex. text_length fait "
+                "varier la proba ≈0.21 ↔ 0.73). À l'inverse, prompt_injection_mixed.csv sature à ~1.0 en "
+                "split aléatoire et y fige le curseur — voir sa fiche."
+            )},
         ],
     },
 
@@ -181,9 +187,9 @@ CARDS = {
     # ── New: mixed corpus, L0 detection demo ────────────────────────────
     "prompt_injection_mixed.csv": {
         "title": "Détection d'injection — corpus mixte (synthétique + médical AEGIS)",
-        "type": "Classification binaire (injection / benign)",
+        "type": "Classification binaire (injection / benign) — artefact de recherche multi-label",
         "synthetic": True,
-        "rows": 9262, "cols": 27,
+        "rows": 7396, "cols": 27,
         "target": "label — injection / benign",
         "source": (
             "Fusion de jeux : corpus synthétique (1000) + augmentation des templates réels AEGIS "
@@ -205,7 +211,7 @@ CARDS = {
                 ["zero_width_count / non_ascii_ratio", "Signaux d'obfuscation"],
                 ["uppercase_ratio / digit_ratio / punct_ratio", "Densités typographiques"],
                 ["carrier / language", "Canal et langue (observables)"],
-                ["label", "Cible : injection / benign (≈5273 / 3653)"],
+                ["label", "Cible : injection / benign (4707 / 2689, après dédoublonnage + hard-negatives)"],
             ]},
             {"heading": "Pourquoi seulement la détection (L0)", "text": (
                 "En évaluation honnête (split GROUPÉ par template, GroupKFold), seules la détection (L0, "
@@ -219,6 +225,15 @@ CARDS = {
                 "generic≈synthétique — la colonne domain est retirée pour ne pas servir de raccourci. "
                 "Pour les niveaux fins (famille/technique/δ), travailler hors plateforme avec un "
                 "GroupKFold sur template_group (jeu data/prompt_injection_aegis.csv)."
+            )},
+            {"heading": "Vue Exploiter — peu informative ici", "text": (
+                "Doublons de features retirés et benign hard-negatives ajoutés (build_mixed.py), mais "
+                "sous le split ALÉATOIRE de la plateforme la détection L0 reste saturée (~0.99–1.0) : les "
+                "injections AEGIS médicales ont un profil de surface trop distinct de la classe benign. "
+                "Résultat : dans la vue Exploiter la proba reste figée près de 1.0 (le what-if ne bouge "
+                "pas). Pour un what-if informatif, utiliser prompt_injection.csv. Ce corpus mixte est "
+                "avant tout un artefact de recherche MULTI-LABEL (famille / technique / δ), à évaluer en "
+                "GroupKFold hors plateforme."
             )},
         ],
     },

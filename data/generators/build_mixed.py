@@ -69,7 +69,13 @@ def build():
     tr_path = ROOT / "prompt_injection_transform.csv"
     if tr_path.exists():  # encoding/transform techniques (programmatic augmentation)
         parts.append(_norm(pd.read_csv(tr_path)))
-    return pd.concat(parts, ignore_index=True)
+    out = pd.concat(parts, ignore_index=True)
+    # Dédoublonnage sur les features de surface : templates et augmentations
+    # produisent ~30 % de lignes au vecteur de features IDENTIQUE. Sous le split
+    # aléatoire du pipeline (pas de group-aware ici), ces doublons fuient entre
+    # train et test -> accuracy ~100 % artificielle. On garde une occurrence par
+    # vecteur de features (un modèle ne peut de toute façon pas les distinguer).
+    return out.drop_duplicates(subset=FEAT, keep="first").reset_index(drop=True)
 
 
 if __name__ == "__main__":

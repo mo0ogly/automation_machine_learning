@@ -52,6 +52,19 @@ PROVIDERS = [
         "models": ["deepseek-chat", "deepseek-reasoner"],
     },
     {
+        # Zhipu AI / z.ai — GLM family. OpenAI-compatible endpoint
+        # (POST {api_base}/chat/completions, Bearer key).
+        # base URL: https://api.z.ai/api/paas/v4  (docs.z.ai/api-reference/introduction)
+        "id": "zai", "label": "Z.AI (GLM)",
+        "env_key": "ZAI_API_KEY",
+        "api_base": "https://api.z.ai/api/paas/v4",
+        "base_url": None,
+        "default_model": "glm-5.2",
+        "models": [
+            "glm-5.2", "glm-5.1", "glm-5", "glm-4.7", "glm-4.6", "glm-4.5",
+        ],
+    },
+    {
         # Local / self-hosted gateways: Ollama, LiteLLM proxy, vLLM. The endpoint
         # is supplied per backend; a key is optional (most local servers need none).
         "id": "openai_compat", "label": "OpenAI-compatible (Ollama / LiteLLM / vLLM)",

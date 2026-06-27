@@ -138,6 +138,28 @@ def main():
     except Exception as e:
         print("embeddings skipped (model unavailable offline):", str(e)[:80])
 
+    # domain-specialised embedding (clinical BERT, mean-pooled) — best effort
+    try:
+        import torch
+        from transformers import AutoModel, AutoTokenizer
+        name = "emilyalsentzer/Bio_ClinicalBERT"
+        tok = AutoTokenizer.from_pretrained(name)
+        mdl = AutoModel.from_pretrained(name).eval()
+        vecs = []
+        for i in range(0, len(texts), 64):
+            batch = texts[i:i + 64]
+            enc = tok(batch, padding=True, truncation=True, max_length=128, return_tensors="pt")
+            with torch.no_grad():
+                hs = mdl(**enc).last_hidden_state
+            mask = enc["attention_mask"].unsqueeze(-1)
+            v = (hs * mask).sum(1) / mask.sum(1).clamp(min=1)
+            vecs.append(torch.nn.functional.normalize(v, dim=1).numpy().astype("float32"))
+        embc = np.vstack(vecs)
+        np.save(OUT / "emb_clinical.npy", embc)
+        print("clinical embeddings:", embc.shape, "-> emb_clinical.npy")
+    except Exception as e:
+        print("clinical embeddings skipped:", str(e)[:80])
+
 
 if __name__ == "__main__":
     main()

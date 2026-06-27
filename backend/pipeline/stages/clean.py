@@ -16,7 +16,6 @@ import pandas as pd
 
 from .. import diagnostics as dg
 from .. import typology as typ
-from .. import eda_plots as eda
 from ..plotting import style_plot, fig_to_base64, message_plot
 from .base import select, toggle, rng, number, column_table, counts
 
@@ -171,15 +170,10 @@ def diagnose(df, ctx):
         plots.append(fig_to_base64(fig))
     else:
         plots.append(message_plot("Aucune valeur manquante détectée."))
-    # One figure per variable (same density as Transformation) so cleaning decisions
-    # are visible variable by variable: distributions reveal skew, count plots reveal
-    # imbalance/rare modalities. Plus a single boxplots overview for outliers / IQR.
-    t = typ.classify(df, ctx.target_col)
-    uni, _ = eda.univariate_plots(df, t)
-    plots.extend(uni)
-    num_cols = _numeric_plot_columns(df, ctx.target_col)
-    if num_cols:
-        plots.append(fig_to_base64(_boxplots_plot(df, num_cols)))
+    # Cleaning-specific: one boxplot per numeric variable — outliers and Tukey (IQR)
+    # bounds, variable by variable. Distinct from the Transformation's distribution
+    # histograms (which live there for the modelling analysis), so no duplication.
+    plots.extend(_boxplot_per_variable(df, ctx.target_col))
     # The per-column keep/drop decision lives in the config table (config_schema),
     # so it is not duplicated here as a read-only diagnostic.
     return {
@@ -357,31 +351,37 @@ def run(df, config, ctx, make_plots=True):
 
 
 # ── local plot helpers ───────────────────────────────────────────────────
-def _numeric_plot_columns(df, target, k=8):
-    """Up to k numeric feature columns, most-variable first (most informative to plot)."""
+def _boxplot_per_variable(df, target, k=30):
+    """One horizontal boxplot per numeric variable: outliers + Tukey (IQR) bounds.
+
+    Cleaning-specific (the Transformation owns the distribution histograms). Columns
+    are ordered by variance and capped at k to keep the view manageable.
+    """
+    import matplotlib.pyplot as plt
     num = [c for c in df.columns if c != target and pd.api.types.is_numeric_dtype(df[c])]
     if not num:
         return []
     var = df[num].var(numeric_only=True).sort_values(ascending=False)
-    return [str(c) for c in var.index[:k]]
-
-
-def _boxplots_plot(df, cols):
-    """Horizontal boxplots — outliers and Tukey (IQR) bounds at a glance."""
-    import matplotlib.pyplot as plt
-    series = [(c, pd.to_numeric(df[c], errors="coerce").dropna().values) for c in cols]
-    series = [(c, v) for c, v in series if len(v)]
-    fig, ax = plt.subplots(figsize=(7, max(2.6, 0.42 * len(series) + 1)))
-    if series:
-        bp = ax.boxplot([v for _c, v in series], vert=False, patch_artist=True)
+    out = []
+    for c in [str(col) for col in var.index[:k]]:
+        s = pd.to_numeric(df[c], errors="coerce").dropna()
+        if not len(s):
+            continue
+        q1, q3 = s.quantile(0.25), s.quantile(0.75)
+        iqr = q3 - q1
+        n_out = int(((s < q1 - 1.5 * iqr) | (s > q3 + 1.5 * iqr)).sum())
+        fig, ax = plt.subplots(figsize=(5, 2.3))
+        bp = ax.boxplot(s.values, vert=False, patch_artist=True,
+                        flierprops=dict(marker="o", markersize=3,
+                                        markerfacecolor="#e94560", markeredgecolor="none", alpha=0.5))
         for patch in bp["boxes"]:
             patch.set_facecolor("#e94560")
             patch.set_alpha(0.55)
-        ax.set_yticks(range(1, len(series) + 1))
-        ax.set_yticklabels([str(c) for c, _v in series], fontsize=7)
-    ax.set_title("Boîtes à moustaches (aberrants / bornes IQR)")
-    fig.tight_layout()
-    return fig
+        ax.set_yticks([])
+        ax.set_title("Aberrants — " + c + "  (" + str(n_out) + " hors IQR)", fontsize=9)
+        fig.tight_layout()
+        out.append(fig_to_base64(fig))
+    return out
 
 
 def plt_bar(labels, values, title):

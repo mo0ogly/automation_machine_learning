@@ -165,6 +165,21 @@
 .ai-btn:disabled { opacity: 0.5; cursor: default; }
 .ai-btn-primary { background: var(--accent-secondary); color: #0b1020; border-color: var(--accent-secondary); }
 .ai-btn-danger { color: #f87171; border-color: rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.10); }
+/* Visible provider catalog (chips) — so all providers are discoverable without
+   expanding the collapsed <select>. */
+.ai-catalog { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; }
+.ai-catalog h3 { margin: 0 0 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
+.ai-catalog-count { font-size: 0.72rem; font-weight: 700; color: #0b1020; background: var(--accent-secondary);
+  border-radius: 999px; padding: 0.05rem 0.5rem; }
+.ai-catalog-hint { font-size: 0.72rem; color: var(--text-tertiary); margin: 0 0 0.6rem; }
+.ai-catalog-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.ai-chip { cursor: pointer; font-size: 0.74rem; padding: 0.28rem 0.6rem; border-radius: 999px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: var(--text-secondary);
+  transition: all 0.15s; }
+.ai-chip:hover { background: rgba(139, 92, 246, 0.18); color: var(--text-primary); }
+.ai-chip.has-key { border-color: rgba(16,185,129,0.5); color: #34d399; }
+.ai-chip.active { background: var(--accent-secondary); color: #0b1020; border-color: var(--accent-secondary); font-weight: 600; }
+
 .ai-form { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; }
 .ai-form h3 { margin: 0 0 0.5rem; }
 .ai-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem; }

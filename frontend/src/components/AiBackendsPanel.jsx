@@ -29,19 +29,24 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
     } catch (e) { setErr('Backends injoignables.'); }
   }, [apiBase]);
 
-  useEffect(() => {
-    fetch(apiBase + '/api/ai/providers').then((r) => r.json())
-      .then((d) => {
-        const list = d.providers || [];
-        setProviders(list);
-        setForm((p) => {
-          if (p.model) return p;
-          const info = list.find((x) => x.id === p.provider);
-          return info && info.default_model ? { ...p, model: info.default_model } : p;
-        });
-      }).catch(() => setErr('Catalogue providers injoignable.'));
-    refresh();
-  }, [apiBase, refresh]);
+  const loadProviders = useCallback(async () => {
+    try {
+      const d = await fetch(apiBase + '/api/ai/providers').then((r) => r.json());
+      const list = d.providers || [];
+      setProviders(list);
+      setErr(null);
+      setForm((p) => {
+        if (p.model) return p;
+        const info = list.find((x) => x.id === p.provider);
+        return info && info.default_model ? { ...p, model: info.default_model } : p;
+      });
+    } catch (e) {
+      setProviders([]);
+      setErr('Catalogue providers injoignable — le backend tourne-t-il sur :8000 ?');
+    }
+  }, [apiBase]);
+
+  useEffect(() => { loadProviders(); refresh(); }, [loadProviders, refresh]);
 
   const selProv = providers.find((p) => p.id === form.provider);
   const baseUrlMode = selProv ? selProv.base_url : null;
@@ -174,6 +179,33 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
             ))}
           </tbody>
         </table>
+
+        <div className="ai-catalog">
+          <h3>Providers disponibles <span className="ai-catalog-count">{providers.length}</span></h3>
+          {providers.length === 0 ? (
+            <div className="ai-catalog-hint" style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', color: 'var(--status-warning)' }}>
+              <span>Liste vide — le catalogue n'a pas pu être chargé (backend injoignable ?).</span>
+              <button type="button" className="ai-btn" onClick={loadProviders}>Réessayer</button>
+            </div>
+          ) : (
+            <>
+              <p className="ai-catalog-hint">
+                Clique un provider pour le pré-remplir dans le formulaire ci-dessous. ✓ = clé déjà
+                détectée (variable d'environnement) ; sinon, colle la clé après avoir créé le backend.
+              </p>
+              <div className="ai-catalog-chips">
+                {providers.map((p) => (
+                  <button type="button" key={p.id}
+                    className={'ai-chip' + (p.id === form.provider ? ' active' : '') + (p.env_present ? ' has-key' : '')}
+                    onClick={() => selectProvider(p.id)}
+                    title={p.env_present ? ('Clé via ' + (p.env_key || 'env') + ' présente') : 'Clé à fournir'}>
+                    {p.label}{p.env_present ? ' ✓' : ''}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <form className="ai-form" onSubmit={create}>
           <h3>Ajouter un backend</h3>

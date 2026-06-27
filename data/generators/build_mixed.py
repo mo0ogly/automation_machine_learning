@@ -65,7 +65,11 @@ def build():
     aeg = pd.read_csv(ROOT / "prompt_injection_aegis.csv").copy()
     aeg["source"] = "aegis_aug"; aeg["objective"] = None
 
-    return pd.concat([_norm(ben), _norm(tech), _norm(aeg)], ignore_index=True)
+    parts = [_norm(ben), _norm(tech), _norm(aeg)]
+    tr_path = ROOT / "prompt_injection_transform.csv"
+    if tr_path.exists():  # encoding/transform techniques (programmatic augmentation)
+        parts.append(_norm(pd.read_csv(tr_path)))
+    return pd.concat(parts, ignore_index=True)
 
 
 if __name__ == "__main__":

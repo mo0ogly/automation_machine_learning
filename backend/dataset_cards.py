@@ -183,11 +183,12 @@ CARDS = {
         "title": "Détection d'injection — corpus mixte (synthétique + médical AEGIS)",
         "type": "Classification binaire (injection / benign)",
         "synthetic": True,
-        "rows": 8926, "cols": 26,
+        "rows": 9262, "cols": 27,
         "target": "label — injection / benign",
         "source": (
-            "Fusion de 3 jeux : corpus synthétique (1000) + augmentation des templates réels AEGIS "
-            "médicaux/robotiques (7926). Voir data/taxonomy_bridge/README.md."
+            "Fusion de jeux : corpus synthétique (1000) + augmentation des templates réels AEGIS "
+            "médicaux/robotiques (7926) + augmentation programmatique des techniques d'encodage "
+            "(336). Voir data/taxonomy_bridge/README.md."
         ),
         "summary": (
             "Démo de détection (niveau L0) sur le corpus mixte : 1000 segments synthétiques génériques "

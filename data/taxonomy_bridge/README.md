@@ -137,4 +137,35 @@ Le 3ᵉ jeu est le **pont en profondeur** :
 - **Contrôles** : réutiliser `clean_clinical_query` / `control_baseline` / `false_positive_calibration` comme vrais négatifs médicaux.
 - **Étiquetage** : chaque ligne porte L0…L3 + tous les axes orthogonaux → directement mixable avec les deux jeux existants via le schéma §2.
 
-Prochaine étape naturelle : définir le **volume cible** et les **pools de valeurs des slots** (listes de médicaments, institutions, praticiens… non sensibles), puis écrire le générateur d'augmentation (extraction de features par script, sans lire les payloads).
+---
+
+## 7. Jeux produits
+
+| Fichier | N | Rôle |
+|---------|---|------|
+| `../prompt_injection.csv` | 1000 | synthétique, détection binaire |
+| `../prompt_injection_technique.csv` | 550 | synthétique, 12 techniques |
+| `../prompt_injection_aegis.csv` | 7926 | **3ᵉ jeu** — augmentation AEGIS (médical), schéma complet L0–L3 + δ + multi_turn |
+| `../prompt_injection_mixed.csv` | 8926 | **mix des 3** sous le schéma commun (+ `source`, `domain`, `template_group`) |
+
+Générateurs : `../generators/prompt_injection_aegis_aug.py` (augmentation, `--per-template`, `--benign`), `../generators/build_mixed.py` (fusion). Features extraites par script, payloads jamais exposés.
+
+Le 3ᵉ jeu : 97 templates paramétrés instanciés en variant les slots **médicaux/contexte** (pools réalistes) ; slots **cœur-attaque** laissés à leur valeur d'origine (mécanisme/label préservés, aucun exploit ré-écrit) ; axe obfuscation ; bénins cliniques du même domaine pour l'équilibre.
+
+## 8. Validation honnête — split GROUPÉ par template obligatoire
+
+RandomForest, F1 macro, 5 plis, sur `prompt_injection_aegis.csv` :
+
+| Cible | Classes | Split aléatoire | **Split GROUPÉ** | Hasard |
+|-------|---------|-----------------|------------------|--------|
+| `label` (L0) | 2 | 0.999 | **0.999** | 0.50 |
+| `target_delta` (δ) | 4 | 0.989 | **0.532** | 0.25 |
+| `family_l2` | 17 | 0.963 | **0.168** | ~0.06 |
+| `technique_l3` | 81 | 0.947 | **0.035** | ~0.01 |
+
+**Les scores en split aléatoire sont de la fuite par mémorisation de template.** En évaluation honnête (templates non vus) :
+- **L0 détection généralise** (features de surface suffisent).
+- **δ généralise moyennement** (~2× le hasard) — exploitable.
+- **famille / technique fine ne généralisent pas** depuis 15 features de surface → nécessitent des features sémantiques (embeddings / features LLM), pas plus de volume.
+
+**Implication méthodologique** : toujours `GroupKFold(groups=template_group)`. La plateforme ML actuelle fait un split aléatoire stratifié — elle **sur-estimerait** ce jeu (0.95+ illusoires sur famille/technique). Ne pas l'y brancher tel quel sans split groupé.

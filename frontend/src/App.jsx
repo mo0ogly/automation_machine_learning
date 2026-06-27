@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useState, Suspense, lazy } from 'react'
 import './App.css'
 import Dashboard from './components/Dashboard'
 import ReinforcementView from './components/ReinforcementView'
 import ExploitView from './components/ExploitView'
 import ConfigMenu from './components/ConfigMenu'
 import AiBackendsPanel from './components/AiBackendsPanel'
-import PromptsPanel from './components/PromptsPanel'
 import ModelsMenu from './components/ModelsMenu'
+
+// Prompts panel pulls in Monaco (bundled offline). Code-split so the editor only
+// loads when the panel is opened, keeping the initial app bundle light.
+const PromptsPanel = lazy(() => import('./components/PromptsPanel'))
 
 // API base: configurable at build time (Docker passes VITE_API_URL), defaults to
 // the local dev backend so `npm run dev` keeps working unchanged.
@@ -80,8 +83,10 @@ function App() {
           onChanged={() => setAiRefresh((n) => n + 1)} />
       ) : null}
       {promptsOpen ? (
-        <PromptsPanel apiBase={API_URL} onClose={() => setPromptsOpen(false)}
-          onLocate={locatePrompt} />
+        <Suspense fallback={<div className="locate-note">Chargement de l'éditeur…</div>}>
+          <PromptsPanel apiBase={API_URL} onClose={() => setPromptsOpen(false)}
+            onLocate={locatePrompt} />
+        </Suspense>
       ) : null}
       {modelsOpen ? (
         <ModelsMenu apiBase={API_URL} onClose={() => setModelsOpen(false)} />

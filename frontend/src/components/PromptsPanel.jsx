@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import '../monacoSetup';  // local (offline) Monaco + workers — loads with this lazy chunk
 import Editor from '@monaco-editor/react';
 
 // "Prompts IA" panel: inspect and edit the agent's prompts (system instructions
@@ -19,11 +20,22 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
   const [prompts, setPrompts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState('');
+  const [draftId, setDraftId] = useState(null); // prompt the draft was seeded from
   const [err, setErr] = useState(null);
   const [notice, setNotice] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const selected = prompts.find((p) => p.id === selectedId) || null;
+
+  // Seed the editor synchronously when the selected prompt changes (derived state,
+  // during render) so the Monaco value never lags a frame behind the selection.
+  if (selected && draftId !== selected.id) {
+    setDraft(toDraft(selected));
+    setDraftId(selected.id);
+    if (err) setErr(null);
+    if (notice) setNotice(null);
+  }
+
   const dirty = selected ? draft !== toDraft(selected) : false;
 
   const load = useCallback(async () => {
@@ -36,11 +48,6 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
   }, [apiBase]);
 
   useEffect(() => { load(); }, [load]);
-
-  // Reset the editor when the selected prompt changes (or its stored value does).
-  useEffect(() => { setDraft(toDraft(selected)); setErr(null); setNotice(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, selected && selected.value]);
 
   const select = (id) => { setSelectedId(id); };
 
@@ -147,11 +154,13 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
 
                 <div className="prompts-monaco">
                   <Editor
+                    key={selected.id}
                     height="100%"
                     theme="vs-dark"
                     language={selected.kind === 'json' ? 'json' : 'markdown'}
                     value={draft}
                     onChange={(v) => setDraft(v != null ? v : '')}
+                    onMount={(editor) => { editor.layout(); requestAnimationFrame(() => editor.layout()); }}
                     options={{ minimap: { enabled: false }, fontSize: 13, wordWrap: 'on',
                       scrollBeyondLastLine: false, automaticLayout: true }}
                   />

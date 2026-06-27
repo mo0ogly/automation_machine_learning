@@ -162,14 +162,20 @@ def _extreme_rows(df, target, n=5, max_feats=4):
 
 def diagnose(df, ctx):
     plots = []
+    style_plot()
     miss = dg.missing_by_column(df)
     if miss:
-        style_plot()
         fig, _ax = plt_bar([m["column"] for m in miss], [m["pct"] for m in miss],
                            "Valeurs manquantes par colonne (%)")
         plots.append(fig_to_base64(fig))
     else:
         plots.append(message_plot("Aucune valeur manquante détectée."))
+    # Distributions + boxplots of the most-variable numeric columns make the cleaning
+    # decisions visible (skew -> normalise, spread/outliers -> IQR), not just tabular.
+    num_cols = _numeric_plot_columns(df, ctx.target_col)
+    if num_cols:
+        plots.append(fig_to_base64(_distributions_plot(df, num_cols)))
+        plots.append(fig_to_base64(_boxplots_plot(df, num_cols)))
     # The per-column keep/drop decision lives in the config table (config_schema),
     # so it is not duplicated here as a read-only diagnostic.
     return {
@@ -347,6 +353,53 @@ def run(df, config, ctx, make_plots=True):
 
 
 # ── local plot helpers ───────────────────────────────────────────────────
+def _numeric_plot_columns(df, target, k=8):
+    """Up to k numeric feature columns, most-variable first (most informative to plot)."""
+    num = [c for c in df.columns if c != target and pd.api.types.is_numeric_dtype(df[c])]
+    if not num:
+        return []
+    var = df[num].var(numeric_only=True).sort_values(ascending=False)
+    return [str(c) for c in var.index[:k]]
+
+
+def _distributions_plot(df, cols):
+    """Small-multiples histograms — spread + skew of each numeric column."""
+    import matplotlib.pyplot as plt
+    ncol = min(4, len(cols))
+    nrow = (len(cols) + ncol - 1) // ncol
+    fig, axes = plt.subplots(nrow, ncol, figsize=(3.1 * ncol, 2.3 * nrow))
+    axes = np.atleast_1d(axes).ravel()
+    for i, c in enumerate(cols):
+        s = pd.to_numeric(df[c], errors="coerce").dropna()
+        if len(s):
+            axes[i].hist(s, bins=30, color="#e94560", edgecolor="#0f3460")
+        axes[i].set_title(str(c), fontsize=8)
+        axes[i].tick_params(labelsize=6)
+    for j in range(len(cols), len(axes)):
+        axes[j].axis("off")
+    fig.suptitle("Distributions des variables numériques")
+    fig.tight_layout()
+    return fig
+
+
+def _boxplots_plot(df, cols):
+    """Horizontal boxplots — outliers and Tukey (IQR) bounds at a glance."""
+    import matplotlib.pyplot as plt
+    series = [(c, pd.to_numeric(df[c], errors="coerce").dropna().values) for c in cols]
+    series = [(c, v) for c, v in series if len(v)]
+    fig, ax = plt.subplots(figsize=(7, max(2.6, 0.42 * len(series) + 1)))
+    if series:
+        bp = ax.boxplot([v for _c, v in series], vert=False, patch_artist=True)
+        for patch in bp["boxes"]:
+            patch.set_facecolor("#e94560")
+            patch.set_alpha(0.55)
+        ax.set_yticks(range(1, len(series) + 1))
+        ax.set_yticklabels([str(c) for c, _v in series], fontsize=7)
+    ax.set_title("Boîtes à moustaches (aberrants / bornes IQR)")
+    fig.tight_layout()
+    return fig
+
+
 def plt_bar(labels, values, title):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(7, max(2.5, 0.35 * len(labels) + 1)))

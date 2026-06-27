@@ -173,6 +173,7 @@ def diagnose(df, ctx):
     # Cleaning-specific: one boxplot per numeric variable — outliers and Tukey (IQR)
     # bounds, variable by variable. Distinct from the Transformation's distribution
     # histograms (which live there for the modelling analysis), so no duplication.
+    # See docs/pipeline-graphs.md for the per-stage graph catalogue (anti-doublon).
     plots.extend(_boxplot_per_variable(df, ctx.target_col))
     # The per-column keep/drop decision lives in the config table (config_schema),
     # so it is not duplicated here as a read-only diagnostic.

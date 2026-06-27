@@ -8,6 +8,10 @@ explainer.
 
 These run on the *cleaned* frame (Transformation's input): ordinals are already
 encoded to integers, nominals are still text.
+
+These per-variable distributions belong to the TRANSFORMATION stage. Before adding
+similar plots elsewhere, read docs/pipeline-graphs.md (graph catalogue / anti-doublon)
+— e.g. the Nettoyage shows per-variable BOXPLOTS (outliers), not these distributions.
 """
 
 from .plotting import style_plot, fig_to_base64, message_plot

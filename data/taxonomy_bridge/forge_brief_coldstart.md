@@ -71,3 +71,5 @@ Après chaque tier forgé dans `poc_medical` :
 4. Itérer tier suivant tant que le gain marginal le justifie.
 
 **Critère de succès** : F1 macro GroupKFold sur le sous-ensemble « techniques ≥3 templates » nettement > plancher (~0.04), et croissant avec le nombre de techniques rendues apprenables.
+
+**Vérification automatisée** : `python data/generators/verify_coldstart_lift.py --min-templates 3`. Le script lit l'état courant de poc_medical, détecte les techniques passées à ≥3 templates et mesure le F1 GroupKFold sur ce sous-ensemble (surface + hashing), avec verdict LIFT / PAS DE LIFT et rapport JSON. **Baseline pré-forge mesurée** (2026-06-27) : 7 techniques déjà à ≥3 templates → F1 0.558 (×14 le plancher), ce qui valide empiriquement que ≥3 templates rend une technique apprenable.

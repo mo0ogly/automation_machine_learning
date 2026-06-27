@@ -35,6 +35,8 @@ data/*.ipynb
 data/*.pdf
 # Matrices de features régénérables (build_aegis_text_features.py)
 data/aegis_text_features/
+# Rapport de vérification régénérable (verify_coldstart_lift.py)
+data/coldstart_lift_report.json
 
 # ─── OS / editor ─────────────────────────────────────────
 .DS_Store

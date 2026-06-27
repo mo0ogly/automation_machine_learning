@@ -11,8 +11,13 @@
 | `.claude/rules/mathematical-analysis.md` | Analyse mathematique : qualification epistemique, hypotheses, verification preuves, rigueur statistique |
 | `.claude/rules/redteam-analysis.md` | Analyse red team : classification vecteurs, threat model, ASR critique, reproductibilite, integration AEGIS |
 | `.claude/rules/redteam-forge.md` | Architecture AEGIS, moteur genetique, campagnes, fiches d'attaque |
+| `.claude/rules/dev-environment.md` | **Ports fixes (front 5173 / back 8000), interdiction de serveurs en double** |
 | `research_archive/RESEARCH_ARCHIVE_GUIDE.md` | Structure research_archive, regles PDFs, ChromaDB |
 | `research_archive/RESEARCH_STATE.md` | Etat partage entre toutes les skills |
+
+## PORTS FIXES — RÈGLE ABSOLUE (voir `rules/dev-environment.md`)
+
+**JAMAIS changer les ports : frontend = 5173, backend = 8000.** Si un serveur tourne déjà sur ces ports, c'est celui de l'utilisateur — le RÉUTILISER, ne JAMAIS spawner un doublon sur un port aléatoire. `autoPort` reste `false` dans `.claude/launch.json`.
 
 ## ZERO PLACEHOLDER / ZERO DECORATIVE — ABSOLUTE RULE
 

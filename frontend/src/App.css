@@ -135,3 +135,18 @@
 .recent-model { flex: 0 0 auto; font-size: 0.72rem; color: var(--text-tertiary); white-space: nowrap; }
 .recent-model-on { color: var(--status-success); }
 .recent-date { flex: 0 0 auto; font-size: 0.72rem; color: var(--text-tertiary); white-space: nowrap; }
+
+/* Cyber models — pinned, highlighted section + badge */
+.cyber-block {
+  border: 1px solid rgba(239, 68, 68, 0.45); border-radius: 10px;
+  background: rgba(239, 68, 68, 0.06); padding: 0.5rem 0.75rem 0.25rem; margin-bottom: 1rem;
+}
+.cyber-head { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0 0.5rem; font-size: 0.95rem; }
+.other-head { margin: 0.5rem 0; font-size: 0.95rem; }
+.badge-cyber {
+  display: inline-flex; align-items: center; padding: 0.05rem 0.4rem; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; color: #fff;
+  background: #ef4444; margin-left: 0.4rem; vertical-align: middle;
+}
+.cyber-head .badge-cyber { margin-left: 0; }
+.cyber-row strong { color: #fca5a5; }

@@ -785,6 +785,18 @@ def test_exploitation_batch_defuses_csv_formula():
     assert "'=cmd" in d["csv"]                        # dangerous cell prefixed with a quote
 
 
+def test_exploitation_batch_blank_cells_serialise_to_null():
+    """Empty CSV cells parse to NaN; the JSON response must stay valid (NaN -> null)."""
+    sid = _trained_house()
+    csv = "OverallQual,GrLivArea,YearBuilt,GarageArea\n,,,\n7,1200,1990,400\n"
+    r = client.post(f"/api/session/{sid}/predict/batch", files={"file": ("blank.csv", csv, "text/csv")})
+    assert r.status_code == 200                          # used to be 500: NaN broke JSON encoding
+    d = r.json()
+    assert d["n_rows"] == 2
+    assert d["preview"][0]["GrLivArea"] is None           # blank cell -> null, not NaN
+    assert d["preview"][0]["prediction"] is not None      # row still scored despite blanks
+
+
 def test_exploitation_classification_tornado_and_batch():
     sid = _start_demo("breastcancer.csv")["session_id"]
     client.post(f"/api/session/{sid}/autorun")

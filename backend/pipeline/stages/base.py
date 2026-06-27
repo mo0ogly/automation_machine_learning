@@ -78,6 +78,8 @@ def to_native(obj):
     if isinstance(obj, (np.floating,)):
         f = float(obj)
         return f if np.isfinite(f) else None
+    if isinstance(obj, float):                  # plain Python float (e.g. DataFrame.to_dict on a NaN cell)
+        return obj if np.isfinite(obj) else None   # NaN / inf are not JSON-compliant -> null
     if isinstance(obj, (np.bool_,)):
         return bool(obj)
     if isinstance(obj, np.ndarray):

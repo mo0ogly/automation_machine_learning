@@ -134,10 +134,13 @@ cd backend && python -m pytest tests/test_api.py -q   # 44 tests, sans réseau
 ## Roadmap
 
 - **Providers LLM** — **fait** : une fenêtre de paramétrage (bouton `⚙ Moteur IA`) gère
-  plusieurs backends compatibles OpenAI (Groq, OpenAI, Mistral, DeepSeek, Ollama/local), pilotée
-  par un **catalogue** de providers côté serveur, avec **clés par backend (write-only)** (ou la
-  variable d'environnement du provider) et un **Test** de connectivité. À venir : Anthropic
-  (API messages différente) + un preset gateway LiteLLM.
+  plusieurs backends compatibles OpenAI, pilotée par un **catalogue** côté serveur de **26 vendors**
+  repris de [recette_IA_agents](https://github.com/mo0ogly/recette_IA_agents) — Groq, OpenAI,
+  Mistral, DeepSeek, xAI (Grok), OpenRouter, Together, Fireworks, Moonshot (Kimi), Z.AI (GLM),
+  DashScope/Qwen, Nvidia, Nous, Ollama Cloud, Novita, StepFun, Arcee, Xiaomi, GMI, Hugging Face,
+  OpenCode Zen, Kilo Code, Alibaba Coding Plan, Qwen Portal, Cerebras, et `openai_compat`
+  (Ollama/LiteLLM/vLLM avec base URL par backend). Chaque backend a des **clés write-only** (ou la
+  variable d'environnement du provider — voir `backend/.env.example`) et un **Test** de connectivité.
 - **Persistance des sessions** — **faite** : les sessions sont mirroir-ées en SQLite
   (`backend/sessions.db`) et survivent à un redémarrage du backend (toggle `ML_PERSIST_SESSIONS`).
   À suivre : un store partagé (Redis/Postgres) pour un backend multi-process.

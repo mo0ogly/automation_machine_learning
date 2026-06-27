@@ -14,6 +14,12 @@ so adding a provider here surfaces in the UI with **no frontend change**.
 
 import env_loader
 
+# Catalog ported from recette_IA_agents (recette/llm/openai_wire.py): the full set
+# of OpenAI-wire vendors. ``api_base`` is the URL up to (not including)
+# ``/chat/completions``; for bare-host vendors that is host + ``/v1``, for vendors
+# whose endpoint already carries a version it is the versioned URL verbatim. Env
+# keys mirror recette's .env.example exactly. Models lists are curated only where
+# already validated; new vendors use free-text model entry (``models: []``).
 PROVIDERS = [
     {
         "id": "groq", "label": "Groq",
@@ -52,17 +58,174 @@ PROVIDERS = [
         "models": ["deepseek-chat", "deepseek-reasoner"],
     },
     {
-        # Zhipu AI / z.ai — GLM family. OpenAI-compatible endpoint
-        # (POST {api_base}/chat/completions, Bearer key).
-        # base URL: https://api.z.ai/api/paas/v4  (docs.z.ai/api-reference/introduction)
+        "id": "xai", "label": "xAI (Grok)",
+        "env_key": "XAI_API_KEY",
+        "api_base": "https://api.x.ai/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "openrouter", "label": "OpenRouter",
+        "env_key": "OPENROUTER_API_KEY",
+        "api_base": "https://openrouter.ai/api/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],  # aggregator: type the full model slug (e.g. anthropic/claude-3.7-sonnet)
+    },
+    {
+        "id": "together", "label": "Together AI",
+        "env_key": "TOGETHER_API_KEY",
+        "api_base": "https://api.together.xyz/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "fireworks", "label": "Fireworks AI",
+        "env_key": "FIREWORKS_API_KEY",
+        "api_base": "https://api.fireworks.ai/inference/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "moonshot", "label": "Moonshot (Kimi)",
+        "env_key": "KIMI_API_KEY",
+        "api_base": "https://api.moonshot.ai/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
         "id": "zai", "label": "Z.AI (GLM)",
-        "env_key": "ZAI_API_KEY",
+        "env_key": "GLM_API_KEY",
         "api_base": "https://api.z.ai/api/paas/v4",
         "base_url": None,
         "default_model": "glm-5.2",
         "models": [
             "glm-5.2", "glm-5.1", "glm-5", "glm-4.7", "glm-4.6", "glm-4.5",
         ],
+    },
+    {
+        "id": "dashscope", "label": "Alibaba DashScope (Qwen)",
+        "env_key": "DASHSCOPE_API_KEY",
+        "api_base": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "nvidia", "label": "Nvidia NIM",
+        "env_key": "NVIDIA_API_KEY",
+        "api_base": "https://integrate.api.nvidia.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "nous", "label": "Nous Research",
+        "env_key": "NOUS_API_KEY",
+        "api_base": "https://inference.nousresearch.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "ollama_cloud", "label": "Ollama Cloud",
+        "env_key": "OLLAMA_API_KEY",
+        "api_base": "https://ollama.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "novita", "label": "Novita AI",
+        "env_key": "NOVITA_API_KEY",
+        "api_base": "https://api.novita.ai/openai/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "stepfun", "label": "StepFun",
+        "env_key": "STEPFUN_API_KEY",
+        "api_base": "https://api.stepfun.ai/step_plan/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "arcee", "label": "Arcee AI",
+        "env_key": "ARCEEAI_API_KEY",
+        "api_base": "https://api.arcee.ai/api/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "xiaomi", "label": "Xiaomi MiMo",
+        "env_key": "XIAOMI_API_KEY",
+        "api_base": "https://api.xiaomimimo.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "gmi", "label": "GMI Serving",
+        "env_key": "GMI_API_KEY",
+        "api_base": "https://api.gmi-serving.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "huggingface", "label": "Hugging Face Router",
+        "env_key": "HF_TOKEN",
+        "api_base": "https://router.huggingface.co/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "opencode_zen", "label": "OpenCode Zen",
+        "env_key": "OPENCODE_ZEN_API_KEY",
+        "api_base": "https://opencode.ai/zen/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "kilocode", "label": "Kilo Code",
+        "env_key": "KILOCODE_API_KEY",
+        "api_base": "https://api.kilo.ai/api/gateway",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "alibaba_coding", "label": "Alibaba Coding Plan (Qwen)",
+        "env_key": "ALIBABA_CODING_PLAN_API_KEY",
+        "api_base": "https://coding-intl.dashscope.aliyuncs.com/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "qwen", "label": "Qwen Portal",
+        "env_key": "QWEN_API_KEY",
+        "api_base": "https://portal.qwen.ai/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
+    },
+    {
+        "id": "cerebras", "label": "Cerebras",
+        "env_key": "CEREBRAS_API_KEY",
+        "api_base": "https://api.cerebras.ai/v1",
+        "base_url": None,
+        "default_model": "",
+        "models": [],
     },
     {
         # Local / self-hosted gateways: Ollama, LiteLLM proxy, vLLM. The endpoint

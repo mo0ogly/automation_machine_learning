@@ -132,10 +132,13 @@ cd backend && python -m pytest tests/test_api.py -q   # 44 tests, no network
 ## Roadmap
 
 - **LLM providers** — **done**: a settings panel (the `⚙ Moteur IA` button) manages multiple
-  OpenAI-compatible backends (Groq, OpenAI, Mistral, DeepSeek, Ollama/local), driven by a
-  server-side provider **catalog**, with per-backend **write-only keys** (or the provider env
-  var) and a connectivity **Test**. Next: Anthropic (its messages API differs) + a LiteLLM
-  gateway preset.
+  OpenAI-compatible backends driven by a server-side provider **catalog** of **26 vendors**
+  ported from [recette_IA_agents](https://github.com/mo0ogly/recette_IA_agents) — Groq, OpenAI,
+  Mistral, DeepSeek, xAI (Grok), OpenRouter, Together, Fireworks, Moonshot (Kimi), Z.AI (GLM),
+  DashScope/Qwen, Nvidia, Nous, Ollama Cloud, Novita, StepFun, Arcee, Xiaomi, GMI, Hugging Face,
+  OpenCode Zen, Kilo Code, Alibaba Coding Plan, Qwen Portal, Cerebras, and `openai_compat`
+  (Ollama/LiteLLM/vLLM with a per-backend base URL). Each backend has **write-only keys** (or the
+  provider env var — see `backend/.env.example`) and a connectivity **Test**.
 - **Session persistence** — **done**: sessions are mirrored to SQLite (`backend/sessions.db`)
   and survive a backend restart (toggle with `ML_PERSIST_SESSIONS`). Next: a shared store
   (Redis/Postgres) for a multi-process backend.

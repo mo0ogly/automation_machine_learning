@@ -190,6 +190,7 @@ def _cs_maps():
 
 def build(per_template, seed):
     rng = random.Random(seed)
+    random.seed(seed)  # OBFS transforms use the global RNG -> seed it for reproducibility
     tech2fam, tech2cls = _cs_maps()
     rows = []
     for fp in sorted((POC / "prompts").glob("*.json")):

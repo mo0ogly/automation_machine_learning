@@ -89,7 +89,10 @@ function App() {
       <header className="app-header glass-panel">
         <div className="logo">
           <LogoMark />
-          <h1>automation_<span>machine_learning</span></h1>
+          <div className="logo-text">
+            <h1>automation_<span>machine_learning</span></h1>
+            <span className="logo-tagline">données → modèle → prédiction</span>
+          </div>
         </div>
         <div className="header-right">
           <nav className="header-nav">

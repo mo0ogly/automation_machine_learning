@@ -41,10 +41,24 @@
   .logo-mark .lm-halo { animation: none; }
 }
 
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
 .logo h1 {
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0;
+}
+
+.logo .logo-tagline {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
 }
 
 .logo span {

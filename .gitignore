@@ -33,6 +33,8 @@ frontend/node_modules/
 # ─── Données internes (ne pas committer) ─────────────────
 data/*.ipynb
 data/*.pdf
+# Matrices de features régénérables (build_aegis_text_features.py)
+data/aegis_text_features/
 
 # ─── OS / editor ─────────────────────────────────────────
 .DS_Store

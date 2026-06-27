@@ -614,6 +614,20 @@ def get_model_card(session_id: str):
     return to_native(scoring.model_card(_require_trained(session_id)))
 
 
+@app.post("/api/session/{session_id}/explain")
+def explain_exploit(session_id: str, body: dict = Body(default={})):
+    """Contextual per-element AI helper for the Exploit view (model / prediction /
+    drivers). Reuses the generic assistant; `focus` is the element's data."""
+    session = _require_trained(session_id)
+    topic = str(body.get("topic") or "modele")
+    label = str(body.get("label") or "")
+    focus = body.get("focus") if isinstance(body.get("focus"), dict) else {}
+    level = str(body.get("level") or "novice")
+    out = llm_agent.assist("Le modèle en action", session.ctx.problem_type, topic, focus,
+                           session.journal_summary(), level, None, None)
+    return to_native({**out, "label": label})
+
+
 @app.post("/api/session/{session_id}/predict/batch")
 async def predict_batch(session_id: str, file: UploadFile = File(...)):
     """Score an uploaded CSV of new rows -> enriched CSV + a distribution summary."""

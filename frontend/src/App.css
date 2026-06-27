@@ -180,3 +180,9 @@
 .cyber-subhead .badge-cyber { margin-left: 0; }
 .other-subhead { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--text-tertiary); margin: 0.8rem 0 0.5rem; }
+
+/* Exploiter — chips IA contextuels */
+.xp-head-actions { display: inline-flex; align-items: center; gap: 0.4rem; }
+.xp-hero-main { min-width: 0; }
+.xp-hero-main .assist-btn { margin-top: 0.5rem; }
+.xp-hero-main .assist-answer, .xp-result .assist-answer, .xp-impact .assist-answer { margin-top: 0.6rem; }

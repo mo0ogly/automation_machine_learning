@@ -49,6 +49,68 @@ Chaque type de graphe a **une seule étape propriétaire** :
 - **Performance du modèle** (confusion, résidus, PCA, surapprentissage) → **Évaluation**.
 - **Importance des variables** → **Modélisation** (globale) et **Explicabilité** (SHAP).
 
+## Comment lire chaque graphe
+
+### Nettoyage
+- **Valeurs manquantes par colonne (%)** — barres horizontales, une par colonne,
+  triées par taux de manquant. *Lecture :* en haut = les plus incomplètes.
+  *Décision :* > 50 % manquant → retirer la colonne ; sinon → imputer.
+- **Aberrants — <var> (N hors IQR)** — boîte à moustaches. La boîte couvre Q1→Q3
+  (50 % central), le trait est la médiane, les moustaches vont à 1,5×IQR, les
+  points au-delà sont les aberrants ; *N hors IQR* est leur nombre. *Décision :*
+  beaucoup de points / longues moustaches → borner (IQR) ou supprimer les aberrants.
+- **Nettoyage : manquant global** (résultat) — % de cellules manquantes avant vs
+  après. *Lecture :* « après » doit être ~0 si l'imputation a fonctionné.
+
+### Transformation
+- **Distribution : <col>** — histogramme de la variable la plus asymétrique.
+  *Décision :* queue longue (skew) → normaliser (log / Box-Cox / Yeo-Johnson).
+- **Distribution — <var>** — histogramme par variable continue : forme, étalement, pics.
+- **Effectifs — <var>** — nombre d'observations par modalité (discret/nominal).
+  *Lecture :* modalités rares ou déséquilibre.
+- **<cible> selon <var>** (bivarié) — la cible en fonction de chaque variable.
+  *Lecture :* plus la cible varie selon la variable, plus celle-ci est prédictive.
+- **<col> — avant / après** (résultat) — effet de la transformation sur la distribution.
+
+### Intégration
+- **Corrélations entre variables** (heatmap) — corrélation deux à deux. *Lecture :*
+  cases vives = variables redondantes (colinéarité). *Décision :* retirer / PCA.
+- **|Corrélation| avec la cible** — force du lien de chaque variable avec la cible
+  (les plus prédictives en tête).
+- **Analyse bivariée : <feature> vs cible** — nuage de la variable la plus corrélée
+  avec la cible (forme de la relation : linéaire, non linéaire…).
+
+### Séparation
+- **Classes de <cible>** / **Distribution de <cible>** — répartition de la cible
+  (équilibre des classes en classification ; forme en régression).
+- **Équilibre des classes par jeu** / **Distribution de la cible par jeu** (résultat)
+  — compare train et test. *Lecture :* les deux doivent se ressembler (split représentatif).
+
+### Modélisation
+- **Importance des variables (top 12)** — poids de chaque variable dans le modèle.
+- **Méthode du coude — choix de K** — inertie vs K ; le « coude » suggère le bon K.
+- **Graphe k-distance — calibrer eps (DBSCAN)** — distance au k-ᵉ voisin triée ; le
+  coude donne `eps`.
+
+### Fine-tuning
+- **Score CV par combinaison d'hyperparamètres (top 10)** — performance en validation
+  croisée par configuration ; la meilleure combinaison ressort.
+
+### Évaluation
+- **Réel vs Prédit** (régression) — nuage ; idéal = sur la diagonale ; l'écart = erreur.
+- **Résidus** — erreurs vs prédictions ; doivent être centrées sur 0, sans structure.
+- **Matrice de confusion** (classification) — vrais/faux positifs et négatifs par classe.
+- **Contrôle du surapprentissage (train / test / CV)** — écart train vs test ; grand
+  écart = surapprentissage.
+- **Clusters (projection PCA)** — clusters projetés en 2D (séparation visuelle).
+- **Profil moyen des clusters (écarts standardisés)** — ce qui caractérise chaque cluster.
+- **Distribution des scores d'anomalie** / **Anomalies (projection PCA)** — scores et
+  points jugés anormaux.
+
+### Explicabilité
+- **SHAP summary** — contribution (et direction) de chaque variable aux prédictions, globalement.
+- **Waterfall** — décomposition d'UNE prédiction : ce qui la pousse vers le haut / le bas.
+
 ## Générateurs partagés
 
 - `pipeline/eda_plots.py` : `univariate_plots(df, t)` (un graphe par variable :

@@ -1,0 +1,172 @@
+{
+  "category_delta_matrix": {
+    "injection": {
+      "delta0": 2,
+      "delta1": 36,
+      "delta2": 47,
+      "delta3": 3
+    },
+    "rule_bypass": {
+      "delta0": 2,
+      "delta1": 25,
+      "delta2": 5,
+      "delta3": 0
+    },
+    "prompt_leak": {
+      "delta0": 0,
+      "delta1": 6,
+      "delta2": 0,
+      "delta3": 0
+    }
+  },
+  "empty_cells": [
+    {
+      "category": "rule_bypass",
+      "target_delta": "delta3"
+    },
+    {
+      "category": "prompt_leak",
+      "target_delta": "delta0"
+    },
+    {
+      "category": "prompt_leak",
+      "target_delta": "delta2"
+    },
+    {
+      "category": "prompt_leak",
+      "target_delta": "delta3"
+    }
+  ],
+  "sparse_cells_le3": [
+    {
+      "category": "injection",
+      "target_delta": "delta0",
+      "n": 2
+    },
+    {
+      "category": "injection",
+      "target_delta": "delta3",
+      "n": 3
+    },
+    {
+      "category": "rule_bypass",
+      "target_delta": "delta0",
+      "n": 2
+    }
+  ],
+  "shallow_techniques_le1_primary": {
+    "count": 64,
+    "ids": [
+      "alternate_reality_prompting",
+      "base_n_encoding",
+      "challenge_solving_prompting",
+      "cognitive_hacking",
+      "common_synonym_substitution",
+      "complex_task_overload",
+      "compromised_ingestion_process_injection",
+      "context_overflow_padding",
+      "context_overload_prompting",
+      "contextual_misdirection_prompting",
+      "contextual_pattern_reinforcement",
+      "detached_reality_prompting",
+      "detailed_request_distraction",
+      "euphemistic_substitution",
+      "explicit_instructional_text_completion",
+      "few_shot_learning_exploitation",
+      "fictional_reality_prompting",
+      "formatting_disruption",
+      "garbled_text",
+      "generation_length_bypass",
+      "hallucination_based_bypass",
+      "implicit_instructional_text_completion",
+      "in_prompt_fragment_concatenation",
+      "indirect_reference_substitution",
+      "instruction_legitimacy",
+      "instruction_repetition",
+      "intra_sentence_reordering",
+      "irrelevant_detail_distraction",
+      "irrelevant_safety_prioritization",
+      "isolated_context_prompting",
+      "leading_response",
+      "liability_waiver",
+      "low_resource_natural_language",
+      "orthographic_manipulation",
+      "phonetic_alphabet_transcription",
+      "phonetic_manipulation",
+      "phonetic_respelling",
+      "pig_latin_transformation",
+      "proactive_refusal_bypass",
+      "reasoning_conflict_induction",
+      "refusal_suppression",
+      "role_play_prompting",
+      "rule_addition_prompting",
+      "rule_nullification_prompting",
+      "sandwich_attack",
+      "scenario_based_secret_application",
+      "secret_comparison_probing",
+      "secret_linguistic_property_probing",
+      "sidestepping",
+      "simulated_conversation_learning_exploitation",
+      "simulated_harm_prompting",
+      "specific_secret_attribute_probing",
+      "style_constraint",
+      "talking_compositional_instruction_attack",
+      "task_deflection_prompting",
+      "technical_jargon_exploitation",
+      "test_mode_prompting",
+      "text_based_art",
+      "time_shift_scenario_prompting",
+      "typo_injection",
+      "unintelligible_input_prompting",
+      "unwitting_user_delivery",
+      "word_addition_removal",
+      "writing_compositional_instruction_attack"
+    ]
+  },
+  "deepest_techniques": [
+    {
+      "id": "homoglyph_visual_substitution",
+      "n": 18
+    },
+    {
+      "id": "attacker_owned_external_injection",
+      "n": 8
+    },
+    {
+      "id": "attacker_submitted_prompt_body_injection",
+      "n": 6
+    },
+    {
+      "id": "agent_to_agent_injection",
+      "n": 4
+    },
+    {
+      "id": "attacker_submitted_attached_data_injection",
+      "n": 3
+    },
+    {
+      "id": "attacker_compromised_external_injection",
+      "n": 3
+    },
+    {
+      "id": "pragmatic_manipulation",
+      "n": 2
+    },
+    {
+      "id": "privilege_escalation_prompting",
+      "n": 2
+    }
+  ],
+  "missing_axes_vs_other_datasets": [
+    "domain: AEGIS=medical/robotic ; synthetic=generic -> add `domain` axis",
+    "multi_turn: 44/126 AEGIS have chain_id ; absent in synthetic & ML datasets",
+    "objective: exfiltration/tool_abuse/misinformation present in synthetic, weakly represented as explicit objective axis in AEGIS",
+    "carrier/language: rich in synthetic, sparse/implicit in AEGIS"
+  ],
+  "fill_priorities_for_dataset3": [
+    "delta0 (RLHF/alignment-targeting attacks) - only 4 templates",
+    "delta3 (output-enforcement-targeting) - near empty",
+    "prompt_leak beyond delta1 - currently 6, all delta1",
+    "depth: 64/80 techniques have <=1 template -> augment via variables"
+  ]
+}

@@ -18,7 +18,7 @@ import pandas as pd
 import joblib
 from fastapi import FastAPI, UploadFile, File, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pathlib import Path
 
 from pipeline import SESSIONS
@@ -32,6 +32,7 @@ import llm_agent
 import routes_ai
 import routes_prompts
 import dataset_cards
+import model_export
 from pydantic import BaseModel
 from rl import GridWorld, train_qlearning, summarise
 from rl import plots as rl_plots
@@ -685,6 +686,16 @@ def download_model(session_id: str):
         "stage_recipe": {sid: r.config for sid, r in session.runs.items()},
     }, path)
     return FileResponse(path, filename="expert_model.pkl", media_type="application/octet-stream")
+
+
+@app.get("/api/session/{session_id}/export-bundle")
+def export_bundle(session_id: str):
+    """Turnkey, self-contained Python bundle (.zip) reproducing this model's predictions."""
+    session = _require_trained(session_id)
+    data = model_export.build_bundle(session)
+    fname = "aegis_model_" + session.id + ".zip"
+    return Response(content=data, media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="' + fname + '"'})
 
 
 if __name__ == "__main__":

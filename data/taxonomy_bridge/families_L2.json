@@ -1,0 +1,725 @@
+{
+  "summary": {
+    "templates_classified": 126,
+    "cs_techniques_total": 95,
+    "cs_coverage": "100% (all CrowdStrike techniques instantiated)",
+    "n_families_L2": 16,
+    "category_counts": {
+      "injection": 88,
+      "rule_bypass": 32,
+      "prompt_leak": 6
+    },
+    "delta_counts": {
+      "delta1": 66,
+      "delta0": 4,
+      "delta2": 52,
+      "delta3": 1,
+      "delta3_absent": 1,
+      "delta3_turned": 1,
+      "delta1_turned": 1
+    },
+    "templates_with_chain_id": 44,
+    "templates_with_detection_profile": 52,
+    "templates_parameterized": 97
+  },
+  "families": [
+    {
+      "family_id": "instruction_reformulation",
+      "cs_class": "evasive",
+      "n_techniques": 13,
+      "n_templates_primary": 27,
+      "techniques": [
+        {
+          "id": "homoglyph_visual_substitution",
+          "label": "Homoglyph/Visual Substitution",
+          "n_templates_primary": 18,
+          "n_templates_any": 18
+        },
+        {
+          "id": "orthographic_manipulation",
+          "label": "Orthographic Manipulation",
+          "n_templates_primary": 1,
+          "n_templates_any": 4
+        },
+        {
+          "id": "garbled_text",
+          "label": "Garbled Text",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "phonetic_respelling",
+          "label": "Phonetic Respelling",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "phonetic_manipulation",
+          "label": "Phonetic Manipulation",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "extraneous_character_injection",
+          "label": "Extraneous Character Injection",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "formatting_disruption",
+          "label": "Formatting Disruption",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "phonetic_alphabet_transcription",
+          "label": "Phonetic Alphabet Transcription",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "syntactic_decomposition",
+          "label": "Syntactic Decomposition",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "base_n_encoding",
+          "label": "Base-N Encoding",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "text_based_art",
+          "label": "Text-Based Art",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "character_array_decomposition",
+          "label": "Character Array Decomposition",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "in_prompt_fragment_concatenation",
+          "label": "In-Prompt Fragment Concatenation",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "indirect_context_data",
+      "cs_class": "indirect",
+      "n_techniques": 7,
+      "n_templates_primary": 22,
+      "techniques": [
+        {
+          "id": "attacker_owned_external_injection",
+          "label": "Attacker-Owned External Injection",
+          "n_templates_primary": 8,
+          "n_templates_any": 10
+        },
+        {
+          "id": "compromised_ingestion_process_injection",
+          "label": "Compromised Ingestion Process Injection",
+          "n_templates_primary": 1,
+          "n_templates_any": 7
+        },
+        {
+          "id": "agent_to_agent_injection",
+          "label": "Agent-to-Agent Injection",
+          "n_templates_primary": 4,
+          "n_templates_any": 6
+        },
+        {
+          "id": "attacker_influenced_external_injection",
+          "label": "Attacker-Influenced External Injection",
+          "n_templates_primary": 2,
+          "n_templates_any": 6
+        },
+        {
+          "id": "prior_llm_output_injection",
+          "label": "Prior LLM Output Injection",
+          "n_templates_primary": 2,
+          "n_templates_any": 4
+        },
+        {
+          "id": "attacker_compromised_external_injection",
+          "label": "Attacker-Compromised External Injection",
+          "n_templates_primary": 3,
+          "n_templates_any": 4
+        },
+        {
+          "id": "agent_memory_injection",
+          "label": "Agent Memory Injection",
+          "n_templates_primary": 2,
+          "n_templates_any": 3
+        }
+      ]
+    },
+    {
+      "family_id": "context_shift_prompting",
+      "cs_class": "social_cognitive",
+      "n_techniques": 22,
+      "n_templates_primary": 20,
+      "techniques": [
+        {
+          "id": "false_authorization_prompting",
+          "label": "False Authorization Prompting",
+          "n_templates_primary": 0,
+          "n_templates_any": 7
+        },
+        {
+          "id": "mode_switch_marking_prompting",
+          "label": "Mode Switch Marking Prompting",
+          "n_templates_primary": 2,
+          "n_templates_any": 4
+        },
+        {
+          "id": "contextual_misdirection_prompting",
+          "label": "Contextual Misdirection Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 4
+        },
+        {
+          "id": "alternate_reality_prompting",
+          "label": "Alternate Reality Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "specific_secret_attribute_probing",
+          "label": "Specific Secret Attribute Probing",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "privilege_escalation_prompting",
+          "label": "Privilege Escalation Prompting",
+          "n_templates_primary": 2,
+          "n_templates_any": 2
+        },
+        {
+          "id": "simulated_harm_prompting",
+          "label": "Simulated Harm Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "isolated_context_prompting",
+          "label": "Isolated Context Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "task_deflection_prompting",
+          "label": "Task Deflection Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "detached_reality_prompting",
+          "label": "Detached Reality Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "fictional_reality_prompting",
+          "label": "Fictional Reality Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "personality_assignment",
+          "label": "Personality Assignment",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "secret_definitional_probing",
+          "label": "Secret Definitional Probing",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "proactive_refusal_bypass",
+          "label": "Proactive Refusal Bypass",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "time_shift_scenario_prompting",
+          "label": "Time Shift Scenario Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "counterpart_persona_prompting",
+          "label": "Counterpart Persona Prompting",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "role_play_prompting",
+          "label": "Role Play Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "writing_compositional_instruction_attack",
+          "label": "Writing Compositional Instruction Attack",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "talking_compositional_instruction_attack",
+          "label": "Talking Compositional Instruction Attack",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "challenge_solving_prompting",
+          "label": "Challenge Solving Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "secret_comparison_probing",
+          "label": "Secret Comparison Probing",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "secret_linguistic_property_probing",
+          "label": "Secret Linguistic Property Probing",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "response_steering_prompting",
+      "cs_class": "social_cognitive",
+      "n_techniques": 17,
+      "n_templates_primary": 11,
+      "techniques": [
+        {
+          "id": "complex_task_overload",
+          "label": "Complex Task Overload",
+          "n_templates_primary": 1,
+          "n_templates_any": 5
+        },
+        {
+          "id": "instruction_legitimacy",
+          "label": "Instruction Legitimacy",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "leading_response",
+          "label": "Leading Response",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "interpersonal_persuasion_techniques",
+          "label": "Interpersonal Persuasion Techniques",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "decoy_task_prompting",
+          "label": "Decoy Task Prompting",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "instruction_repetition",
+          "label": "Instruction Repetition",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "irrelevant_safety_prioritization",
+          "label": "Irrelevant Safety Prioritization",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "false_constraint",
+          "label": "False Constraint",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "liability_waiver",
+          "label": "Liability Waiver",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "generation_length_bypass",
+          "label": "Generation Length Bypass",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "style_constraint",
+          "label": "Style Constraint",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "sandwich_attack",
+          "label": "Sandwich Attack",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "reasoning_process_hijacking",
+          "label": "Reasoning Process Hijacking",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "technical_jargon_exploitation",
+          "label": "Technical Jargon Exploitation",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "task_framing_bypass",
+          "label": "Task Framing Bypass",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "output_seeding",
+          "label": "Output Seeding",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "reasoning_conflict_induction",
+          "label": "Reasoning Conflict Induction",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "direct_prompt_injection",
+      "cs_class": "overt",
+      "n_techniques": 2,
+      "n_templates_primary": 9,
+      "techniques": [
+        {
+          "id": "attacker_submitted_prompt_body_injection",
+          "label": "Attacker-Submitted Prompt Body Injection",
+          "n_templates_primary": 6,
+          "n_templates_any": 8
+        },
+        {
+          "id": "attacker_submitted_attached_data_injection",
+          "label": "Attacker-Submitted Attached Data Injection",
+          "n_templates_primary": 3,
+          "n_templates_any": 4
+        }
+      ]
+    },
+    {
+      "family_id": "natural_language_manipulation",
+      "cs_class": "evasive",
+      "n_techniques": 9,
+      "n_templates_primary": 8,
+      "techniques": [
+        {
+          "id": "common_synonym_substitution",
+          "label": "Common Synonym Substitution",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "typo_injection",
+          "label": "Typo Injection",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "low_resource_language",
+          "label": "Low-Resource Language",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "euphemistic_substitution",
+          "label": "Euphemistic Substitution",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "pig_latin_transformation",
+          "label": "Pig Latin Transformation",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "low_resource_natural_language",
+          "label": "Low-Resource Natural Language",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "indirect_reference_substitution",
+          "label": "Indirect Reference Substitution",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "intra_sentence_reordering",
+          "label": "Intra-Sentence Reordering",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "word_addition_removal",
+          "label": "Word Addition/Removal",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "cognitive_control_bypass",
+      "cs_class": "social_cognitive",
+      "n_techniques": 3,
+      "n_templates_primary": 4,
+      "techniques": [
+        {
+          "id": "sidestepping",
+          "label": "Sidestepping",
+          "n_templates_primary": 1,
+          "n_templates_any": 5
+        },
+        {
+          "id": "pragmatic_manipulation",
+          "label": "Pragmatic Manipulation",
+          "n_templates_primary": 2,
+          "n_templates_any": 2
+        },
+        {
+          "id": "cognitive_hacking",
+          "label": "Cognitive Hacking",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "indirect_user_prompt_delivery",
+      "cs_class": "indirect",
+      "n_techniques": 3,
+      "n_templates_primary": 3,
+      "techniques": [
+        {
+          "id": "altered_prompt_delivery",
+          "label": "Altered Prompt Delivery",
+          "n_templates_primary": 2,
+          "n_templates_any": 4
+        },
+        {
+          "id": "llm_generated_delivery",
+          "label": "LLM-Generated Delivery",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        },
+        {
+          "id": "unwitting_user_delivery",
+          "label": "Unwitting User Delivery",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "semantic_manipulation",
+      "cs_class": "social_cognitive",
+      "n_techniques": 4,
+      "n_templates_primary": 3,
+      "techniques": [
+        {
+          "id": "rule_nullification_prompting",
+          "label": "Rule Nullification Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "rule_substitution_prompting",
+          "label": "Rule Substitution Prompting",
+          "n_templates_primary": 0,
+          "n_templates_any": 2
+        },
+        {
+          "id": "rule_addition_prompting",
+          "label": "Rule Addition Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "refusal_suppression",
+          "label": "Refusal Suppression",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "in_context_learning_exploitation",
+      "cs_class": "social_cognitive",
+      "n_techniques": 3,
+      "n_templates_primary": 3,
+      "techniques": [
+        {
+          "id": "few_shot_learning_exploitation",
+          "label": "Few-Shot Learning Exploitation",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "contextual_pattern_reinforcement",
+          "label": "Contextual Pattern Reinforcement",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "simulated_conversation_learning_exploitation",
+          "label": "Simulated Conversation Learning Exploitation",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "higher_level_functioning_disruption",
+      "cs_class": "social_cognitive",
+      "n_techniques": 3,
+      "n_templates_primary": 3,
+      "techniques": [
+        {
+          "id": "test_mode_prompting",
+          "label": "Test Mode Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 4
+        },
+        {
+          "id": "hallucination_based_bypass",
+          "label": "Hallucination-Based Bypass",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "unintelligible_input_prompting",
+          "label": "Unintelligible Input Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "distractor_instructions",
+      "cs_class": "evasive",
+      "n_techniques": 3,
+      "n_templates_primary": 3,
+      "techniques": [
+        {
+          "id": "detailed_request_distraction",
+          "label": "Detailed Request Distraction",
+          "n_templates_primary": 1,
+          "n_templates_any": 3
+        },
+        {
+          "id": "irrelevant_detail_distraction",
+          "label": "Irrelevant Detail Distraction",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        },
+        {
+          "id": "context_overflow_padding",
+          "label": "Context Overflow Padding",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "morpho_syntactic_manipulation",
+      "cs_class": "evasive",
+      "n_techniques": 2,
+      "n_templates_primary": 2,
+      "techniques": [
+        {
+          "id": "explicit_instructional_text_completion",
+          "label": "Explicit Instructional Text Completion",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        },
+        {
+          "id": "implicit_instructional_text_completion",
+          "label": "Implicit Instructional Text Completion",
+          "n_templates_primary": 1,
+          "n_templates_any": 1
+        }
+      ]
+    },
+    {
+      "family_id": "instruction_obfuscation",
+      "cs_class": "evasive",
+      "n_techniques": 2,
+      "n_templates_primary": 1,
+      "techniques": [
+        {
+          "id": "surrogate_format_prompting",
+          "label": "Surrogate Format Prompting",
+          "n_templates_primary": 0,
+          "n_templates_any": 4
+        },
+        {
+          "id": "context_overload_prompting",
+          "label": "Context Overload Prompting",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        }
+      ]
+    },
+    {
+      "family_id": "scenario_based_secret_application",
+      "cs_class": "evasive",
+      "n_techniques": 1,
+      "n_templates_primary": 1,
+      "techniques": [
+        {
+          "id": "scenario_based_secret_application",
+          "label": "Scenario-Based Secret Application",
+          "n_templates_primary": 1,
+          "n_templates_any": 2
+        }
+      ]
+    },
+    {
+      "family_id": "transform_activated_visual_payload",
+      "cs_class": "evasive",
+      "n_techniques": 1,
+      "n_templates_primary": 0,
+      "techniques": [
+        {
+          "id": "transform_activated_visual_payload",
+          "label": "Transform-Activated Visual Payload",
+          "n_templates_primary": 0,
+          "n_templates_any": 1
+        }
+      ]
+    }
+  ]
+}

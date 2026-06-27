@@ -89,8 +89,10 @@ export default function ModelsMenu({ apiBase, onClose }) {
                     <td>{fmtDate(s.updated_at)}</td>
                     <td>
                       <span className="ai-test-row">
-                        <a className="ai-btn ai-btn-primary" href={apiBase + '/api/session/' + s.id + '/download-model'}
-                          target="_blank" rel="noreferrer">Télécharger .pkl</a>
+                        <a className="ai-btn ai-btn-primary" href={apiBase + '/api/session/' + s.id + '/export-bundle'}
+                          target="_blank" rel="noreferrer" title="Bundle Python autonome (modèle + données + code + predict.py)">Bundle .zip</a>
+                        <a className="ai-btn" href={apiBase + '/api/session/' + s.id + '/download-model'}
+                          target="_blank" rel="noreferrer" title="Modèle brut (features déjà transformées)">.pkl</a>
                         <button type="button" className="ai-btn" onClick={() => openSession(s.id)}>Ouvrir</button>
                       </span>
                     </td>

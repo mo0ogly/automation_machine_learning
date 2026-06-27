@@ -1,0 +1,101 @@
+{
+  "note": "axis=objective => pas de mecanisme CrowdStrike equivalent (axe orthogonal)",
+  "map": {
+    "instruction_override": {
+      "family_id": "semantic_manipulation",
+      "objective": "rule_subversion",
+      "axis": "mechanism",
+      "confidence": "high",
+      "cs_anchor": "rule_nullification_prompting",
+      "note": "Annuler/remplacer les consignes = rule nullification/substitution."
+    },
+    "delimiter_injection": {
+      "family_id": "instruction_reformulation",
+      "objective": "context_escape",
+      "axis": "mechanism",
+      "confidence": "medium",
+      "cs_anchor": "formatting_disruption",
+      "note": "Faux delimiteurs = perturbation de format / echappement du bac a sable de donnee."
+    },
+    "role_hijack": {
+      "family_id": "context_shift_prompting",
+      "objective": "persona_takeover",
+      "axis": "mechanism",
+      "confidence": "high",
+      "cs_anchor": "role_play_prompting",
+      "note": "Reassignation de persona/role."
+    },
+    "fake_authority": {
+      "family_id": "context_shift_prompting",
+      "objective": "authority_spoof",
+      "axis": "mechanism",
+      "confidence": "high",
+      "cs_anchor": "false_authorization_prompting",
+      "note": "Usurpation d'autorite systeme/admin."
+    },
+    "refusal_suppression": {
+      "family_id": "semantic_manipulation",
+      "objective": "guardrail_bypass",
+      "axis": "mechanism",
+      "confidence": "high",
+      "cs_anchor": "refusal_suppression",
+      "note": "Correspondance exacte : refusal_suppression existe dans CrowdStrike."
+    },
+    "system_prompt_leak": {
+      "family_id": "context_shift_prompting",
+      "objective": "secret_extraction",
+      "axis": "mixed",
+      "confidence": "medium",
+      "cs_anchor": "specific_secret_attribute_probing",
+      "note": "Mecanisme = secret probing ; objectif = extraction du prompt systeme."
+    },
+    "data_exfiltration": {
+      "family_id": null,
+      "objective": "exfiltration",
+      "axis": "objective",
+      "confidence": "na",
+      "cs_anchor": null,
+      "note": "OBJECTIF (OWASP LLM02/06), pas un mecanisme CrowdStrike. Axe orthogonal."
+    },
+    "tool_abuse": {
+      "family_id": null,
+      "objective": "tool_agency_abuse",
+      "axis": "objective",
+      "confidence": "na",
+      "cs_anchor": null,
+      "note": "OBJECTIF (OWASP LLM06 excessive agency). Axe orthogonal."
+    },
+    "output_manipulation": {
+      "family_id": "response_steering_prompting",
+      "objective": "output_integrity",
+      "axis": "mixed",
+      "confidence": "low",
+      "cs_anchor": "output_seeding",
+      "note": "Mecanisme proche = output_seeding/leading_response ; objectif = integrite de sortie (LLM05)."
+    },
+    "misinformation_seed": {
+      "family_id": "response_steering_prompting",
+      "objective": "misinformation",
+      "axis": "mixed",
+      "confidence": "low",
+      "cs_anchor": "leading_response",
+      "note": "Mecanisme = leading_response/output_seeding ; objectif = desinformation (LLM09)."
+    },
+    "conditional_trigger": {
+      "family_id": null,
+      "objective": "deferred_trigger",
+      "axis": "objective",
+      "confidence": "na",
+      "cs_anchor": null,
+      "note": "Declenchement conditionnel/differe : axe temporel orthogonal, pas un mecanisme CS."
+    },
+    "staged_multistep": {
+      "family_id": null,
+      "objective": "multi_turn",
+      "axis": "objective",
+      "confidence": "na",
+      "cs_anchor": null,
+      "note": "Attaque multi-etapes : correspond a l'axe chain_id d'AEGIS, pas a une technique CS."
+    }
+  }
+}

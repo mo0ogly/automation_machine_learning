@@ -16,7 +16,7 @@ const PromptsPanel = lazy(() => import('./components/PromptsPanel'))
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Map a prompt's localisation.view to a top-nav view id.
-const VIEW_OF = { 'Pipeline': 'dashboard', 'Renforcement': 'rl' };
+const VIEW_OF = { 'Pipeline': 'dashboard', 'Renforcement': 'rl', 'Exploiter': 'exploit' };
 
 // App mark: a small neural-network glyph — 3 inputs -> 3 hidden -> 1 output —
 // symbolising the pipeline's "données -> modèle -> prédiction". The output node

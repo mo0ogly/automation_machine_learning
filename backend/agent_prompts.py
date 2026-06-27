@@ -249,7 +249,35 @@ _RECO_LOC = {
     "loc": "recommend",
 }
 
-# Static metadata for the three system prompts. Few-shot entries are appended
+DEFAULT_EXECUTIVE_SYSTEM = (
+    "Tu es un consultant en science des données qui s'adresse à un décideur NON technique, en français. "
+    "À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), explique simplement : "
+    "à quoi sert concrètement ce modèle, sa fiabilité, ses limites, et un verdict d'usage. ZÉRO jargon. "
+    'Réponds en JSON strict : {"headline": "à quoi sert le modèle, en une phrase claire", '
+    '"verdict": "Déployable" | "À utiliser avec prudence" | "Pas encore prêt", '
+    '"points": ["4 à 6 phrases courtes orientées valeur métier et risque"], '
+    '"recommendations": ["2 à 4 précautions d\'usage"], "confidence": 0.0..1.0}.'
+)
+DEFAULT_EXPERT_SYSTEM = (
+    "Tu es un data scientist senior qui réalise une revue critique et rigoureuse d'un modèle, "
+    "en français. À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), évalue : "
+    "pertinence de l'algorithme, lecture des métriques en contexte, diagnostic de surapprentissage, "
+    "critique des variables influentes, risques (fuite de données, biais, dérive temporelle), et "
+    "prochaines expériences concrètes. Sois précis et chiffré quand les données le permettent. "
+    'Réponds en JSON strict : {"headline": "synthèse technique en une phrase", '
+    '"verdict": "verdict technique court", "points": ["4 à 6 constats critiques précis"], '
+    '"recommendations": ["3 à 5 actions concrètes priorisées"], "confidence": 0.0..1.0}.'
+)
+
+_ANALYZE_LOC = {
+    "view": "Exploiter",
+    "trigger": "Boutons « Synthèse exécutive » / « Revue analyste expert » de la vue Exploiter",
+    "endpoint": "POST /api/session/{id}/analyze",
+    "component": "frontend/src/components/ExploitView.jsx",
+    "loc": "analyze",
+}
+
+# Static metadata for the system prompts. Few-shot entries are appended
 # programmatically below (one per stage).
 _SYSTEM_ENTRIES = [
     {
@@ -279,6 +307,16 @@ _SYSTEM_ENTRIES = [
             "loc": "assist",
         },
     },
+    {
+        "id": "executive_system", "kind": "text", "label": "Analyse — Synthèse exécutive (décideur)",
+        "description": "Persona « décideur non technique » de la vue Exploiter : à quoi sert le modèle, fiabilité, verdict d'usage.",
+        "localisation": _ANALYZE_LOC,
+    },
+    {
+        "id": "expert_system", "kind": "text", "label": "Analyse — Revue analyste expert",
+        "description": "Persona « data scientist senior » de la vue Exploiter : revue critique, métriques, surapprentissage, risques.",
+        "localisation": _ANALYZE_LOC,
+    },
 ]
 
 
@@ -290,6 +328,10 @@ def get_default(prompt_id: str):
         return DEFAULT_INTERPRET_SYSTEM
     if prompt_id == "assist_system":
         return DEFAULT_ASSIST_SYSTEM
+    if prompt_id == "executive_system":
+        return DEFAULT_EXECUTIVE_SYSTEM
+    if prompt_id == "expert_system":
+        return DEFAULT_EXPERT_SYSTEM
     if prompt_id.startswith("fewshot_"):
         base = DEFAULT_STAGE_EXAMPLES.get(prompt_id[len("fewshot_"):])
         return {"input": base[0], "output": base[1]} if base else None
@@ -332,3 +374,9 @@ def is_valid_id(prompt_id: str) -> bool:
 
 def kind_of(prompt_id: str):
     return next((e["kind"] for e in _entries() if e["id"] == prompt_id), None)
+
+
+def persona_system(persona: str) -> str:
+    """Editable system prompt for an Exploit analysis persona (executive / expert)."""
+    pid = "expert_system" if persona == "expert" else "executive_system"
+    return prompt_store.STORE.resolve(pid, get_default(pid))

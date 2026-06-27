@@ -191,27 +191,9 @@ def expert_review(model_summary: dict, journal: str = "") -> dict:
 
 
 def _persona_messages(persona: str, ms: dict, journal: str) -> list:
-    if persona == "expert":
-        system = (
-            "Tu es un data scientist senior qui réalise une revue critique et rigoureuse d'un modèle, "
-            "en français. À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), évalue : "
-            "pertinence de l'algorithme, lecture des métriques en contexte, diagnostic de surapprentissage, "
-            "critique des variables influentes, risques (fuite de données, biais, dérive temporelle), et "
-            "prochaines expériences concrètes. Sois précis et chiffré quand les données le permettent. "
-            'Réponds en JSON strict : {"headline": "synthèse technique en une phrase", '
-            '"verdict": "verdict technique court", "points": ["4 à 6 constats critiques précis"], '
-            '"recommendations": ["3 à 5 actions concrètes priorisées"], "confidence": 0.0..1.0}.'
-        )
-    else:
-        system = (
-            "Tu es un consultant en science des données qui s'adresse à un décideur NON technique, en français. "
-            "À partir UNIQUEMENT des éléments fournis (ne JAMAIS inventer de chiffre), explique simplement : "
-            "à quoi sert concrètement ce modèle, sa fiabilité, ses limites, et un verdict d'usage. ZÉRO jargon. "
-            'Réponds en JSON strict : {"headline": "à quoi sert le modèle, en une phrase claire", '
-            '"verdict": "Déployable" | "À utiliser avec prudence" | "Pas encore prêt", '
-            '"points": ["4 à 6 phrases courtes orientées valeur métier et risque"], '
-            '"recommendations": ["2 à 4 précautions d\'usage"], "confidence": 0.0..1.0}.'
-        )
+    # Prompt éditable + repérable (panneau « Prompts IA »), pas de hardcoding —
+    # voir .claude/rules/prompt-governance.md.
+    system = agent_prompts.persona_system(persona)
     # Defence at the data->instruction boundary (OWASP LLM01): `target` and
     # `top_features` are user-supplied CSV column names. Neutralise them and wrap
     # the block in explicit delimiters so the model treats it as data, not orders.

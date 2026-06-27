@@ -7,6 +7,7 @@
 | Fichier | Contenu |
 |---------|---------|
 | `.claude/rules/programming.md` | Regles React, Go, Python, General (zero emoticon, zero placeholder) |
+| `.claude/rules/prompt-governance.md` | **Prompts LLM : ZERO hardcoding, chaque prompt editable (panneau Prompts IA) + reperable (Localiser)** |
 | `.claude/rules/doctoral-research.md` | Exigences doctorales, skills ecosystem, triple verification, references cles |
 | `.claude/rules/mathematical-analysis.md` | Analyse mathematique : qualification epistemique, hypotheses, verification preuves, rigueur statistique |
 | `.claude/rules/redteam-analysis.md` | Analyse red team : classification vecteurs, threat model, ASR critique, reproductibilite, integration AEGIS |

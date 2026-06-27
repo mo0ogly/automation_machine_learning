@@ -18,6 +18,40 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // Map a prompt's localisation.view to a top-nav view id.
 const VIEW_OF = { 'Pipeline': 'dashboard', 'Renforcement': 'rl' };
 
+// App mark: a small neural-network glyph — 3 inputs -> 3 hidden -> 1 output —
+// symbolising the pipeline's "données -> modèle -> prédiction". The output node
+// is success-green (the prediction); the rest uses the brand blue->violet
+// gradient. Theme-driven via CSS variables so it tracks the palette.
+function LogoMark() {
+  const L1 = [9, 16, 23];
+  const L2 = [8, 16, 24];
+  const xIn = 7, xHid = 16, xOut = 25, yOut = 16;
+  return (
+    <svg className="logo-mark" viewBox="0 0 32 32" role="img" aria-label="automation_machine_learning">
+      <defs>
+        <linearGradient id="lm-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="var(--accent-primary)" />
+          <stop offset="100%" stopColor="var(--accent-secondary)" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="30" height="30" rx="8" fill="none"
+        stroke="url(#lm-grad)" strokeWidth="1.1" opacity="0.30" />
+      {L1.map((a, i) => L2.map((b, j) => (
+        <line key={'e1-' + i + '-' + j} x1={xIn} y1={a} x2={xHid} y2={b}
+          stroke="url(#lm-grad)" strokeWidth="0.6" opacity="0.32" />
+      )))}
+      {L2.map((b, j) => (
+        <line key={'e2-' + j} x1={xHid} y1={b} x2={xOut} y2={yOut}
+          stroke="url(#lm-grad)" strokeWidth="0.8" opacity="0.55" />
+      ))}
+      {L1.map((y, i) => <circle key={'n1-' + i} cx={xIn} cy={y} r="2.1" fill="url(#lm-grad)" />)}
+      {L2.map((y, j) => <circle key={'n2-' + j} cx={xHid} cy={y} r="2.1" fill="url(#lm-grad)" />)}
+      <circle className="lm-halo" cx={xOut} cy={yOut} r="4.6" fill="var(--status-success)" opacity="0.22" />
+      <circle cx={xOut} cy={yOut} r="2.7" fill="var(--status-success)" />
+    </svg>
+  );
+}
+
 function App() {
   const [view, setView] = useState('dashboard')
   // Global config menu (top-right): the AI backends panel is reachable from any
@@ -54,7 +88,7 @@ function App() {
     <div className="app-container">
       <header className="app-header glass-panel">
         <div className="logo">
-          <div className="logo-icon animate-pulse"></div>
+          <LogoMark />
           <h1>automation_<span>machine_learning</span></h1>
         </div>
         <div className="header-right">

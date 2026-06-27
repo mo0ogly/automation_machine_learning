@@ -16,6 +16,7 @@ import pandas as pd
 
 from .. import diagnostics as dg
 from .. import typology as typ
+from .. import eda_plots as eda
 from ..plotting import style_plot, fig_to_base64, message_plot
 from .base import select, toggle, rng, number, column_table, counts
 
@@ -170,11 +171,14 @@ def diagnose(df, ctx):
         plots.append(fig_to_base64(fig))
     else:
         plots.append(message_plot("Aucune valeur manquante détectée."))
-    # Distributions + boxplots of the most-variable numeric columns make the cleaning
-    # decisions visible (skew -> normalise, spread/outliers -> IQR), not just tabular.
+    # One figure per variable (same density as Transformation) so cleaning decisions
+    # are visible variable by variable: distributions reveal skew, count plots reveal
+    # imbalance/rare modalities. Plus a single boxplots overview for outliers / IQR.
+    t = typ.classify(df, ctx.target_col)
+    uni, _ = eda.univariate_plots(df, t)
+    plots.extend(uni)
     num_cols = _numeric_plot_columns(df, ctx.target_col)
     if num_cols:
-        plots.append(fig_to_base64(_distributions_plot(df, num_cols)))
         plots.append(fig_to_base64(_boxplots_plot(df, num_cols)))
     # The per-column keep/drop decision lives in the config table (config_schema),
     # so it is not duplicated here as a read-only diagnostic.
@@ -360,26 +364,6 @@ def _numeric_plot_columns(df, target, k=8):
         return []
     var = df[num].var(numeric_only=True).sort_values(ascending=False)
     return [str(c) for c in var.index[:k]]
-
-
-def _distributions_plot(df, cols):
-    """Small-multiples histograms — spread + skew of each numeric column."""
-    import matplotlib.pyplot as plt
-    ncol = min(4, len(cols))
-    nrow = (len(cols) + ncol - 1) // ncol
-    fig, axes = plt.subplots(nrow, ncol, figsize=(3.1 * ncol, 2.3 * nrow))
-    axes = np.atleast_1d(axes).ravel()
-    for i, c in enumerate(cols):
-        s = pd.to_numeric(df[c], errors="coerce").dropna()
-        if len(s):
-            axes[i].hist(s, bins=30, color="#e94560", edgecolor="#0f3460")
-        axes[i].set_title(str(c), fontsize=8)
-        axes[i].tick_params(labelsize=6)
-    for j in range(len(cols), len(axes)):
-        axes[j].axis("off")
-    fig.suptitle("Distributions des variables numériques")
-    fig.tight_layout()
-    return fig
 
 
 def _boxplots_plot(df, cols):

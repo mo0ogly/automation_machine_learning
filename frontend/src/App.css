@@ -150,3 +150,8 @@
 }
 .cyber-head .badge-cyber { margin-left: 0; }
 .cyber-row strong { color: #fca5a5; }
+.cyber-subhead { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0.1rem 0 0.5rem; }
+.cyber-subhead .badge-cyber { margin-left: 0; }
+.other-subhead { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-tertiary); margin: 0.8rem 0 0.5rem; }

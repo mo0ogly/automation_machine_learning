@@ -6,6 +6,7 @@ import AiBackendButton from './AiBackendButton';
 import AiBackendsPanel from './AiBackendsPanel';
 import DatasetCardModal from './DatasetCardModal';
 import SessionsMenu from './SessionsMenu';
+import { isCyber } from './cyber';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import './components.css';
@@ -321,8 +322,22 @@ const Dashboard = ({ aiRefresh }) => {
     setConfig({}); setReco(null); setInsights([]); setSubPhase('observe'); setError(null);
   };
 
+  // One demo-dataset row (badged when it is a cyber dataset).
+  const renderDemo = (ds, cyber) => (
+    <div key={ds.name} className="demo-row">
+      <button className="btn btn-demo" onClick={() => startDemo(ds.name)} disabled={busy}>
+        <strong>{ds.type}</strong>{cyber ? <span className="badge-cyber">CYBER</span> : null}<br />
+        <span className="demo-desc">{ds.description}</span>
+      </button>
+      <button type="button" className="demo-info-btn" title="Voir la fiche du jeu de données"
+        onClick={() => setCardName(ds.name)}>i</button>
+    </div>
+  );
+
   // ── Landing (no session) ──────────────────────────────────────────────
   if (!session) {
+    const cyberDemos = demoDatasets.filter((d) => isCyber(d.name));
+    const otherDemos = demoDatasets.filter((d) => !isCyber(d.name));
     return (
       <div className="landing">
         <div className="panel glass-panel landing-card">
@@ -344,16 +359,18 @@ const Dashboard = ({ aiRefresh }) => {
 
           <div className="card mt-2">
             <h3 className="text-sm text-secondary mb-2">Ou un jeu de démonstration</h3>
-            {demoDatasets.map((ds) => (
-              <div key={ds.name} className="demo-row">
-                <button className="btn btn-demo" onClick={() => startDemo(ds.name)} disabled={busy}>
-                  <strong>{ds.type}</strong><br />
-                  <span className="demo-desc">{ds.description}</span>
-                </button>
-                <button type="button" className="demo-info-btn" title="Voir la fiche du jeu de données"
-                  onClick={() => setCardName(ds.name)}>i</button>
+            {cyberDemos.length ? (
+              <div className="cyber-block">
+                <div className="cyber-subhead"><span className="badge-cyber">CYBER</span> Jeux cyber</div>
+                {cyberDemos.map((ds) => renderDemo(ds, true))}
               </div>
-            ))}
+            ) : null}
+            {otherDemos.length ? (
+              <>
+                {cyberDemos.length ? <div className="other-subhead">Autres jeux</div> : null}
+                {otherDemos.map((ds) => renderDemo(ds, false))}
+              </>
+            ) : null}
           </div>
 
           {recentSessions.length ? (
@@ -373,7 +390,10 @@ const Dashboard = ({ aiRefresh }) => {
                   return (
                     <button key={s.id} type="button" className="recent-row" disabled={busy}
                       onClick={() => openSessionById(s.id)} title="Rouvrir cette session">
-                      <span className="recent-name">{s.filename || '(sans nom)'}</span>
+                      <span className="recent-name">
+                        {s.filename || '(sans nom)'}
+                        {isCyber(s.filename) ? <span className="badge-cyber">CYBER</span> : null}
+                      </span>
                       <span className={sm.model ? 'recent-model recent-model-on' : 'recent-model'}>
                         {sm.model ? '● ' + sm.model : '○ pas de modèle'}
                       </span>

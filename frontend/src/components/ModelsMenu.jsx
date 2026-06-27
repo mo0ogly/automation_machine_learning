@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { isCyber } from './cyber';
 
 // Trained-models browser (top-right header). A model lives inside the session
 // that produced it, so this is a focused, cross-session view of every session
@@ -9,15 +10,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 const PTYPE_LABELS = {
   regression: 'Régression', classification: 'Classification',
   clustering: 'Clustering', anomaly: "Détection d'anomalies",
-};
-
-// A model is "cyber" when its dataset name matches a security keyword. Adjust
-// this list to taste — it drives the pinned "Modèles cyber" section + badge.
-const CYBER_KEYWORDS = ['cyber', 'prompt', 'injection', 'fraud', 'malware', 'phishing',
-  'intrusion', 'threat', 'attack', 'exploit', 'vuln', 'anomal', 'transaction'];
-const isCyber = (name) => {
-  const n = (name || '').toLowerCase();
-  return CYBER_KEYWORDS.some((k) => n.includes(k));
 };
 
 function fmtDate(iso) {

@@ -568,12 +568,11 @@
 .plot-img { width: 100%; height: auto; max-height: 360px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-subtle); display: block; }
 
 /* captioned figure: thumbnail + caption row with a per-graph AI button.
-   content-visibility:auto lets the browser skip rasterising figures while they are
-   off-screen, so a view with many base64 plots no longer freezes the renderer on load.
-   contain-intrinsic-size reserves an estimated height (keeps the scrollbar stable);
-   `auto` makes the browser remember each figure's real size once it has been rendered. */
-.plot-fig { margin: 0; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0;
-  content-visibility: auto; contain-intrinsic-size: auto 340px; }
+   Figures are always rendered — NO content-visibility:auto. With many heavy base64
+   plots in the Graphiques tab, skipping/repainting off-screen figures made them
+   flicker and blank out while scrolling. decoding=async (on the <img>) keeps decode
+   off the main thread instead, so the page stays responsive without the blanking. */
+.plot-fig { margin: 0; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 .plot-cap { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .plot-cap-txt { font-size: 0.74rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

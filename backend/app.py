@@ -46,7 +46,16 @@ EXPORT_DIR = Path(__file__).parent / "exports"
 _ANOMALY_DEMOS = {"transactions.csv"}
 # Columns dropped at load for a clean demo: a non-predictive key, and a second
 # target that would leak (cyber_risk ships both risk_score and risk_label).
-_DEMO_DROP = {"cyber_risk.csv": ["asset_id", "risk_score"]}
+_DEMO_DROP = {
+    "cyber_risk.csv": ["asset_id", "risk_score"],
+    # Mixed corpus ships the full hierarchical label schema; for the L0 detection
+    # demo keep only the surface features + `label` and drop every other label axis
+    # (they would leak the binary target).
+    "prompt_injection_mixed.csv": [
+        "family_l2", "technique_l3", "target_delta", "objective",
+        "multi_turn", "obfuscation", "source", "domain", "template_group",
+    ],
+}
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,6 +100,8 @@ def list_demo_datasets():
          "description": "Détection d'injection de prompt — prévoir les attaques (synthétique)"},
         {"name": "prompt_injection_technique.csv", "type": "Classification multiclasse",
          "description": "Type d'injection de prompt — 12 techniques (synthétique)"},
+        {"name": "prompt_injection_mixed.csv", "type": "Classification binaire",
+         "description": "Détection d'injection — corpus mixte synthétique + médical AEGIS"},
         {"name": "house_price_data.csv", "type": "Régression",
          "description": "Prix immobiliers — biens & variables"},
         {"name": "breastcancer.csv", "type": "Classification binaire",

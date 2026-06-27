@@ -178,6 +178,50 @@ CARDS = {
         ],
     },
 
+    # ── New: mixed corpus, L0 detection demo ────────────────────────────
+    "prompt_injection_mixed.csv": {
+        "title": "Détection d'injection — corpus mixte (synthétique + médical AEGIS)",
+        "type": "Classification binaire (injection / benign)",
+        "synthetic": True,
+        "rows": 8926, "cols": 26,
+        "target": "label — injection / benign",
+        "source": (
+            "Fusion de 3 jeux : corpus synthétique (1000) + augmentation des templates réels AEGIS "
+            "médicaux/robotiques (7926). Voir data/taxonomy_bridge/README.md."
+        ),
+        "summary": (
+            "Démo de détection (niveau L0) sur le corpus mixte : 1000 segments synthétiques génériques "
+            "+ 7926 instances issues de l'augmentation des templates d'attaque réels AEGIS (domaine "
+            "médical). Pour cette démo on ne garde que les variables de surface et la cible binaire ; "
+            "les autres axes du schéma hiérarchique (technique, famille, couche δ, objectif, obfuscation, "
+            "domaine, source) sont retirés au chargement car ils fuiteraient la cible."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables", "table": [
+                ["text_length / word_count / line_count", "Taille du segment"],
+                ["trigger_keyword_count / role_keyword_count", "Mots d'ordre / réassignation de rôle"],
+                ["delimiter_marker_count / has_base64_blob / url_count", "Marqueurs structurels / charge encodée / URL"],
+                ["zero_width_count / non_ascii_ratio", "Signaux d'obfuscation"],
+                ["uppercase_ratio / digit_ratio / punct_ratio", "Densités typographiques"],
+                ["carrier / language", "Canal et langue (observables)"],
+                ["label", "Cible : injection / benign (≈5273 / 3653)"],
+            ]},
+            {"heading": "Pourquoi seulement la détection (L0)", "text": (
+                "En évaluation honnête (split GROUPÉ par template, GroupKFold), seules la détection (L0, "
+                "F1 ≈ 0.99) et la couche δ (≈0.53) généralisent ; la famille (≈0.17) et la technique fine "
+                "(≈0.03) s'effondrent — les scores élevés en split aléatoire sont de la fuite par "
+                "mémorisation de template. La plateforme faisant un split aléatoire, on n'expose ici que "
+                "la cible L0, qui reste fiable dans ce régime."
+            )},
+            {"heading": "Recommandations ML", "text": (
+                "One-hot pour carrier / language. Attention au biais de domaine : medical≈AEGIS, "
+                "generic≈synthétique — la colonne domain est retirée pour ne pas servir de raccourci. "
+                "Pour les niveaux fins (famille/technique/δ), travailler hors plateforme avec un "
+                "GroupKFold sur template_group (jeu data/prompt_injection_aegis.csv)."
+            )},
+        ],
+    },
+
     # ── Existing demos ──────────────────────────────────────────────────
     "house_price_data.csv": {
         "title": "Prix immobiliers — Ames Housing",

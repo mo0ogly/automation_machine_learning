@@ -69,3 +69,33 @@
 .ai-btn-on { color: var(--accent-primary); border-color: var(--accent-primary); }
 .ai-params-row > td { background: var(--bg-surface); padding: 0.8rem 1rem; }
 .ai-params-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+
+/* ── backend creation : health indicator + onboarding + form actions ─────── */
+.ai-health-bar {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  padding: 0.5rem 0.7rem; margin: 0.4rem 0 0.6rem;
+  border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--bg-surface);
+  font-size: 0.82rem;
+}
+.ai-health-label { font-weight: 600; color: var(--text-secondary); }
+.ai-health-check { margin-left: auto; }
+.ai-health-txt { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ai-health-txt.ok { color: var(--status-success); }
+.ai-health-txt.bad { color: var(--status-error); }
+.ai-health-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.ai-health-dot.ok { background: var(--status-success); }
+.ai-health-dot.bad { background: var(--status-error); }
+.ai-health-dot.checking { background: var(--status-warning); animation: ai-dot-pulse 1s ease-in-out infinite; }
+@keyframes ai-dot-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.ai-onboard {
+  padding: 0.8rem 1rem; margin: 0.4rem 0 0.8rem; font-size: 0.85rem; line-height: 1.5;
+  border: 1px dashed var(--border-highlight); border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-primary) 6%, transparent); color: var(--text-secondary);
+}
+.ai-catalog-empty { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; color: var(--status-warning); }
+.ai-form-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.6rem; }
+
+.ai-engine-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.4rem; flex: none; }
+.ai-engine-dot.ok { background: var(--status-success); }
+.ai-engine-dot.off { background: var(--text-tertiary); }

@@ -15,9 +15,36 @@ from fastapi import APIRouter, Body, HTTPException
 
 import ai_providers
 import ai_store
+import env_loader
 import inference_params
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
+
+_PING = "ping (réponds en un seul mot)"
+
+
+def _probe(api_base: str, key: str, model: str, prompt: str = _PING, timeout: float = 30.0) -> dict:
+    """One-shot connectivity check against an OpenAI-compatible endpoint. Returns
+    ``{ok, latency_ms, text|error}``. Never raises — a failure is reported, not
+    thrown. Key material stays server-side (only used for the Authorization header)."""
+    payload = {"model": model, "messages": [{"role": "user", "content": prompt[:2000]}],
+               "temperature": 0, "max_tokens": 64}
+    if "gpt-oss" in model:
+        payload["reasoning_effort"] = "low"
+    elif "qwen" in model:
+        payload["reasoning_effort"] = "none"
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    url = api_base.rstrip("/") + "/chat/completions"
+    t0 = time.monotonic()
+    try:
+        resp = httpx.post(url, json=payload, headers=headers, timeout=timeout)
+        latency = int((time.monotonic() - t0) * 1000)
+        resp.raise_for_status()
+        text = resp.json()["choices"][0]["message"]["content"]
+        return {"ok": True, "latency_ms": latency, "text": (text or "").strip()[:400]}
+    except Exception as e:
+        return {"ok": False, "latency_ms": int((time.monotonic() - t0) * 1000),
+                "error": f"{type(e).__name__}: {str(e)[:200]}"}
 
 
 @router.get("/providers")
@@ -42,6 +69,43 @@ def set_params(backend_id: str, body: dict = Body(default={})):
         return ai_store.STORE.update_params(backend_id, body.get("params") or {})
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/test-config")
+def test_config(body: dict = Body(default={})):
+    """Test an un-persisted backend config (provider + model + base_url + key)
+    BEFORE creating it, so the operator only saves what actually works. The key
+    is used transiently for this one call and never stored. Falls back to the
+    provider's env var when no key is supplied."""
+    provider = str(body.get("provider") or "")
+    prov = ai_providers.get_provider(provider)
+    if prov is None:
+        raise HTTPException(status_code=400, detail=f"Provider inconnu : {provider}")
+    model = str(body.get("model") or "").strip()
+    if not model:
+        return {"ok": False, "latency_ms": 0, "error": "Modèle requis."}
+    api_base = ai_providers.resolve_endpoint(provider, body.get("base_url"))
+    if not api_base:
+        return {"ok": False, "latency_ms": 0, "error": "Endpoint non résolu (Base URL requise ?)."}
+    key = str(body.get("key") or "").strip() or (env_loader.get(prov["env_key"]) if prov["env_key"] else None)
+    if not key:
+        return {"ok": False, "latency_ms": 0,
+                "error": "Aucune clé (ni saisie ni variable d'environnement du provider)."}
+    prompt = str(body.get("prompt") or "").strip() or _PING
+    return _probe(api_base, key, model, prompt)
+
+
+@router.get("/health")
+def health():
+    """Liveness of the ACTIVE backend: probe it and report whether it answers.
+    ``configured`` is false when no backend/endpoint is set up at all."""
+    r = ai_store.STORE.resolve()
+    if r is None or not r.get("api_base"):
+        return {"configured": False, "ok": False}
+    base = {"configured": True, "provider": r["provider"], "model": r["model"]}
+    if not r.get("key"):
+        return {**base, "ok": False, "latency_ms": 0, "error": "Aucune clé configurée."}
+    return {**base, **_probe(r["api_base"], r["key"], r["model"])}
 
 
 @router.get("/backends")
@@ -105,23 +169,5 @@ def test_backend(backend_id: str, body: dict = Body(default={})):
     if not r.get("key"):
         return {"ok": False, "latency_ms": 0,
                 "error": "Aucune clé (ni stockée ni variable d'environnement du provider)."}
-    prompt = (str(body.get("prompt") or "").strip() or "ping (réponds en un seul mot)")[:2000]
-    model = r["model"]
-    payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
-               "temperature": 0, "max_tokens": 64}
-    if "gpt-oss" in model:
-        payload["reasoning_effort"] = "low"
-    elif "qwen" in model:
-        payload["reasoning_effort"] = "none"
-    headers = {"Authorization": f"Bearer {r['key']}", "Content-Type": "application/json"}
-    url = r["api_base"].rstrip("/") + "/chat/completions"
-    t0 = time.monotonic()
-    try:
-        resp = httpx.post(url, json=payload, headers=headers, timeout=30.0)
-        latency = int((time.monotonic() - t0) * 1000)
-        resp.raise_for_status()
-        text = resp.json()["choices"][0]["message"]["content"]
-        return {"ok": True, "latency_ms": latency, "text": (text or "").strip()[:400]}
-    except Exception as e:
-        latency = int((time.monotonic() - t0) * 1000)
-        return {"ok": False, "latency_ms": latency, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+    prompt = str(body.get("prompt") or "").strip() or _PING
+    return _probe(r["api_base"], r["key"], r["model"], prompt)

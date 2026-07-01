@@ -205,10 +205,18 @@ def transform_rows(session, rows: list) -> pd.DataFrame:
         clean_cfg["impute_cat"] = "constant"
 
     df1, _ = clean.run(aug, clean_cfg, ctx, make_plots=False)
-    df2, _ = transform.run(df1, _cfg(session, "transform"), ctx, make_plots=False)
-    df3, _ = integrate.run(df2, _cfg(session, "integrate"), ctx, make_plots=False)
 
     sep = session.get_run("separate")
+    pre = sep.artifacts.get("preprocessor") if sep else None
+    if pre is not None:
+        # Leakage-free sessions: apply the SAME train-fitted preprocessor as training
+        # (no re-fit at all) — byte-faithful to the matrices the model learned on.
+        tail = df1.tail(n).drop(columns=[target], errors="ignore")
+        return pre.transform(tail).reset_index(drop=True)
+
+    # Legacy sessions (no stored preprocessor): replay the full-frame re-fit.
+    df2, _ = transform.run(df1, _cfg(session, "transform"), ctx, make_plots=False)
+    df3, _ = integrate.run(df2, _cfg(session, "integrate"), ctx, make_plots=False)
     feats = (sep.artifacts.get("feature_names") if sep else None) or [c for c in df3.columns if c != target]
     X = df3.reindex(columns=feats, fill_value=0)
     return X.tail(n).reset_index(drop=True)   # the appended rows (no drops -> order stable)

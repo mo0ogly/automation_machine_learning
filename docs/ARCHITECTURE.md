@@ -73,8 +73,8 @@ Les `control` sont rendus tels quels par le frontend. `column_table` = table de 
 | 1 | `clean` | Choix des colonnes (table de décision), normalisation ordinale, imputation, aberrants IQR, exclusion univariée, doublons. EDA détaillée (valeurs catégorielles, lignes extrêmes). | idem | idem |
 | 2 | `transform` | Features dérivées, asymétrie, encodage **ordinal ordonné** / One-Hot nominales, scaling. **EDA univariée + bivariée par type**. | idem | bivariée vs cible désactivée (pas de cible) |
 | 3 | `integrate` | Matrice finale : **table de décision des variables** (redondance signalée), PCA optionnelle. | corr vs cible | corr inter-variables |
-| 4 | `separate` | Split train/test stratifié + contrôle de fuite. | X/y train/test | `X_full` (pas de split) |
-| 5 | `model` | **Leaderboard** N modèles (RMSE/R² ou Acc/F1) + choix expert. | régression/classif | **KMeans / DBSCAN / Agglomératif** (clustering, k auto par coude/k-distance) · **Isolation Forest / LOF** (anomalies) |
+| 4 | `separate` | Split train/test stratifié + contrôle de fuite ; **préprocesseur anti-fuite** ajusté sur le train seul (`preprocessing.py`), réutilisé par serving/export. | X/y train/test | `X_full` (pas de split) |
+| 5 | `model` | **Leaderboard** N modèles par **validation croisée sur le train** (RMSE/R² ou Acc/F1, moyenne ± σ — test vierge) + choix expert. | régression/classif | **KMeans / DBSCAN / Agglomératif** (clustering, k auto par coude/k-distance) · **Isolation Forest / LOF** (anomalies) |
 | 6 | `tune` | GridSearch hyperparamètres. | oui | rejeté (409) |
 | 7 | `evaluate` | Métriques test + **contrôle surapprentissage** (train/test/CV). | régression : scatter + résidus · classif : confusion + **précision/rappel/F1 pondérés + rapport par classe** | clustering : **silhouette + lecture métier (valeurs brutes) + PCA + profil** · anomalies : **taux + histogramme des scores + PCA + top lignes atypiques** |
 | 8 | `explain` | SHAP (importance globale + waterfall individuel). | oui | n/a |

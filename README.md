@@ -77,8 +77,24 @@ All **3 learning paradigms** are covered:
 - **Ordered ordinal encoding**: quality grades (`Po<Fa<TA<Gd<Ex`) keep their semantic order
   (a dedicated lookup table), not alphabetical order; nominals are One-Hot encoded.
 - **Outlier exclusion** driven by univariate analysis, expert-configurable.
-- **Models**: Linear/Logistic, Decision Tree, Random Forest, Gradient Boosting, **XGBoost**.
-- **Fine-tuning** `GridSearchCV`; **Explainability** `SHAP` (importance + waterfall).
+- **Leakage-free preprocessing**: the Separation stage splits FIRST, then fits every
+  data-dependent transformer (skew correction, one-hot categories, scaler statistics, PCA)
+  on the **train partition only** (`pipeline/preprocessing.py`); the fitted preprocessor is
+  reused verbatim by serving (`/predict`) and the model export, so serving can never drift
+  from training. The full-frame transform remains for the exploratory EDA views only.
+- **Models**: Linear/Ridge/Lasso/Logistic, Decision Tree, Random Forest, Gradient Boosting,
+  **XGBoost**.
+- **Honest model selection**: the Modelling leaderboard ranks candidates by **k-fold
+  cross-validation on the train set** (mean ± std, train-vs-CV overfit gap) — the held-out
+  test set is never consulted before Evaluation.
+- **Fine-tuning**: per-family hyperparameter grids (linear, tree, forest, boosting, XGBoost),
+  `GridSearchCV` or `RandomizedSearchCV`, defaults to the baseline algorithm; tuned-vs-baseline
+  compared on CV (and the optional validation carve-out), never on the test set.
+- **Evaluation**: RMSE/MAE/MAPE/R² (regression); accuracy/precision/recall/F1 + **ROC-AUC,
+  PR-AUC with their curves** (binary) or weighted OVR AUC (multiclass); overfit control
+  (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
+- **Explainability**: `SHAP` importance + waterfall — `TreeExplainer` for tree models,
+  `LinearExplainer` for linear families, configurable explained class in multiclass.
 
 ## Getting started
 
@@ -142,7 +158,8 @@ cd backend && python -m pytest tests/test_api.py -q   # 44 tests, no network
 - **Session persistence** — **done**: sessions are mirrored to SQLite (`backend/sessions.db`)
   and survive a backend restart (toggle with `ML_PERSIST_SESSIONS`). Next: a shared store
   (Redis/Postgres) for a multi-process backend.
-- **Unsupervised** — Davies-Bouldin / Calinski-Harabasz are in; agglomerative dendrogram next.
+- **Unsupervised** — **done**: Davies-Bouldin / Calinski-Harabasz indices + the Ward dendrogram
+  for agglomerative clustering (truncated to the last 30 merges, sampled beyond 300 rows).
 
 ## License
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import DiagnosticsView from './DiagnosticsView';
 import ConfigControls from './ConfigControls';
 import AgentRecommendation from './AgentRecommendation';
+import ModelLeaderboard from './ModelLeaderboard';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
@@ -83,58 +84,6 @@ function ReportCards({ report }) {
           <div className="report-v">{String(v)}</div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// Model comparison leaderboard: ranked candidate models
-// with their test metrics. The expert picks one — "Choisir" sets the algorithm.
-const LB_LABELS = {
-  rmse_test: 'RMSE (test)', r2_test: 'R² (test)', r2_train: 'R² (train)',
-  accuracy_test: 'Accuracy (test)', f1_test: 'F1 (test)', accuracy_train: 'Accuracy (train)',
-  overfit: 'Surapprentissage',
-};
-
-function ModelLeaderboard({ rows, metric, selected, onChoose, onAssist, assistBusy, assistAnswers, onApplyAssist }) {
-  if (!rows || !rows.length) return null;
-  const cols = Object.keys(rows[0]).filter((c) => c !== 'model' && c !== 'recommended');
-  return (
-    <div className="leaderboard">
-      <div className="substep-bar">
-        <h5>Comparaison des modèles{metric ? ' — classé par ' + metric : ''}</h5>
-        {onAssist ? <AssistButton topic="leaderboard" label="Explique le classement"
-          onAssist={onAssist} busy={assistBusy} /> : null}
-      </div>
-      <AssistAnswer topic="leaderboard" answers={assistAnswers} onApply={onApplyAssist} />
-      <p className="cfg-help">Métriques sur le jeu de test, hyperparamètres par défaut. Choisissez une famille ; le fine-tuning vient ensuite.</p>
-      <div className="coltable-scroll">
-        <table className="diag-table leaderboard-table">
-          <thead>
-            <tr><th>Modèle</th>{cols.map((c) => <th key={c}>{LB_LABELS[c] || c}</th>)}<th /></tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const isSel = selected === r.model;
-              return (
-                <tr key={r.model} className={r.recommended ? 'lb-best' : ''}>
-                  <td className="lb-model">
-                    {r.model}
-                    {r.recommended ? <span className="lb-badge">recommandé</span> : null}
-                  </td>
-                  {cols.map((c) => <td key={c}>{String(r[c])}</td>)}
-                  <td>
-                    {isSel ? (
-                      <span className="reco-applied">choisi</span>
-                    ) : (
-                      <button type="button" className="coltable-btn" onClick={() => onChoose(r.model)}>Choisir</button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -421,6 +370,8 @@ export default function StagePanel(props) {
                   <ModelLeaderboard
                     rows={stage.diagnostics.leaderboard}
                     metric={stage.diagnostics.primary_metric}
+                    cvFolds={stage.diagnostics.cv_folds}
+                    leakageFree={stage.diagnostics.leakage_free}
                     selected={config.algorithm}
                     onChoose={(m) => { onConfigChange('algorithm', m); setTab('config'); }}
                     onAssist={onAssist} assistBusy={assistBusy} assistAnswers={assistAnswers}
@@ -490,6 +441,14 @@ export default function StagePanel(props) {
                       onAssist={onAssist} busy={assistBusy} />
                   </div>
                   <AssistAnswer topic="result" answers={assistAnswers} onApply={onApplyAssist} />
+                  {stage.result.diagnostics && stage.result.diagnostics.leakage_free ? (
+                    <div className="lb-chips">
+                      <span className="lb-chip lb-chip-clean"
+                        title="Encodeurs, échelles et PCA ajustés sur le train seul : ces scores sont mesurés sans fuite de prétraitement.">
+                        prétraitement anti-fuite
+                      </span>
+                    </div>
+                  ) : null}
                   <ReportCards report={stage.result.report} />
                   {stage.result.diagnostics && stage.result.diagnostics.normalisation_ordinale ? (
                     <NormalizationView rows={stage.result.diagnostics.normalisation_ordinale} />

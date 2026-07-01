@@ -28,10 +28,10 @@ C'est pourquoi le nombre « monte » quand on exécute une étape (ex. Nettoyage
 | **2. Transformation** (`stages/transform.py`) | `Distribution : <col>` (asymétrie, 1) + **univarié par variable** (`Distribution — <var>` continues, `Effectifs — <var>` discrètes/nominales) + **bivarié par variable** (`<cible> selon <var>`) | `<col> — avant` / `<col> — après` (1 figure) |
 | **3. Intégration** (`stages/integrate.py`) | `Corrélations entre variables` (heatmap) + `\|Corrélation\| avec la cible` (barres) + `Analyse bivariée : <feature> vs <cible>` (nuage) | `Corrélations entre variables` (heatmap) |
 | **4. Séparation** (`stages/separate.py`) | `Classes de <cible>` ou `Distribution de <cible>` (1) | `Équilibre des classes par jeu` ou `Distribution de la cible par jeu` (1) |
-| **5. Modélisation** (`stages/model.py`) | Supervisé : `Importance des variables (top 12)` / classement. Clustering : `Méthode du coude — choix de K` + `Graphe k-distance — calibrer eps (DBSCAN)` | messages selon le cas |
+| **5. Modélisation** (`stages/model.py`) | Supervisé : `R²/Accuracy (validation croisée, train) par modèle` (leaderboard CV — le test reste vierge). Clustering : `Méthode du coude — choix de K` + `Graphe k-distance — calibrer eps (DBSCAN)` | Supervisé : `Importance des variables (top 12)`. Agglomératif : `Méthode du coude` + `Dendrogramme (Ward) — fusions hiérarchiques` ; messages selon le cas |
 | **6. Fine-tuning** (`stages/tune.py`) | — | `Score CV par combinaison d'hyperparamètres (top 10)` |
-| **7. Évaluation** (`stages/evaluate.py`) | — | Régression : `Réel vs Prédit` + `Résidus`. Classification : `Matrice de confusion` + `Contrôle du surapprentissage (train / test / CV)`. Clustering : `Clusters (projection PCA)` + `Profil moyen des clusters (écarts standardisés)`. Anomalies : `Distribution des scores d'anomalie` + `Anomalies (projection PCA)` |
-| **8. Explicabilité** (`stages/explain.py`) | — | SHAP : summary + waterfall (ou message si modèle non arborescent) |
+| **7. Évaluation** (`stages/evaluate.py`) | — | Régression : `Réel vs Prédit` + `Résidus` + `Courbe d'apprentissage`. Classification : `Matrice de confusion` + `Courbe ROC (jeu de test)` + `Courbe précision-rappel (jeu de test)` (binaire) + `Contrôle du surapprentissage (train / test / CV)` + `Courbe d'apprentissage`. Clustering : `Clusters (projection PCA)` + `Profil moyen des clusters (écarts standardisés)`. Anomalies : `Distribution des scores d'anomalie` + `Anomalies (projection PCA)` |
+| **8. Explicabilité** (`stages/explain.py`) | — | SHAP : summary + waterfall (TreeExplainer pour les arbres, LinearExplainer pour Linear/Ridge/Lasso/Logistic ; message sinon) |
 
 ## Règles anti-doublon (qui fait quoi)
 
@@ -87,10 +87,16 @@ Chaque type de graphe a **une seule étape propriétaire** :
   — compare train et test. *Lecture :* les deux doivent se ressembler (split représentatif).
 
 ### Modélisation
+- **R²/Accuracy (validation croisée, train) par modèle** — leaderboard : chaque candidat
+  est classé par validation croisée k-fold SUR LE TRAIN uniquement (moyenne ± écart-type) ;
+  le jeu de test n'est jamais consulté avant l'Évaluation.
 - **Importance des variables (top 12)** — poids de chaque variable dans le modèle.
 - **Méthode du coude — choix de K** — inertie vs K ; le « coude » suggère le bon K.
 - **Graphe k-distance — calibrer eps (DBSCAN)** — distance au k-ᵉ voisin triée ; le
   coude donne `eps`.
+- **Dendrogramme (Ward) — fusions hiérarchiques** (agglomératif, résultat) — chaque fusion
+  de clusters et sa distance ; couper là où les branches verticales sont les plus longues
+  valide le K choisi (échantillonné à 300 lignes au-delà).
 
 ### Fine-tuning
 - **Score CV par combinaison d'hyperparamètres (top 10)** — performance en validation
@@ -102,6 +108,13 @@ Chaque type de graphe a **une seule étape propriétaire** :
 - **Matrice de confusion** (classification) — vrais/faux positifs et négatifs par classe.
 - **Contrôle du surapprentissage (train / test / CV)** — écart train vs test ; grand
   écart = surapprentissage.
+- **Courbe ROC (jeu de test)** (classification binaire) — taux de vrais positifs vs faux
+  positifs ; AUC proche de 1 = bon classifieur, 0.5 = hasard.
+- **Courbe précision-rappel (jeu de test)** (classification binaire) — la lecture honnête
+  quand les classes sont déséquilibrées ; la ligne « hasard » vaut la prévalence.
+- **Courbe d'apprentissage — plus de données aiderait-il ?** — scores train/CV vs taille
+  d'entraînement ; courbes qui convergent encore = plus de données aiderait ; plateau =
+  changer de famille de modèle ou de variables.
 - **Clusters (projection PCA)** — clusters projetés en 2D (séparation visuelle).
 - **Profil moyen des clusters (écarts standardisés)** — ce qui caractérise chaque cluster.
 - **Distribution des scores d'anomalie** / **Anomalies (projection PCA)** — scores et

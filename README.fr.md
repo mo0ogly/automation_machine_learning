@@ -79,8 +79,26 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Encodage ordinal ordonné** : les notes de qualité (`Po<Fa<TA<Gd<Ex`) gardent leur ordre
   sémantique (table de correspondance dédiée), pas l'ordre alphabétique ; les nominales en One-Hot.
 - **Exclusion d'aberrants** pilotée par l'analyse univariée, configurable par l'expert.
-- **Modèles** : Linéaire/Logistique, Arbre de décision, Random Forest, Gradient Boosting, **XGBoost**.
-- **Fine-tuning** `GridSearchCV` ; **Explicabilité** `SHAP` (importance + waterfall).
+- **Prétraitement anti-fuite** : l'étape Séparation découpe D'ABORD, puis ajuste chaque
+  transformateur dépendant des données (redressement d'asymétrie, catégories One-Hot,
+  statistiques d'échelle, PCA) sur la **partition train uniquement**
+  (`pipeline/preprocessing.py`) ; le préprocesseur ajusté est réutilisé tel quel par le
+  serving (`/predict`) et l'export du modèle — le serving ne peut pas dériver de
+  l'entraînement. La transformation plein-cadre ne sert plus qu'aux vues exploratoires (EDA).
+- **Modèles** : Linéaire/Ridge/Lasso/Logistique, Arbre de décision, Random Forest,
+  Gradient Boosting, **XGBoost**.
+- **Sélection honnête du modèle** : le leaderboard de Modélisation classe les candidats par
+  **validation croisée k-fold sur le train** (moyenne ± écart-type, écart train/CV de
+  surapprentissage) — le jeu de test n'est jamais consulté avant l'Évaluation.
+- **Fine-tuning** : grilles d'hyperparamètres par famille (linéaire, arbre, forêt, boosting,
+  XGBoost), `GridSearchCV` ou `RandomizedSearchCV`, algorithme du baseline par défaut ;
+  comparaison tuné-vs-baseline en CV (et sur le jeu de validation optionnel), jamais sur le test.
+- **Évaluation** : RMSE/MAE/MAPE/R² (régression) ; accuracy/précision/rappel/F1 + **ROC-AUC,
+  PR-AUC avec leurs courbes** (binaire) ou AUC OVR pondéré (multiclasse) ; contrôle du
+  surapprentissage (train/test/CV) et **courbe d'apprentissage** ; option
+  `class_weight='balanced'` pour le déséquilibre.
+- **Explicabilité** : `SHAP` importance + waterfall — `TreeExplainer` pour les arbres,
+  `LinearExplainer` pour les familles linéaires, classe expliquée configurable en multiclasse.
 
 ## Démarrer
 
@@ -144,7 +162,8 @@ cd backend && python -m pytest tests/test_api.py -q   # 44 tests, sans réseau
 - **Persistance des sessions** — **faite** : les sessions sont mirroir-ées en SQLite
   (`backend/sessions.db`) et survivent à un redémarrage du backend (toggle `ML_PERSIST_SESSIONS`).
   À suivre : un store partagé (Redis/Postgres) pour un backend multi-process.
-- **Non supervisé** — Davies-Bouldin / Calinski-Harabasz sont là ; dendrogramme agglomératif à venir.
+- **Non supervisé** — **fait** : indices Davies-Bouldin / Calinski-Harabasz + dendrogramme de
+  Ward pour l'agglomératif (troncature aux 30 dernières fusions, échantillonné au-delà de 300 lignes).
 
 ## Licence
 

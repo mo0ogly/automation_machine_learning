@@ -27,7 +27,14 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
+import aegis_pipeline
+from aegis_pipeline import preprocessing as _preprocessing
 from aegis_pipeline import scoring
+
+# The FeaturePreprocessor was pickled under the app's module path
+# ("pipeline.preprocessing"); alias it to the bundled package so joblib can unpickle.
+sys.modules.setdefault("pipeline", aegis_pipeline)
+sys.modules.setdefault("pipeline.preprocessing", _preprocessing)
 
 HERE = Path(__file__).resolve().parent
 _META = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -66,6 +73,7 @@ class _Session:
                 "feature_names": _META.get("feature_names"),
                 "label_encoder": _BUNDLE.get("label_encoder"),
                 "X_full": _BUNDLE.get("X_full"),
+                "preprocessor": _BUNDLE.get("preprocessor"),
             }),
             "model": _Run(artifacts={
                 "model": _BUNDLE["model"],

@@ -10,16 +10,19 @@ import numpy as np
 import pandas as pd
 
 from sklearn.metrics import (
-    mean_squared_error, r2_score, accuracy_score, f1_score,
+    mean_squared_error, mean_absolute_error, r2_score, accuracy_score, f1_score,
     precision_score, recall_score, classification_report,
     confusion_matrix, silhouette_score,
     davies_bouldin_score, calinski_harabasz_score,
+    roc_auc_score, average_precision_score,
 )
 from sklearn.model_selection import cross_val_score
 from sklearn.decomposition import PCA
 
 from ..context import REGRESSION, CLASSIFICATION, ANOMALY
 from ..plotting import style_plot, fig_to_base64, message_plot
+from .. import evaluate_plots as adv
+from .base import toggle
 
 STAGE_ID = "evaluate"
 TITLE = "Évaluation"
@@ -27,11 +30,15 @@ OBJECTIVE = "Mesurer la performance sur le jeu de test et produire les graphique
 
 
 def default_config(ctx):
-    return {}
+    return {"learning_curve": True}
 
 
 def config_schema(ctx):
-    return []
+    if ctx.problem_type not in (REGRESSION, CLASSIFICATION):
+        return []
+    return [toggle("learning_curve", "Courbe d'apprentissage", True,
+                   "Ré-entraîne le modèle sur des sous-échantillons croissants (CV) pour voir "
+                   "si davantage de données amélioreraient la performance.")]
 
 
 def diagnose(session):
@@ -55,6 +62,7 @@ def run(session, config):
     if art.get("mode") == "unsupervised":
         return _evaluate_clustering(session, model, art, mrun, config)
 
+    cfg = {**default_config(session.ctx), **(config or {})}
     X_test, y_test = art["X_test"], art["y_test"]
     y_pred = model.predict(X_test)
     style_plot()
@@ -64,7 +72,11 @@ def run(session, config):
         mse = float(mean_squared_error(y_test, y_pred))
         metrics = {"R²": round(float(r2_score(y_test, y_pred)), 4),
                    "RMSE": round(float(np.sqrt(mse)), 2),
+                   "MAE": round(float(mean_absolute_error(y_test, y_pred)), 2),
                    "MSE": round(mse, 2)}
+        mape = _safe_mape(y_test, y_pred)
+        if mape is not None:
+            metrics["MAPE (%)"] = round(mape, 2)
         plots = [_pred_scatter(y_test, y_pred), _residual_plot(y_test, y_pred)]
     else:
         # Classification: accuracy + precision/recall + per-class report.
@@ -78,15 +90,28 @@ def run(session, config):
         labels = le.classes_ if le is not None else None
         class_report = _per_class_report(y_test, y_pred, le)
         plots = [_confusion_plot(y_test, y_pred, labels)]
+        # Probability-based metrics: ROC-AUC / PR-AUC + curves (binary), OVR AUC (multiclass).
+        plots += _proba_metrics(model, X_test, y_test, metrics)
 
     # Overfitting control: train vs test gap + 5-fold cross-validation.
     control, warn = _overfit_control(model, art, ptype)
     if control:
         plots.append(_overfit_plot(control, ptype))
 
+    # Learning curve: would more data help? (opt-out via config, model re-fits inside)
+    if cfg.get("learning_curve") and art.get("X_train") is not None:
+        lc = adv.learning_curve_plot(model, art["X_train"], art["y_train"],
+                                     "r2" if ptype == REGRESSION else "accuracy",
+                                     "R²" if ptype == REGRESSION else "Accuracy")
+        if lc:
+            plots.append(lc)
+
     session.ctx.notes.append(f"eval:{metrics}")
     diagnostics = {"metrics": metrics, "n_test": int(len(y_test)),
-                   "algorithm": mrun.artifacts.get("algorithm")}
+                   "algorithm": mrun.artifacts.get("algorithm"),
+                   # True when the split-first / train-only preprocessor built the matrices:
+                   # the scores below are then free of preprocessing leakage.
+                   "leakage_free": art.get("preprocessor") is not None}
     if class_report:
         diagnostics["rapport_par_classe"] = class_report
     report = dict(metrics)
@@ -100,6 +125,47 @@ def run(session, config):
         "warnings": ([warn] if warn else []), "plots": plots, "metrics": metrics,
     }
     return result, {"metrics": metrics}
+
+
+def _safe_mape(y_test, y_pred):
+    """MAPE in %, only when every target is safely away from zero (else meaningless)."""
+    y = np.asarray(y_test, dtype=float)
+    if len(y) == 0 or np.min(np.abs(y)) < 1e-6:
+        return None
+    return float(np.mean(np.abs((y - np.asarray(y_pred, dtype=float)) / y)) * 100.0)
+
+
+def _proba_metrics(model, X_test, y_test, metrics):
+    """ROC-AUC / PR-AUC (+ curves for binary) when the model exposes probabilities.
+
+    Mutates ``metrics`` in place and returns the extra plots.
+    """
+    if not hasattr(model, "predict_proba"):
+        return []
+    try:
+        proba = model.predict_proba(X_test)
+    except Exception:
+        return []
+    classes = np.unique(y_test)
+    plots = []
+    if proba.ndim == 2 and proba.shape[1] == 2 and len(classes) == 2:
+        pos = classes[-1]
+        pos_idx = list(getattr(model, "classes_", classes)).index(pos)
+        p_pos = proba[:, pos_idx]
+        try:
+            auc_v = float(roc_auc_score(y_test, p_pos))
+            ap_v = float(average_precision_score(y_test, p_pos, pos_label=pos))
+        except Exception:
+            return []
+        metrics["ROC-AUC"] = round(auc_v, 4)
+        metrics["PR-AUC (AP)"] = round(ap_v, 4)
+        plots.append(adv.roc_plot(y_test, p_pos, auc_v, pos_label=pos))
+        plots.append(adv.pr_plot(y_test, p_pos, ap_v, pos_label=pos))
+    elif proba.ndim == 2 and proba.shape[1] > 2:
+        auc_v = adv.roc_auc_multiclass(y_test, proba)
+        if auc_v is not None:
+            metrics["ROC-AUC (OVR pondéré)"] = round(auc_v, 4)
+    return plots
 
 
 def _per_class_report(y_test, y_pred, le):

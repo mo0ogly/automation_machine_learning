@@ -8,64 +8,20 @@ arrays / full matrix), not on a dataframe.
 
 import numpy as np
 
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import (
-    RandomForestRegressor, GradientBoostingRegressor,
-    RandomForestClassifier, GradientBoostingClassifier, IsolationForest,
-)
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, IsolationForest
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from sklearn.neighbors import NearestNeighbors, LocalOutlierFactor
-from sklearn.metrics import r2_score, accuracy_score, f1_score, root_mean_squared_error
-
-try:
-    from xgboost import XGBRegressor, XGBClassifier
-    _HAS_XGB = True
-except ImportError:  # XGBoost optional — degrade gracefully if absent.
-    _HAS_XGB = False
+from sklearn.model_selection import cross_validate
+from sklearn.metrics import r2_score, accuracy_score
 
 from ..context import REGRESSION, CLASSIFICATION, CLUSTERING, ANOMALY
 from ..plotting import style_plot, fig_to_base64, message_plot
-from .base import select, rng, number
+from . import estimators as est_factory
+from .base import select, toggle, rng, number
 
 STAGE_ID = "model"
 TITLE = "Modélisation"
 OBJECTIVE = "Entraîner le modèle sur le jeu d'entraînement avec les hyperparamètres choisis."
-
-_REG_ALGOS = [("LinearRegression", "Régression linéaire"), ("DecisionTree", "Arbre de décision"),
-              ("RandomForest", "Random Forest"), ("GradientBoosting", "Gradient Boosting")]
-_CLF_ALGOS = [("LogisticRegression", "Régression logistique"), ("DecisionTree", "Arbre de décision"),
-              ("RandomForest", "Random Forest"), ("GradientBoosting", "Gradient Boosting")]
-if _HAS_XGB:
-    _REG_ALGOS.append(("XGBoost", "XGBoost"))
-    _CLF_ALGOS.append(("XGBoost", "XGBoost"))
-
-
-def _candidate_models(ptype, n_est, max_depth):
-    """The pool of models compared on the leaderboard and selectable by the expert."""
-    if ptype == REGRESSION:
-        models = {
-            "LinearRegression": LinearRegression(),
-            "DecisionTree": DecisionTreeRegressor(max_depth=max_depth, random_state=42),
-            "RandomForest": RandomForestRegressor(n_estimators=n_est, max_depth=max_depth, random_state=42),
-            "GradientBoosting": GradientBoostingRegressor(n_estimators=n_est,
-                                                          max_depth=max_depth or 3, random_state=42),
-        }
-        if _HAS_XGB:
-            models["XGBoost"] = XGBRegressor(n_estimators=n_est, learning_rate=0.05,
-                                             max_depth=max_depth or 6, random_state=42)
-    else:
-        models = {
-            "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
-            "DecisionTree": DecisionTreeClassifier(max_depth=max_depth, random_state=42),
-            "RandomForest": RandomForestClassifier(n_estimators=n_est, max_depth=max_depth, random_state=42),
-            "GradientBoosting": GradientBoostingClassifier(n_estimators=n_est,
-                                                           max_depth=max_depth or 3, random_state=42),
-        }
-        if _HAS_XGB:
-            models["XGBoost"] = XGBClassifier(n_estimators=n_est, learning_rate=0.05,
-                                              max_depth=max_depth or 6, random_state=42)
-    return models
 
 
 def default_config(ctx):
@@ -77,14 +33,13 @@ def default_config(ctx):
         algo = "KMeans"
     return {"algorithm": algo, "n_estimators": 100, "max_depth": 0, "n_clusters": 0,
             "cluster_algo": "kmeans", "eps": 0.5, "min_samples": 5,
-            "anomaly_algo": "iforest", "contamination": 0.05}
+            "anomaly_algo": "iforest", "contamination": 0.05,
+            "class_weight_balanced": False}
 
 
 def config_schema(ctx):
-    if ctx.problem_type == REGRESSION:
-        algos = _REG_ALGOS
-    elif ctx.problem_type == CLASSIFICATION:
-        algos = _CLF_ALGOS
+    if ctx.problem_type in (REGRESSION, CLASSIFICATION):
+        algos = est_factory.algo_options(ctx.problem_type)
     elif ctx.problem_type == ANOMALY:
         return [
             select("anomaly_algo", "Détecteur d'anomalies",
@@ -106,45 +61,84 @@ def config_schema(ctx):
             number("min_samples", "DBSCAN — points minimum", 5, 2, 50,
                    "Points minimum pour former un cœur de densité (DBSCAN)."),
         ]
-    return [
+    controls = [
         select("algorithm", "Algorithme", algos, "RandomForest", "Modèle entraîné."),
         rng("n_estimators", "Nombre d'arbres", 10, 500, 10, 100, "Pour Random Forest / Gradient Boosting."),
         number("max_depth", "Profondeur max (0 = illimité)", 0, 0, 40, "Limite la profondeur des arbres."),
     ]
+    if ctx.problem_type == CLASSIFICATION:
+        controls.append(toggle(
+            "class_weight_balanced", "Pondérer les classes (déséquilibre)", False,
+            "class_weight='balanced' : sur-pondère les classes rares (Logistic / Arbre / "
+            "Random Forest). Utile si une classe domine fortement."))
+    return controls
 
 
-def _leaderboard(art, ptype, n_est, max_depth):
-    """Fit every candidate model on train, score on the held-out test set, rank them.
+def _cv_folds(ptype, y_tr):
+    """Fold count for the leaderboard: 5, bounded by the rarest class / sample size."""
+    n = len(y_tr)
+    if ptype == CLASSIFICATION:
+        _, counts = np.unique(y_tr, return_counts=True)
+        return max(2, min(5, int(counts.min()), n - 1))
+    return max(2, min(5, n - 1))
 
-    The expert reads RMSE/R² (or Accuracy/F1) per model and picks the best
-    family before fine-tuning.
+
+def _leaderboard(art, ptype, n_est, max_depth, class_weight=None):
+    """Rank every candidate model by k-fold cross-validation ON THE TRAIN SET ONLY.
+
+    The held-out test set is never touched here — it stays virgin for the final
+    Evaluation. The expert reads CV RMSE/R² (or Accuracy/F1) mean ± std per model
+    and picks the best family before fine-tuning.
     """
-    X_tr, y_tr, X_te, y_te = art["X_train"], art["y_train"], art["X_test"], art["y_test"]
+    X_tr, y_tr = art["X_train"], art["y_train"]
+    cv = _cv_folds(ptype, y_tr)
+    if ptype == REGRESSION:
+        scoring = {"rmse": "neg_root_mean_squared_error", "r2": "r2"}
+    else:
+        scoring = {"accuracy": "accuracy", "f1": "f1_weighted"}
     rows = []
-    for name, est in _candidate_models(ptype, n_est, max_depth).items():
+    for name, est in est_factory.candidate_models(ptype, n_est, max_depth, class_weight).items():
         try:
-            est.fit(X_tr, y_tr)
-            pred_te, pred_tr = est.predict(X_te), est.predict(X_tr)
+            res = cross_validate(est, X_tr, y_tr, cv=cv, scoring=scoring,
+                                 return_train_score=True, n_jobs=-1)
             if ptype == REGRESSION:
-                r2_te, r2_tr = float(r2_score(y_te, pred_te)), float(r2_score(y_tr, pred_tr))
-                rows.append({"model": name, "rmse_test": round(float(root_mean_squared_error(y_te, pred_te)), 3),
-                             "r2_test": round(r2_te, 4), "r2_train": round(r2_tr, 4),
-                             "overfit": round(r2_tr - r2_te, 4)})
+                rmse = -res["test_rmse"]
+                r2_cv, r2_train = float(res["test_r2"].mean()), float(res["train_r2"].mean())
+                rows.append({"model": name,
+                             "rmse_cv": round(float(rmse.mean()), 3),
+                             "rmse_cv_std": round(float(rmse.std()), 3),
+                             "r2_cv": round(r2_cv, 4), "r2_train": round(r2_train, 4),
+                             "overfit": round(r2_train - r2_cv, 4)})
             else:
-                acc_te, acc_tr = float(accuracy_score(y_te, pred_te)), float(accuracy_score(y_tr, pred_tr))
-                rows.append({"model": name, "accuracy_test": round(acc_te, 4),
-                             "f1_test": round(float(f1_score(y_te, pred_te, average="weighted")), 4),
-                             "accuracy_train": round(acc_tr, 4), "overfit": round(acc_tr - acc_te, 4)})
+                acc_cv = float(res["test_accuracy"].mean())
+                acc_train = float(res["train_accuracy"].mean())
+                rows.append({"model": name,
+                             "accuracy_cv": round(acc_cv, 4),
+                             "accuracy_cv_std": round(float(res["test_accuracy"].std()), 4),
+                             "f1_cv": round(float(res["test_f1"].mean()), 4),
+                             "accuracy_train": round(acc_train, 4),
+                             "overfit": round(acc_train - acc_cv, 4)})
         except Exception:
             continue
     if ptype == REGRESSION:
-        rows.sort(key=lambda r: r["rmse_test"])           # lower RMSE is better
+        rows.sort(key=lambda r: r["rmse_cv"])             # lower CV RMSE is better
     else:
-        rows.sort(key=lambda r: r["accuracy_test"], reverse=True)
+        rows.sort(key=lambda r: r["accuracy_cv"], reverse=True)
     best = rows[0]["model"] if rows else None
     for r in rows:
         r["recommended"] = (r["model"] == best)
-    return rows, best
+    return rows, best, cv
+
+
+def _cached_leaderboard(session, sep, ptype, n_est, max_depth, class_weight):
+    """Leaderboard memoised in the separate-run artefacts (a replayed Separation
+    produces fresh artefacts, so the cache invalidates naturally). Avoids re-running
+    the full CV on every view of the Modelling stage."""
+    key = f"{ptype}|{n_est}|{max_depth}|{class_weight}|{len(sep.artifacts['X_train'])}"
+    cache = sep.artifacts.setdefault("_leaderboard_cache", {})
+    if key not in cache:
+        cache[key] = _leaderboard(sep.artifacts, ptype, n_est, max_depth, class_weight)
+    return cache[key]
 
 
 def diagnose(session):
@@ -169,10 +163,14 @@ def diagnose(session):
 
     ptype = session.ctx.problem_type
     cfg = default_config(session.ctx)
-    rows, best = _leaderboard(art, ptype, int(cfg["n_estimators"]), int(cfg["max_depth"]) or None)
+    cw = "balanced" if cfg.get("class_weight_balanced") else None
+    rows, best, cv = _cached_leaderboard(session, sep, ptype, int(cfg["n_estimators"]),
+                                         int(cfg["max_depth"]) or None, cw)
     info = {"ready": True, "mode": "supervised", "train_size": int(len(art["X_train"])),
             "n_features": len(art["feature_names"]), "leaderboard": rows, "recommended_model": best,
-            "primary_metric": "RMSE (test)" if ptype == REGRESSION else "Accuracy (test)"}
+            "cv_folds": cv, "leakage_free": art.get("preprocessor") is not None,
+            "primary_metric": (f"RMSE (CV {cv} plis, train)" if ptype == REGRESSION
+                               else f"Accuracy (CV {cv} plis, train)")}
     plots = [_leaderboard_plot(rows, ptype)] if rows else []
     return {"diagnostics": info, "plots": plots}
 
@@ -194,11 +192,12 @@ def run(session, config):
 
     X_train, y_train = art["X_train"], art["y_train"]
     algo = cfg["algorithm"]
-    choices = _candidate_models(ptype, n_est, max_depth)
-    model = choices.get(algo)
+    cw = "balanced" if cfg.get("class_weight_balanced") else None
+    model = est_factory.make_estimator(ptype, algo, n_est, max_depth, cw)
     if model is None:  # unknown algorithm name → safe default (don't rely on estimator truthiness)
         fallback = RandomForestRegressor if ptype == REGRESSION else RandomForestClassifier
         model = fallback(n_estimators=n_est, random_state=42)
+        algo = "RandomForest"
 
     model.fit(X_train, y_train)
     train_pred = model.predict(X_train)
@@ -212,7 +211,9 @@ def run(session, config):
     artifacts = {"model": model, "algorithm": algo}
     result = {
         "report": {"Algorithme": algo, "n_estimators": n_est if "Forest" in algo or "Boosting" in algo else "—",
-                   "max_depth": max_depth or "illimité", score_label: train_score},
+                   "max_depth": max_depth or "illimité",
+                   **({"Pondération classes": "balanced"} if cw else {}),
+                   score_label: train_score},
         "diagnostics": {"algorithm": algo, "train_score": train_score, "score_label": score_label},
         "log": [f"Modèle {algo} entraîné sur {len(X_train)} observations."],
         "warnings": ["Score d'entraînement uniquement — voir l'Évaluation pour la performance sur test."],
@@ -259,15 +260,55 @@ def _fit_clustering(session, art, cfg):
         name = "KMeans"
     labels = model.fit_predict(X)
     artifacts = {"model": model, "algorithm": name, "labels": labels, "k": k}
+    plots = [_elbow_plot(ks, inertias, k)] if inertias else [message_plot(f"{name} K={k}.")]
+    if algo == "agglomerative":
+        dendro = _dendrogram_plot(X, k)   # la lecture native du hiérarchique
+        if dendro:
+            plots.append(dendro)
     result = {
         "report": {"Algorithme": name, "Clusters (K)": k, "Observations": int(len(X))},
         "diagnostics": {"algorithm": name, "k": k},
         "log": [f"{name} entraîné avec K={k} sur {len(X)} observations.",
                 "Lecture métier des clusters → voir l'Évaluation (profils + projection PCA)."],
         "warnings": [],
-        "plots": [_elbow_plot(ks, inertias, k)] if inertias else [message_plot(f"{name} K={k}.")],
+        "plots": plots,
     }
     return result, artifacts
+
+
+def _dendrogram_plot(X, k, max_rows=300):
+    """Ward dendrogram (truncated to the last 30 merges) — the native reading of
+    hierarchical clustering: cutting at K clusters happens where the vertical
+    distances are largest. Sampled beyond ``max_rows`` to stay legible/fast."""
+    import matplotlib.pyplot as plt
+    try:
+        from scipy.cluster.hierarchy import dendrogram, linkage
+    except ImportError:
+        return None
+    style_plot()
+    Xv = X.to_numpy() if hasattr(X, "to_numpy") else np.asarray(X)
+    n = len(Xv)
+    if n < 3:
+        return None
+    sampled = n > max_rows
+    if sampled:
+        idx = np.random.RandomState(42).choice(n, max_rows, replace=False)
+        Xv = Xv[idx]
+    try:
+        Z = linkage(Xv, method="ward")
+    except Exception:
+        return None
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    dendrogram(Z, ax=ax, truncate_mode="lastp", p=30, no_labels=True,
+               above_threshold_color="#0f3460")
+    title = "Dendrogramme (Ward) — fusions hiérarchiques"
+    if sampled:
+        title += f" (échantillon de {max_rows})"
+    ax.set_title(title)
+    ax.set_ylabel("Distance de fusion")
+    ax.set_xlabel(f"Regroupements (troncature aux 30 dernières fusions) — K choisi = {k}")
+    fig.tight_layout()
+    return fig_to_base64(fig)
 
 
 def _kdistance_plot(X, min_samples):
@@ -372,8 +413,9 @@ def _leaderboard_plot(rows, ptype):
     style_plot()
     if not rows:
         return message_plot("Pas de modèle à comparer.")
-    metric_key = "r2_test" if ptype == REGRESSION else "accuracy_test"
-    title = "R² (test) par modèle" if ptype == REGRESSION else "Accuracy (test) par modèle"
+    metric_key = "r2_cv" if ptype == REGRESSION else "accuracy_cv"
+    title = ("R² (validation croisée, train) par modèle" if ptype == REGRESSION
+             else "Accuracy (validation croisée, train) par modèle")
     names = [r["model"] for r in rows][::-1]
     vals = [r[metric_key] for r in rows][::-1]
     colors = ["#16c79a" if r["recommended"] else "#0f3460" for r in rows][::-1]

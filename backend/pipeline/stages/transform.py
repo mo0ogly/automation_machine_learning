@@ -11,9 +11,11 @@ typology (see pipeline.typology):
 This fixes the earlier bug where a generic OrdinalEncoder encoded quality grades
 (Po<Fa<TA<Gd<Ex) in arbitrary alphabetical order, destroying their meaning.
 
-Note on leakage: scalers/encoders are fit on the full frame here (the stage order
-is clean -> transform -> integrate -> separate). The Separation stage emits a
-leakage note; for production, fit inside a train-only Pipeline.
+Note on leakage: scalers/encoders are fit on the full frame HERE, for the
+exploratory view only (EDA plots, diagnostics, decision tables). The matrices
+actually used for modelling are rebuilt by the Separation stage, which splits
+first and re-fits the same semantics on the TRAIN partition only (see
+``pipeline.preprocessing.FeaturePreprocessor``).
 """
 
 import numpy as np

@@ -38,7 +38,7 @@ _PIPELINE_DIR = Path(__file__).parent / "pipeline"
 # Exact subset the serving path needs (scoring -> clean/transform/integrate and
 # their leaf deps). Verified import chain: none of these pulls shap/xgboost/registry.
 _MODULES = ["context.py", "diagnostics.py", "typology.py", "eda_plots.py",
-            "plotting.py", "scoring.py"]
+            "plotting.py", "scoring.py", "preprocessing.py"]
 _STAGE_MODULES = ["base.py", "clean.py", "transform.py", "integrate.py"]
 
 # Base runtime deps for the serving chain; the model's own lib is appended below.
@@ -89,7 +89,9 @@ def _model_payload(session) -> dict:
     model, _origin = session.current_model()
     sep, mdl = session.get_run("separate"), session.get_run("model")
     payload = {"model": model,
-               "label_encoder": sep.artifacts.get("label_encoder") if sep else None}
+               "label_encoder": sep.artifacts.get("label_encoder") if sep else None,
+               # Train-fitted preprocessor (leakage-free sessions): serving reuses it as-is.
+               "preprocessor": sep.artifacts.get("preprocessor") if sep else None}
     # Centroid fallback (DBSCAN / Agglomerative) needs the training matrix + labels.
     if session.ctx.problem_type in (CLUSTERING, ANOMALY):
         if sep is not None and sep.artifacts.get("X_full") is not None:

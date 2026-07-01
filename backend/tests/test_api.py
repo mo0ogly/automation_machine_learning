@@ -162,6 +162,25 @@ def test_clustering_agglomerative():
     assert len(diag["cluster_summary"]) == 3
 
 
+def test_clustering_agglomerative_has_dendrogram():
+    """The agglomerative run ships its native reading: the Ward dendrogram."""
+    sid = _start_demo("client_data.csv")["session_id"]
+    for stg in ("clean", "transform", "integrate", "separate"):
+        client.post(f"/api/session/{sid}/stage/{stg}/run", json={"config": {}})
+    m = client.post(f"/api/session/{sid}/stage/model/run",
+                    json={"config": {"cluster_algo": "agglomerative", "n_clusters": 3}})
+    assert m.status_code == 200, m.text
+    assert len(m.json()["result"]["plots"]) >= 2   # elbow + dendrogram
+
+
+def test_evaluate_reports_leakage_free_flag():
+    """Evaluation flags that its scores come from the train-only preprocessor."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
+    assert ev["result"]["diagnostics"]["leakage_free"] is True
+
+
 def test_clustering_dbscan_handles_noise():
     """DBSCAN (densité) : tourne, expose silhouette robuste et gère le bruit (label -1)."""
     sid = _start_demo("client_data.csv")["session_id"]
@@ -341,11 +360,14 @@ def test_model_leaderboard_in_view():
     view = client.get(f"/api/session/{sid}/stage/model").json()
     lb = view["diagnostics"]["leaderboard"]
     assert len(lb) >= 3
-    assert all("rmse_test" in r and "r2_test" in r for r in lb)
+    # Ranked by CROSS-VALIDATION on the train set — the test set stays virgin here.
+    assert all("rmse_cv" in r and "rmse_cv_std" in r and "r2_cv" in r for r in lb)
     assert sum(1 for r in lb if r["recommended"]) == 1     # exactly one recommended
-    rmses = [r["rmse_test"] for r in lb]
-    assert rmses == sorted(rmses)                           # ranked by RMSE ascending
+    rmses = [r["rmse_cv"] for r in lb]
+    assert rmses == sorted(rmses)                           # ranked by CV RMSE ascending
     assert view["diagnostics"]["recommended_model"] == lb[0]["model"]
+    assert view["diagnostics"]["cv_folds"] >= 2
+    assert view["diagnostics"]["leakage_free"] is True      # train-only preprocessor active
 
 
 def test_clean_categorical_values_and_extreme_rows():
@@ -381,6 +403,75 @@ def test_evaluate_overfitting_control():
     assert "R² (train)" in ctrl and "R² (test)" in ctrl
     assert "ecart_overfit" in ctrl and "CV R² (5 folds)" in ctrl
     assert "verdict" in ctrl
+
+
+def test_evaluate_binary_has_roc_pr_auc():
+    """Binary classification: probability metrics + ROC / PR curves on the test set."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
+    metrics = ev["result"]["metrics"]
+    assert "ROC-AUC" in metrics and 0.5 <= metrics["ROC-AUC"] <= 1.0
+    assert "PR-AUC (AP)" in metrics
+    assert len(ev["result"]["plots"]) >= 4          # confusion + ROC + PR + overfit control
+
+
+def test_evaluate_regression_has_mae():
+    sid = _start_demo("house_price_data.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
+    metrics = ev["result"]["metrics"]
+    assert "MAE" in metrics and metrics["MAE"] > 0
+    assert "RMSE" in metrics
+
+
+def test_tune_defaults_to_baseline_algorithm():
+    """Fine-tuning with no explicit algorithm tunes the Modelling baseline family."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    t = client.post(f"/api/session/{sid}/stage/tune/run", json={"config": {"cv": 2}}).json()
+    diag = t["result"]["diagnostics"]
+    assert diag["algorithm"] == "RandomForest"      # the autorun baseline
+    assert diag["baseline_score"] is not None       # compared on CV, not on the test set
+    assert "best_params" in diag
+
+
+def test_tune_supports_logistic_family():
+    """Any leaderboard family is tunable — here LogisticRegression with its C grid."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    client.post(f"/api/session/{sid}/stage/model/run",
+                json={"config": {"algorithm": "LogisticRegression"}})
+    t = client.post(f"/api/session/{sid}/stage/tune/run", json={"config": {"cv": 2}})
+    assert t.status_code == 200, t.text
+    assert "C" in t.json()["result"]["diagnostics"]["best_params"]
+
+
+def test_explain_supports_linear_models():
+    """SHAP LinearExplainer covers the linear families (was tree-only before)."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    client.post(f"/api/session/{sid}/stage/model/run",
+                json={"config": {"algorithm": "LogisticRegression"}})
+    e = client.post(f"/api/session/{sid}/stage/explain/run", json={"config": {}})
+    assert e.status_code == 200, e.text
+    diag = e.json()["result"]["diagnostics"]
+    assert diag["explainer"] == "LinearExplainer"
+    assert diag["shap_top_features"]
+
+
+def test_separate_stores_train_only_preprocessor():
+    """The Separation artefacts carry the train-fitted preprocessor and predictions
+    replay it (leakage-free serving path)."""
+    from app import SESSIONS
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    session = SESSIONS.get(sid)
+    pre = session.get_run("separate").artifacts.get("preprocessor")
+    assert pre is not None and pre.fitted_
+    assert list(pre.feature_names_) == list(session.get_run("separate").artifacts["feature_names"])
+    r = client.post(f"/api/session/{sid}/predict", json={})
+    assert r.status_code == 200 and "prediction" in r.json()
 
 
 def test_sanitize_config_column_table_filters_unknown_columns():

@@ -55,6 +55,11 @@ class Session:
         self.insights: list[dict] = []
         self._insight_seq = 0
         self.level = "novice"  # "novice" | "expert"
+        # Multi-turn chat thread with the AI cockpit copilot. Distinct from
+        # `insights` (which journals one-shot helpers): this is a real ordered
+        # conversation of {role, content} turns replayed to the LLM each turn.
+        self.chat: list[dict] = []
+        self._chat_seq = 0
 
     # ── assisted-mode memory ────────────────────────────────────────────
     def add_insight(self, stage: str, topic: str, label: str, text,
@@ -82,6 +87,47 @@ class Session:
                 txt = txt[:maxlen] + "…"
             lines.append(f"- [{e['stage']}/{e['topic']}] {txt}")
         return "JOURNAL D'ANALYSE (mémoire des échanges précédents) :\n" + "\n".join(lines)
+
+    # ── conversational memory (AI cockpit chat) ─────────────────────────
+    def _ensure_chat(self):
+        """Lazily initialise the chat fields — a Session rehydrated from a blob
+        written before the cockpit existed has neither attribute."""
+        if not hasattr(self, "chat") or self.chat is None:
+            self.chat = []
+        if not hasattr(self, "_chat_seq"):
+            self._chat_seq = len(self.chat)
+
+    def add_chat_message(self, role: str, content, source: str = "llm",
+                         model: Optional[str] = None) -> dict:
+        """Append one turn (role = 'user' | 'assistant') to the conversation."""
+        self._ensure_chat()
+        self._chat_seq += 1
+        entry = {
+            "id": self._chat_seq, "role": role, "content": content,
+            "source": source, "model": model,
+            "ts": datetime.now(timezone.utc).isoformat(),
+        }
+        self.chat.append(entry)
+        return entry
+
+    def chat_history(self, limit: int = 20) -> list:
+        """The last ``limit`` turns as ``[{role, content}]`` for the LLM (oldest
+        first). Kept bounded so the prompt stays within the context window.
+        Static failure replies (no backend / error) are skipped so they are not
+        replayed as real assistant turns once a backend is configured."""
+        self._ensure_chat()
+        usable = [e for e in self.chat
+                  if not (e["role"] == "assistant" and e.get("source") in ("none", "error"))]
+        return [{"role": e["role"], "content": e["content"]} for e in usable[-limit:]]
+
+    def chat_thread(self) -> list:
+        """Full conversation with metadata, for the UI."""
+        self._ensure_chat()
+        return list(self.chat)
+
+    def clear_chat(self):
+        self.chat = []
+        self._chat_seq = 0
 
     # ── input resolution ────────────────────────────────────────────────
     def _prev_data_stage(self, stage_id: str) -> Optional[str]:

@@ -29,6 +29,7 @@ from pipeline import scoring
 from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_IDS
 from pipeline.stages.base import to_native
 import llm_agent
+import prompt_guard
 import routes_ai
 import routes_prompts
 import dataset_cards
@@ -274,7 +275,8 @@ def stage_recommend(session_id: str, stage_id: str, body: dict = Body(default={}
     diag = _diagnostics_for(session, stage_id, df_in, err)
     current = {**default, **(body.get("config") or {})}
     rec = llm_agent.recommend(stage_meta(stage_id), session.ctx.problem_type,
-                              diag.get("diagnostics", {}), schema, current, session.journal_summary())
+                              diag.get("diagnostics", {}), schema, current, session.journal_summary(),
+                              params=body.get("params"))
     text = rec.get("summary") or (rec.get("rationale") or [""])[0]
     if text:
         session.add_insight(stage_id, "affinage", "Affinage proposé", text,
@@ -291,7 +293,10 @@ def _run_stage(session, stage_id, config):
         if err:
             raise HTTPException(status_code=409, detail=err)
         with plotting.PLOT_LOCK:  # serialise pyplot (not thread-safe)
-            out = stage.run(df_in, config, ctx)
+            if getattr(stage, "NEEDS_SESSION", False):  # separate: train-only preprocessor fit
+                out = stage.run(df_in, config, ctx, session=session)
+            else:
+                out = stage.run(df_in, config, ctx)
         if isinstance(out, tuple) and len(out) == 3:
             df_out, result, artifacts = out
         else:
@@ -330,7 +335,7 @@ def stage_interpret(session_id: str, stage_id: str, body: dict = Body(default={}
         raise HTTPException(status_code=409, detail="Exécutez l'étape avant de demander une interprétation.")
     payload = {"report": run.result.get("report"), "diagnostics": run.result.get("diagnostics")}
     out = llm_agent.interpret(stage_meta(stage_id)["title"], session.ctx.problem_type,
-                              payload, session.journal_summary())
+                              payload, session.journal_summary(), params=body.get("params"))
     if out.get("verdict") or out.get("interpretation"):
         session.add_insight(stage_id, "interpretation", "Interprétation du résultat",
                             out.get("verdict") or out.get("interpretation"),
@@ -395,7 +400,7 @@ def stage_assist(session_id: str, stage_id: str, body: dict = Body(default={})):
     current = {**default, **(body.get("config") or {})}
     out = llm_agent.assist(stage_meta(stage_id)["title"], session.ctx.problem_type,
                            topic, focus, session.journal_summary(), session.level,
-                           schema, current)
+                           schema, current, params=body.get("params"))
     entry = session.add_insight(stage_id, topic, label,
                                 out.get("explanation") or out.get("takeaway"),
                                 out.get("source", "llm"), out.get("model"))
@@ -407,6 +412,54 @@ def stage_assist(session_id: str, stage_id: str, body: dict = Body(default={})):
 def session_journal(session_id: str):
     session = _require_session(session_id)
     return to_native({"insights": session.insights, "level": session.level})
+
+
+def _chat_context(session) -> dict:
+    """Compact, grounding snapshot of the session for the chat copilot: problem
+    type, target, which stages ran, and the trained model's headline metrics.
+    Everything comes from recorded state — no invention."""
+    # `target_col` is a user-supplied CSV column name — neutralise it before it
+    # reaches the prompt (indirect prompt injection), mirroring _persona_messages.
+    target = prompt_guard.sanitize_label(session.ctx.target_col) if session.ctx.target_col else None
+    ctx = {"problem_type": session.ctx.problem_type, "target": target,
+           "n_rows": int(len(session.raw_df)), "n_cols": int(session.raw_df.shape[1]),
+           "stages_done": [s["stage_id"] for s in session.stage_status()
+                           if s["ran"] and not s["stale"]]}
+    ev = session.get_run("evaluate")
+    if ev is not None and not ev.stale and isinstance(ev.result, dict):
+        ctx["metrics"] = ev.result.get("report")
+    return ctx
+
+
+@app.post("/api/session/{session_id}/chat")
+def session_chat(session_id: str, body: dict = Body(default={})):
+    """Multi-turn chat with the AI cockpit copilot. Records the exchange in the
+    session's conversation thread so later turns are grounded in it."""
+    session = _require_session(session_id)
+    message = str(body.get("message") or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message vide.")
+    out = llm_agent.chat(session.chat_history(), message, session.journal_summary(),
+                         _chat_context(session), params=body.get("params"))
+    session.add_chat_message("user", message, source="user")
+    entry = session.add_chat_message("assistant", out.get("reply", ""),
+                                     source=out.get("source", "llm"), model=out.get("model"))
+    SESSIONS.save(session)  # conversation mutated -> persist
+    return to_native({**out, "id": entry["id"], "thread": session.chat_thread()})
+
+
+@app.get("/api/session/{session_id}/chat")
+def session_chat_history(session_id: str):
+    session = _require_session(session_id)
+    return to_native({"thread": session.chat_thread()})
+
+
+@app.delete("/api/session/{session_id}/chat")
+def session_chat_clear(session_id: str):
+    session = _require_session(session_id)
+    session.clear_chat()
+    SESSIONS.save(session)
+    return {"cleared": True}
 
 
 @app.post("/api/session/{session_id}/journal")
@@ -624,7 +677,8 @@ def explain_exploit(session_id: str, body: dict = Body(default={})):
     focus = body.get("focus") if isinstance(body.get("focus"), dict) else {}
     level = str(body.get("level") or "novice")
     out = llm_agent.assist("Le modèle en action", session.ctx.problem_type, topic, focus,
-                           session.journal_summary(), level, None, None)
+                           session.journal_summary(), level, None, None,
+                           params=body.get("params"))
     return to_native({**out, "label": label})
 
 
@@ -683,7 +737,7 @@ def analyze(session_id: str, body: dict = Body(default={})):
     persona = "expert" if str(body.get("persona") or "").lower() == "expert" else "executive"
     ms = _model_summary(session)
     fn = llm_agent.expert_review if persona == "expert" else llm_agent.executive_brief
-    out = fn(ms, session.journal_summary())
+    out = fn(ms, session.journal_summary(), params=body.get("params"))
     try:  # surface the analysis in the Copilot journal
         session.add_insight("exploit", "analyze:" + persona,
                             "Revue expert" if persona == "expert" else "Synthèse exécutive",

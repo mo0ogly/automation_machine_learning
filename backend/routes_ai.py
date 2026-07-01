@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 import ai_providers
 import ai_store
+import inference_params
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -24,6 +25,23 @@ def list_providers():
     """The provider catalog (AiProviderInfo[]). Adding a provider server-side
     surfaces here with no frontend change."""
     return {"providers": ai_providers.public_catalog()}
+
+
+@router.get("/param-spec")
+def param_spec():
+    """Editable sampling parameters (name, range, step, default, label, help) —
+    single source of truth for the inference-settings controls in the UI."""
+    return {"fields": inference_params.FIELDS}
+
+
+@router.put("/backends/{backend_id}/params")
+def set_params(backend_id: str, body: dict = Body(default={})):
+    """Set a backend's default sampling parameters. Values are sanitised/clamped;
+    ``{}`` clears them (the backend then uses the global defaults)."""
+    try:
+        return ai_store.STORE.update_params(backend_id, body.get("params") or {})
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/backends")
@@ -87,7 +105,7 @@ def test_backend(backend_id: str, body: dict = Body(default={})):
     if not r.get("key"):
         return {"ok": False, "latency_ms": 0,
                 "error": "Aucune clé (ni stockée ni variable d'environnement du provider)."}
-    prompt = str(body.get("prompt") or "").strip() or "ping (réponds en un seul mot)"
+    prompt = (str(body.get("prompt") or "").strip() or "ping (réponds en un seul mot)")[:2000]
     model = r["model"]
     payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
                "temperature": 0, "max_tokens": 64}

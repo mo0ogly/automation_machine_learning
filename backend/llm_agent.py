@@ -23,6 +23,7 @@ import env_loader
 import agent_prompts
 import ai_providers
 import ai_store
+import inference_params
 import prompt_guard
 
 GROQ_MODEL = env_loader.get("GROQ_MODEL", "openai/gpt-oss-120b")
@@ -82,7 +83,8 @@ def agent_status() -> dict:
 
 
 def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
-              schema: list, current_config: dict, journal: str = "") -> dict:
+              schema: list, current_config: dict, journal: str = "",
+              params: dict = None) -> dict:
     """Produce a refinement recommendation for one stage."""
     if not _usable():
         rec = _heuristic(stage_meta["stage_id"], diagnostics, current_config, problem_type)
@@ -95,7 +97,7 @@ def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
     messages = agent_prompts.build_messages(
         stage_meta, problem_type, _compact_schema(schema), current_config, diagnostics, journal)
     try:
-        content = _call_llm(messages)
+        content = _call_llm(messages, params=params)
         parsed = json.loads(_extract_json(content))
         suggested = sanitize_config(schema, parsed.get("suggested_config", {}))
         return {
@@ -117,13 +119,15 @@ def recommend(stage_meta: dict, problem_type: str, diagnostics: dict,
         return rec
 
 
-def interpret(stage_title: str, problem_type: str, payload: dict, journal: str = "") -> dict:
+def interpret(stage_title: str, problem_type: str, payload: dict, journal: str = "",
+              params: dict = None) -> dict:
     """Generate a natural-language interpretation/conclusion of a stage's results."""
     if not _usable():
         return {"source": "none", "available": False, "model": None, "verdict": "", "confidence": 0.0,
                 "interpretation": ["Interprétation IA indisponible (aucun backend IA configuré)."]}
     try:
-        content = _call_llm(agent_prompts.build_interpret_messages(stage_title, problem_type, payload, journal))
+        content = _call_llm(agent_prompts.build_interpret_messages(stage_title, problem_type, payload, journal),
+                            params=params)
         p = json.loads(_extract_json(content))
         return {"source": "llm", "available": True, "model": get_active_model(),
                 "interpretation": [str(x) for x in p.get("interpretation", [])][:6],
@@ -136,7 +140,7 @@ def interpret(stage_title: str, problem_type: str, payload: dict, journal: str =
 
 def assist(stage_title: str, problem_type: str, topic: str, focus: dict,
            journal: str = "", level: str = "novice",
-           schema: list = None, current_config: dict = None) -> dict:
+           schema: list = None, current_config: dict = None, params: dict = None) -> dict:
     """Explain a specific sub-step element to the analyst, and (when relevant)
     propose an APPLICABLE config change so the advice is one-click actionable."""
     if not _usable():
@@ -144,7 +148,8 @@ def assist(stage_title: str, problem_type: str, topic: str, focus: dict,
     try:
         compact = _compact_schema(schema) if schema else None
         content = _call_llm(agent_prompts.build_assist_messages(
-            stage_title, problem_type, topic, focus, journal, level, compact, current_config))
+            stage_title, problem_type, topic, focus, journal, level, compact, current_config),
+            params=params)
         p = json.loads(_extract_json(content))
         suggested = sanitize_config(schema, p.get("suggested_config", {})) if schema else {}
         return {"source": "llm", "available": True, "model": get_active_model(),
@@ -178,16 +183,16 @@ def _assist_heuristic(topic: str, focus: dict, level: str) -> dict:
 
 
 # ── model exploitation : executive + expert personas ──────────────────────
-def executive_brief(model_summary: dict, journal: str = "") -> dict:
+def executive_brief(model_summary: dict, journal: str = "", params: dict = None) -> dict:
     """Plain-language brief for a NON-technical decision-maker: what the model does,
     is it trustworthy, where it fails, and a usage verdict."""
-    return _persona_analysis("executive", model_summary, journal)
+    return _persona_analysis("executive", model_summary, journal, params)
 
 
-def expert_review(model_summary: dict, journal: str = "") -> dict:
+def expert_review(model_summary: dict, journal: str = "", params: dict = None) -> dict:
     """Critical, rigorous review for a data scientist: algorithm fit, metrics in
     context, overfitting, feature critique, leakage/bias/drift, next experiments."""
-    return _persona_analysis("expert", model_summary, journal)
+    return _persona_analysis("expert", model_summary, journal, params)
 
 
 def _persona_messages(persona: str, ms: dict, journal: str) -> list:
@@ -211,12 +216,13 @@ def _persona_messages(persona: str, ms: dict, journal: str) -> list:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def _persona_analysis(persona: str, model_summary: dict, journal: str = "") -> dict:
+def _persona_analysis(persona: str, model_summary: dict, journal: str = "",
+                      params: dict = None) -> dict:
     ms = model_summary or {}
     if not _usable():
         return _persona_heuristic(persona, ms)
     try:
-        p = json.loads(_extract_json(_call_llm(_persona_messages(persona, ms, journal))))
+        p = json.loads(_extract_json(_call_llm(_persona_messages(persona, ms, journal), params=params)))
         return {"source": "llm", "available": True, "model": get_active_model(), "persona": persona,
                 "headline": str(p.get("headline", "")).strip(),
                 "verdict": str(p.get("verdict", "")).strip(),
@@ -271,19 +277,35 @@ def _persona_heuristic(persona: str, ms: dict) -> dict:
             "recommendations": recs, "confidence": 0.0}
 
 
-def _call_llm(messages: list) -> str:
-    """POST the chat request to the active OpenAI-compatible backend."""
+def _call_llm(messages: list, params: dict = None, json_object: bool = True) -> str:
+    """POST the chat request to the active OpenAI-compatible backend.
+
+    ``params`` are per-request sampling overrides (temperature, max_tokens,
+    top_p, penalties). They are merged over the active backend's persisted
+    defaults and clamped (:mod:`inference_params`). ``json_object`` toggles the
+    strict JSON response format — off for free-text chat replies."""
     r = _active()
     if not r or not r.get("key") or not r.get("api_base"):
         raise RuntimeError("Aucun backend IA utilisable.")
     model = r["model"]
+    eff = inference_params.resolve(r.get("params"), params)
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.2,
-        "max_tokens": 4096,
-        "response_format": {"type": "json_object"},
+        "temperature": eff["temperature"],
+        "max_tokens": eff["max_tokens"],
     }
+    # Only send the optional knobs when they are non-neutral, so a call with no
+    # overrides reproduces the exact payload used before the cockpit existed
+    # (some strict/reasoning endpoints reject top_p or penalties otherwise).
+    if eff["top_p"] != 1.0:
+        payload["top_p"] = eff["top_p"]
+    if eff["presence_penalty"] != 0.0:
+        payload["presence_penalty"] = eff["presence_penalty"]
+    if eff["frequency_penalty"] != 0.0:
+        payload["frequency_penalty"] = eff["frequency_penalty"]
+    if json_object:
+        payload["response_format"] = {"type": "json_object"}
     # Reasoning models: keep reasoning minimal, else it can exhaust the token budget
     # and JSON validation fails (observed on gpt-oss / qwen via Groq).
     if "gpt-oss" in model:
@@ -292,9 +314,41 @@ def _call_llm(messages: list) -> str:
         payload["reasoning_effort"] = "none"
     headers = {"Authorization": f"Bearer {r['key']}", "Content-Type": "application/json"}
     url = r["api_base"].rstrip("/") + "/chat/completions"
-    resp = httpx.post(url, json=payload, headers=headers, timeout=40.0)
+    resp = httpx.post(url, json=payload, headers=headers, timeout=60.0)
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"]
+
+
+def chat(history: list, user_msg: str, journal: str = "", context: dict = None,
+         params: dict = None) -> dict:
+    """Multi-turn conversational reply for the AI cockpit. Replays the recorded
+    ``history`` ([{role, content}]) plus the new ``user_msg``, grounded in the
+    session ``context`` and ``journal`` memory. Free-text (not JSON)."""
+    if not str(user_msg or "").strip():
+        return {"source": "error", "available": False, "model": None,
+                "reply": "Message vide."}
+    if not _usable():
+        return {"source": "none", "available": False, "model": None,
+                "reply": ("Aucun backend IA configuré. Ouvre Configuration → IA → « Backends IA… » "
+                          "pour en activer un, puis reviens dialoguer ici.")}
+    try:
+        messages = agent_prompts.build_chat_messages(history, user_msg, journal, context)
+        reply = _call_llm(messages, params=params, json_object=False)
+        reply = _strip_reasoning(reply)
+        return {"source": "llm", "available": True, "model": get_active_model(),
+                "reply": reply or "(réponse vide)"}
+    except Exception as e:
+        return {"source": "error", "available": False, "model": get_active_model(),
+                "reply": f"Le copilote est indisponible ({type(e).__name__}). Vérifie le backend IA "
+                         "actif et sa clé, puis réessaie."}
+
+
+def _strip_reasoning(content: str) -> str:
+    """Drop a leading reasoning block some models emit before the answer."""
+    content = (content or "").strip()
+    if "</think>" in content:
+        content = content.rsplit("</think>", 1)[-1].strip()
+    return content
 
 
 def _extract_json(content: str) -> str:

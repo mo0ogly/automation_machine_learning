@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import InferenceSettings from './InferenceSettings';
+import './ai-cockpit.css';
 
 // Settings window for multi-provider AI backends (mirrors recette_IA_agents):
 // list / activate / key (write-only) / test / delete + a create form whose
@@ -21,6 +23,8 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
   const [keyDrafts, setKeyDrafts] = useState({});
   const [askDrafts, setAskDrafts] = useState({});
   const [tests, setTests] = useState({});
+  const [openParams, setOpenParams] = useState(null);
+  const [paramDrafts, setParamDrafts] = useState({});
 
   const refresh = useCallback(async () => {
     try {
@@ -103,6 +107,18 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await changed();
   };
+  const toggleParams = (b) => {
+    if (openParams === b.id) { setOpenParams(null); return; }
+    setParamDrafts((p) => ({ ...p, [b.id]: { ...(b.params || {}) } }));
+    setOpenParams(b.id);
+  };
+  const saveParams = async (id) => {
+    await fetch(apiBase + '/api/ai/backends/' + id + '/params',
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: paramDrafts[id] || {} }) });
+    setOpenParams(null);
+    await changed();
+  };
   const test = async (id) => {
     setTests((p) => ({ ...p, [id]: { phase: 'testing' } }));
     try {
@@ -145,7 +161,8 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
             {backends.length === 0 ? (
               <tr><td colSpan={7} className="ai-empty">Aucun backend configuré.</td></tr>
             ) : backends.map((b) => (
-              <tr key={b.id} className={b.active ? 'ai-row-active' : ''}>
+              <React.Fragment key={b.id}>
+              <tr className={b.active ? 'ai-row-active' : ''}>
                 <td><input type="radio" name="ai-active" checked={b.active}
                   onChange={() => activate(b.id)} title="Activer ce backend" /></td>
                 <td>{b.id}</td>
@@ -173,9 +190,28 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
                   </div>
                   <TestResult state={tests[b.id]} />
                 </td>
-                <td><button type="button" className="ai-btn ai-btn-danger"
-                  onClick={() => del(b.id)}>Suppr.</button></td>
+                <td className="ai-actions-cell">
+                  <button type="button" className={'ai-btn' + (openParams === b.id ? ' ai-btn-on' : '')}
+                    onClick={() => toggleParams(b)} title="Réglages d'inférence par défaut">Réglages</button>
+                  <button type="button" className="ai-btn ai-btn-danger"
+                    onClick={() => del(b.id)}>Suppr.</button>
+                </td>
               </tr>
+              {openParams === b.id ? (
+                <tr className="ai-params-row">
+                  <td colSpan={7}>
+                    <InferenceSettings apiBase={apiBase} value={paramDrafts[b.id] || {}}
+                      onChange={(v) => setParamDrafts((p) => ({ ...p, [b.id]: v }))}
+                      title={'Paramètres d\'inférence par défaut de « ' + b.id +' »'} />
+                    <div className="ai-params-actions">
+                      <button type="button" className="ai-btn ai-btn-primary"
+                        onClick={() => saveParams(b.id)}>Enregistrer les réglages</button>
+                      <button type="button" className="ai-btn" onClick={() => setOpenParams(null)}>Annuler</button>
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

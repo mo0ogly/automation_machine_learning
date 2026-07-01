@@ -19,6 +19,7 @@ import threading
 from pathlib import Path
 
 import env_loader
+import inference_params
 from ai_providers import get_provider, resolve_endpoint
 
 _DEFAULT_PATH = Path(__file__).resolve().parent / "ai_backends.json"
@@ -72,6 +73,7 @@ class AiStore:
         return {
             "id": b["id"], "provider": b["provider"], "model": b["model"],
             "base_url": b.get("base_url"),
+            "params": b.get("params") or {},
             "key_configured": b["id"] in self._data["secrets"],
             "active": b["id"] == self._data["active"],
         }
@@ -101,6 +103,9 @@ class AiStore:
                 entry["base_url"] = str(backend["base_url"]).strip()
             if prov["base_url"] == "required" and not entry.get("base_url"):
                 raise ValueError("Ce provider exige une Base URL.")
+            params = inference_params.sanitize(backend.get("params"))
+            if params:
+                entry["params"] = params
             self._data["backends"].append(entry)
             if self._data["active"] is None:
                 self._data["active"] = bid
@@ -113,6 +118,21 @@ class AiStore:
             if b is None:
                 raise ValueError("Backend inconnu.")
             b["model"] = str(model).strip()
+            self._save()
+            return self._public(b)
+
+    def update_params(self, backend_id: str, params: dict) -> dict:
+        """Set a backend's default sampling parameters (temperature, max_tokens…).
+        Values are sanitised; an empty result clears the per-backend defaults."""
+        with self._lock:
+            b = self._get(backend_id)
+            if b is None:
+                raise ValueError("Backend inconnu.")
+            clean = inference_params.sanitize(params)
+            if clean:
+                b["params"] = clean
+            else:
+                b.pop("params", None)
             self._save()
             return self._public(b)
 
@@ -162,7 +182,8 @@ class AiStore:
                 if prov and prov["env_key"]:
                     key = env_loader.get(prov["env_key"])
             return {"api_base": api_base, "key": key, "model": b["model"],
-                    "provider": b["provider"], "id": bid}
+                    "provider": b["provider"], "id": bid,
+                    "params": b.get("params") or {}}
 
 
 # Process-wide store.

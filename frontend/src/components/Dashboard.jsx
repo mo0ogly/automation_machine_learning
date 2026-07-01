@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Copilot from './Copilot';
+import ChatDock from './ChatDock';
 import StageStepper from './StageStepper';
 import StagePanel from './StagePanel';
 import AiBackendButton from './AiBackendButton';
@@ -505,6 +506,8 @@ const Dashboard = ({ aiRefresh }) => {
             onAssist={askAssist}
             onSetLevel={setLevelRemote}
           />
+          <ChatDock apiBase={API_URL} sessionId={session && session.session_id}
+            title="Cockpit IA — copilote" />
         </aside>
 
         <main className="lab-main glass-panel">

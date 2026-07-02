@@ -32,6 +32,7 @@ from pipeline.stages.base import to_native
 import llm_agent
 import prompt_guard
 import routes_ai
+import routes_exploit
 import routes_prompts
 import dataset_cards
 import model_export
@@ -71,6 +72,8 @@ app.add_middleware(
 app.include_router(routes_ai.router)
 # Read/edit the agent's AI prompts (the "Prompts IA" panel). See routes_prompts.py.
 app.include_router(routes_prompts.router)
+# Adversarial evasion / counterfactual search for the Exploit view. See routes_exploit.py.
+app.include_router(routes_exploit.router)
 
 
 # ── basic / meta ────────────────────────────────────────────────────────

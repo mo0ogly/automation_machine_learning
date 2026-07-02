@@ -121,6 +121,16 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   stable/sensible/instable. Déterministe (seed fixée), `POST /jitter`, sans ré-entraîner. Un
   détecteur dont les verdicts basculent à 0,1 % de bruit est instable en environnement critique,
   quel que soit le matériel qui l'exécute.
+- **Analyses de stabilité avancées** (`POST /stability/{analysis}`, déterministes, sans upload) :
+  **jitter numérique** (re-scoring float32 vs float64 et mono-thread — la seule forme logicielle
+  du « jitter matériel »), **analyse de marge** (part de la population à une épaisseur de cheveu
+  du seuil de décision — qui basculerait en premier), **churn de ré-entraînement** (ré-apprendre
+  avec d'autres seeds et mesurer le désaccord des verdicts — instabilité structurelle),
+  **prédiction conforme** (garantie de couverture finite-sample sous échangeabilité : les
+  ensembles de prédiction isolent les verdicts statistiquement ambigus ; p-values conformes en
+  détection non supervisée), et **robustesse certifiée** par randomized smoothing (Cohen et al.,
+  ICML 2019 — rayon L2 certifié du classifieur lissé, borne Clopper-Pearson). Chaque analyse
+  rend un verdict, les chiffres clés et une figure.
 - **Datasets cyber de démonstration** (synthétiques, apprentissage SOC/threat intel) : URLs de
   phishing, spam, sévérité CVE (vecteur CVSS) et exploitation KEV (très déséquilibré) — en plus
   des démos existantes risque cyber, injection de prompt et détection d'anomalies.

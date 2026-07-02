@@ -17,6 +17,8 @@ from pipeline import SESSIONS
 from pipeline import monitoring
 from pipeline import monitoring_plots
 from pipeline import plotting
+from pipeline import stability
+from pipeline import stability_plots
 from pipeline.stages.base import to_native
 from session_ingest import read_capped
 
@@ -77,3 +79,31 @@ async def jitter(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Protocole jitter impossible ({type(e).__name__}).")
     return to_native({**report, "plots": plots})
+
+
+@router.post("/{session_id}/stability/{analysis}")
+async def stability_analysis(session_id: str, analysis: str):
+    """One advanced stability analysis on the reference set (no upload).
+
+    ``analysis`` in {numerical, margin, churn, conformal, smoothing} — see
+    pipeline/stability.py. Uniform display contract: verdict + summary rows +
+    notes + one figure. Deterministic (fixed seed).
+    """
+    fn = stability.ANALYSES.get(analysis)
+    if fn is None:
+        raise HTTPException(status_code=404, detail=f"Analyse inconnue : {analysis}.")
+    session = _require_trained(session_id)
+    try:
+        report = fn(session)                       # compute outside the plot lock
+        plots = []
+        if report.get("available"):
+            with plotting.PLOT_LOCK:               # pyplot only under the lock
+                plots = [stability_plots.PLOTS[analysis](report)]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Analyse impossible ({type(e).__name__}).")
+    # Trim the raw distributions (only needed to draw the figure server-side).
+    for k in ("score_deltas", "margins", "p_values", "residuals", "set_sizes", "radii"):
+        report.pop(k, None)
+    return to_native({**report, "analysis": analysis, "plots": plots})

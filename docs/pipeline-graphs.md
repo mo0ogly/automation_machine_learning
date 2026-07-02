@@ -146,6 +146,23 @@ Chaque type de graphe a **une seule étape propriétaire** :
   gauche (petites amplitudes) = détecteur instable en environnement critique. Propriétaire :
   `monitoring_plots.jitter_plot` — ne pas dupliquer dans l'Évaluation.
 
+### Analyses de stabilité avancées (`stability_plots.py` — cartes du panneau Surveillance)
+- **Jitter numérique : écarts de score float32 vs float64** — histogramme des |Δscore|.
+  *Lecture :* des écarts non négligeables + des points près du seuil = verdicts dépendants de
+  l'environnement arithmétique.
+- **Marges au seuil de décision** — histogramme des distances normalisées au seuil, bande 5 %
+  marquée. *Lecture :* la masse à gauche = la population qu'une perturbation quelconque ferait
+  basculer en premier.
+- **Churn de ré-entraînement** — barres de désaccord vs modèle déployé, une par seed, repère 5 %.
+  *Lecture :* churn élevé = famille de modèle structurellement instable sur ces données.
+- **Prédiction conforme** — classification : proportions par taille d'ensemble (1 = net,
+  ≥ 2 = ambigu, 0 = hors distribution) ; anomalie : histogramme des p-values conformes ;
+  régression : résidus de calibration + demi-largeur garantie. *Lecture :* la part ambiguë =
+  les verdicts à router vers un analyste.
+- **Robustesse certifiée (randomized smoothing)** — fraction certifiée vs rayon (unités :
+  écart-type par variable). *Lecture :* la courbe donne, pour chaque rayon de perturbation, la
+  part des verdicts garantis inchangés (classifieur lissé, Cohen 2019).
+
 ### Explicabilité
 - **SHAP summary** — contribution (et direction) de chaque variable aux prédictions, globalement.
 - **Waterfall** — décomposition d'UNE prédiction : ce qui la pousse vers le haut / le bas.

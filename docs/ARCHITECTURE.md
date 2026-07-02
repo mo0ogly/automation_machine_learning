@@ -49,6 +49,8 @@ flowchart LR
 | `eda_plots.py` | Univariée / bivariée — **une figure par variable** (lisible + IA par graphe). |
 | `monitoring.py` | Surveillance post-déploiement (métriques pures, sans matplotlib) : dérive données (PSI + KS par variable), dérive de concept (TVD sur les prédictions), reproductibilité (déterminisme + cohérence avec l'évaluation enregistrée), re-calibration du seuil sur lot labellisé, et **`jitter_protocol`** (taux de bascule des verdicts sous bruit gaussien croissant, 0,1 %→10 % de l'écart-type par variable, seed fixée, verdict stable/sensible/instable ; LOF refusé honnêtement — pas de re-scoring). |
 | `monitoring_plots.py` | Figures du rapport de surveillance : PSI par variable, distribution des prédictions référence vs lot, **courbe de tolérance au jitter** (bascule vs amplitude, point de rupture). |
+| `stability.py` | Analyses de stabilité avancées (contrat d'affichage uniforme verdict + summary + notes) : **jitter numérique** (float32 vs float64, mono-thread), **analyse de marge** (population près du seuil), **churn de ré-entraînement** (désaccord entre seeds), **prédiction conforme** (ensembles/intervalles à couverture garantie, p-values conformes en anomalie), **robustesse certifiée** (randomized smoothing, Cohen et al. ICML 2019, borne Clopper-Pearson). Déterministe (seed fixée) ; refus honnêtes (LOF sans re-scoring, régression sans seuil). |
+| `stability_plots.py` | Une figure par analyse : histogramme des écarts de score, histogramme des marges, barres de churn par seed, tailles d'ensembles conformes / p-values / résidus, courbe fraction-certifiée vs rayon. |
 
 ### Contrat d'une étape (`stages/*.py`)
 
@@ -162,6 +164,7 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | POST | `/autorun` · `/predict` · GET `/download-model` | Pipeline complet / inférence / export `.pkl` |
 | POST | `/api/session/{id}/monitor` | Surveillance post-déploiement : upload d'un lot → dérive (PSI/KS), dérive de concept, reproductibilité, re-calibration du seuil (`monitoring.py`, routeur `routes_monitor.py`) |
 | POST | `/api/session/{id}/jitter` | Protocole jitter (stabilité des prédictions) : sans upload — bruit gaussien croissant sur le jeu de référence → courbe de taux de bascule, point de rupture, verdict. Déterministe (seed fixée) |
+| POST | `/api/session/{id}/stability/{analysis}` | Analyse de stabilité avancée (`numerical` / `margin` / `churn` / `conformal` / `smoothing`) → verdict + chiffres clés + notes + figure (`stability.py`) |
 | POST | `/api/agent/model` · GET `/agent-status` | Sélection du modèle Groq |
 
 ---
@@ -177,6 +180,7 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | `PlotModal.jsx` · `AssistButton.jsx` · `AssistAnswer.jsx` | Modale zoom · bouton `✦` · réponse IA inline |
 | `ConfigControls.jsx` · `DiagnosticsView.jsx` · `ModelSelector.jsx` | Contrôles de config · diagnostics génériques · sélecteur de modèle |
 | `MonitoringPanel.jsx` (+ `monitoring.css`) | Panneau Surveillance (étape Évaluation) : upload d'un lot → rapport de dérive (tableau PSI/KS, concept, reproductibilité, re-calibration) + section **jitter** (bouton de mesure, badge de verdict, courbe de tolérance) |
+| `StabilityPanel.jsx` | Cartes génériques des 5 analyses de stabilité avancées (bouton Lancer → badge verdict + tableau chiffres clés + notes + figure) — rendu piloté par le contrat d'affichage du backend |
 
 ---
 

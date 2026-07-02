@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import StabilityPanel from './StabilityPanel';
 import './monitoring.css';
 
 // Post-deployment drift & stability monitoring. The analyst uploads a NEW batch
@@ -216,6 +217,7 @@ export default function MonitoringPanel({ apiBase, sessionId }) {
       ) : null}
 
       <JitterSection apiBase={apiBase} sessionId={sessionId} />
+      <StabilityPanel apiBase={apiBase} sessionId={sessionId} />
     </div>
   );
 }

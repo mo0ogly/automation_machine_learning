@@ -117,6 +117,15 @@ All **3 learning paradigms** are covered:
   stable/sensitive/unstable verdict. Deterministic (fixed seed), `POST /jitter`, no re-fit.
   A detector whose verdicts flip at 0.1% noise is unstable in a critical environment
   regardless of the hardware it runs on.
+- **Advanced stability analyses** (`POST /stability/{analysis}`, all deterministic, no upload):
+  **numerical jitter** (float32 vs float64 and single-thread re-scoring — the only software-side
+  form of "hardware jitter"), **margin analysis** (share of the population within a hair's width
+  of the decision threshold — who would flip first), **prediction churn** (re-fit with different
+  seeds, measure verdict disagreement — structural instability), **conformal prediction**
+  (finite-sample coverage guarantee under exchangeability: prediction sets flag statistically
+  ambiguous verdicts; conformal p-values for unsupervised detection), and **certified robustness**
+  via randomized smoothing (Cohen et al., ICML 2019 — certified L2 radius of the smoothed
+  classifier, Clopper-Pearson bound). Each returns a verdict, key numbers and a figure.
 - **Cyber demo datasets** (synthetic, for SOC/threat-intel learning): phishing URLs, spam,
   CVE severity (CVSS vector), and KEV exploitation (heavily imbalanced) — alongside the
   existing cyber-risk, prompt-injection and anomaly demos.

@@ -19,3 +19,8 @@
 .mon-lvl-major { color: var(--accent-primary); border: 1px solid var(--accent-primary); }
 .mon-plots { margin-top: 0.7rem; }
 .mon-jitter { margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; }
+.stab-panel { margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; }
+.stab-card { margin-top: 0.8rem; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.6rem 0.8rem; }
+.stab-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.stab-head h6 { margin: 0; }
+.stab-run { flex-shrink: 0; }

@@ -1,0 +1,21 @@
+/* Drift & stability monitoring panel — dedicated file (components.css is size-capped). */
+.mon-panel { margin-top: 1rem; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 0.9rem 1rem; }
+.mon-panel h6 { font-size: 0.78rem; color: var(--accent-secondary); margin: 0.9rem 0 0.35rem;
+  text-transform: uppercase; letter-spacing: 0.03em; }
+.mon-intro { font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 0.6rem; }
+.mon-upload { display: inline-flex; align-items: center; cursor: pointer; }
+.mon-report { margin-top: 0.8rem; }
+.mon-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.mon-badge { font-size: 0.72rem; font-weight: 700; border-radius: 6px; padding: 0.15rem 0.55rem; letter-spacing: 0.03em; }
+.mon-badge-stable { color: var(--status-success); border: 1px solid var(--status-success); }
+.mon-badge-moderate { color: #e8a33d; border: 1px solid #e8a33d; }
+.mon-badge-major { color: var(--accent-primary); border: 1px solid var(--accent-primary); }
+.mon-sub { font-size: 0.72rem; color: var(--text-tertiary); }
+.mon-note { font-size: 0.78rem; color: var(--text-secondary); margin: 0.2rem 0 0.4rem; }
+.mon-table { width: 100%; font-size: 0.76rem; }
+.mon-lvl { font-size: 0.66rem; font-weight: 700; border-radius: 4px; padding: 0.05rem 0.35rem; }
+.mon-lvl-none, .mon-lvl-stable { color: var(--status-success); border: 1px solid var(--status-success); }
+.mon-lvl-moderate { color: #e8a33d; border: 1px solid #e8a33d; }
+.mon-lvl-major { color: var(--accent-primary); border: 1px solid var(--accent-primary); }
+.mon-plots { margin-top: 0.7rem; }
+.mon-jitter { margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; }

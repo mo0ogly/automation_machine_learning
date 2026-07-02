@@ -672,6 +672,63 @@ def test_autorun_resilient_returns_status_on_stop():
     assert "ran" in body and "status" in body
 
 
+def test_monitoring_psi_and_ks():
+    """PSI and KS separate identical from shifted distributions."""
+    import numpy as np
+    from pipeline import monitoring as mon
+    rng = np.random.RandomState(0)
+    a, b = rng.normal(0, 1, 800), rng.normal(0, 1, 800)
+    shifted = rng.normal(1.5, 1, 800)
+    assert mon.psi(a, b) < 0.1                    # same -> stable
+    assert mon.psi(a, shifted) > 0.25            # shifted -> major
+    assert mon.ks(a, shifted)[1] < 0.05          # KS rejects same-distribution
+
+
+def test_monitoring_endpoint_stable_batch():
+    """A batch drawn from the training data reports stable reproducibility."""
+    import io
+    import pandas as pd
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    df = pd.read_csv("../data/breastcancer.csv").sample(150, random_state=3)
+    buf = io.BytesIO(); df.to_csv(buf, index=False); buf.seek(0)
+    r = client.post(f"/api/session/{sid}/monitor",
+                    files={"file": ("batch.csv", buf, "text/csv")})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["available"] is True
+    assert j["reproducibility"]["deterministic"] is True
+    assert "data_drift" in j and "prediction_drift" in j
+    assert len(j["plots"]) == 2
+
+
+def test_monitoring_detects_shifted_batch():
+    """A deliberately shifted batch triggers major data drift."""
+    import io
+    import numpy as np
+    import pandas as pd
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    df = pd.read_csv("../data/breastcancer.csv").sample(150, random_state=4).copy()
+    num = df.select_dtypes("number").columns
+    df[num] = df[num] * 3.0 + 50.0            # strong distribution shift
+    buf = io.BytesIO(); df.to_csv(buf, index=False); buf.seek(0)
+    r = client.post(f"/api/session/{sid}/monitor",
+                    files={"file": ("shifted.csv", buf, "text/csv")})
+    assert r.status_code == 200, r.text
+    assert r.json()["data_drift"]["n_major"] >= 1
+    assert r.json()["overall"] == "major"
+
+
+def test_monitoring_requires_trained_model():
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    import io
+    buf = io.BytesIO(b"a,b\n1,2\n3,4\n")
+    r = client.post(f"/api/session/{sid}/monitor",
+                    files={"file": ("x.csv", buf, "text/csv")})
+    assert r.status_code == 409
+
+
 def test_sanitize_config_column_table_filters_unknown_columns():
     schema = [{"name": "dropped_features", "type": "column_table",
                "columns": [{"column": "a"}, {"column": "b"}]}]

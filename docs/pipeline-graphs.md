@@ -133,6 +133,19 @@ Chaque type de graphe a **une seule étape propriétaire** :
 - **Volume d'alertes selon le seuil d'anomalie** (non supervisé) — alertes pour 1000 événements
   par quantile de score, faute de vérité terrain.
 
+### Surveillance post-déploiement (`monitoring_plots.py` — panneau Surveillance, hors badge d'étape)
+- **Dérive des données par variable (top)** — PSI par variable (barres, colorées par
+  niveau), seuils 0.1 (modérée) et 0.25 (majeure) en pointillés. *Lecture :* les variables
+  au-delà de 0.25 ont changé de distribution → le modèle voit des données qu'il ne connaît pas.
+- **Dérive de concept : distribution des prédictions** — proportions de chaque classe prédite,
+  référence vs lot courant (TVD en titre). *Lecture :* un saut du taux d'alertes = le « normal »
+  du détecteur a bougé.
+- **Stabilité sous perturbation (protocole jitter)** — taux de bascule des verdicts vs amplitude
+  du bruit (log, fractions de l'écart-type par variable), bande min-max sur les répétitions,
+  tolérance 5 % et point de rupture marqués. *Lecture :* une courbe qui franchit la tolérance à
+  gauche (petites amplitudes) = détecteur instable en environnement critique. Propriétaire :
+  `monitoring_plots.jitter_plot` — ne pas dupliquer dans l'Évaluation.
+
 ### Explicabilité
 - **SHAP summary** — contribution (et direction) de chaque variable aux prédictions, globalement.
 - **Waterfall** — décomposition d'UNE prédiction : ce qui la pousse vers le haut / le bas.

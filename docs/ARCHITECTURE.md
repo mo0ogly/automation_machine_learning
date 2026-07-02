@@ -158,6 +158,7 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | GET | `/api/session/{id}/journal` | Journal mémoire des échanges IA |
 | POST | `/api/session/{id}/level` | Niveau Novice/Expert |
 | POST | `/autorun` · `/predict` · GET `/download-model` | Pipeline complet / inférence / export `.pkl` |
+| POST | `/api/session/{id}/monitor` | Surveillance post-déploiement : upload d'un lot → dérive (PSI/KS), dérive de concept, reproductibilité, re-calibration du seuil (`monitoring.py`) |
 | POST | `/api/agent/model` · GET `/agent-status` | Sélection du modèle Groq |
 
 ---

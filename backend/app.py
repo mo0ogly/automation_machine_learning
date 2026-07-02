@@ -34,6 +34,7 @@ import session_ingest
 import stage_runner
 import routes_ai
 import routes_exploit
+import routes_monitor
 import routes_prompts
 import dataset_cards
 import model_export
@@ -75,6 +76,8 @@ app.include_router(routes_ai.router)
 app.include_router(routes_prompts.router)
 # Adversarial evasion / counterfactual search for the Exploit view. See routes_exploit.py.
 app.include_router(routes_exploit.router)
+# Post-deployment drift & stability monitoring (upload a batch -> drift report).
+app.include_router(routes_monitor.router)
 
 
 # ── basic / meta ────────────────────────────────────────────────────────

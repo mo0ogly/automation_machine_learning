@@ -130,7 +130,7 @@ cmd_shell() {
 cmd_test() {
     _require_daemon
     hdr "Tests backend (dans le conteneur)"
-    "${DC[@]}" exec -T backend python -m pytest tests/test_api.py -q
+    "${DC[@]}" exec -T backend python -m pytest tests/ -q
 }
 
 cmd_clean() {

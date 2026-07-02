@@ -4,6 +4,7 @@ import ConfigControls from './ConfigControls';
 import AgentRecommendation from './AgentRecommendation';
 import ModelLeaderboard from './ModelLeaderboard';
 import OperatingPoint from './OperatingPoint';
+import MonitoringPanel from './MonitoringPanel';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
@@ -486,6 +487,17 @@ export default function StagePanel(props) {
                       <AssistAnswer topic="operational" answers={assistAnswers} onApply={onApplyAssist} />
                       <OperatingPoint operational={stage.result.diagnostics.operational}
                         apiBase={apiBase} sessionId={sessionId} />
+                    </>
+                  ) : null}
+                  {meta.stage_id === 'evaluate' ? (
+                    <>
+                      <div className="substep-bar">
+                        <span className="substep-hint">Surveillance de dérive & stabilité (post-déploiement)</span>
+                        <AssistButton topic="monitoring" label="Explique la surveillance de dérive"
+                          onAssist={onAssist} busy={assistBusy} />
+                      </div>
+                      <AssistAnswer topic="monitoring" answers={assistAnswers} onApply={onApplyAssist} />
+                      <MonitoringPanel apiBase={apiBase} sessionId={sessionId} />
                     </>
                   ) : null}
                   {stage.result.warnings && stage.result.warnings.length ? (

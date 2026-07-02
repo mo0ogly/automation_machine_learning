@@ -116,7 +116,7 @@ switch ($Command) {
     }
     'test' {
         Require-Daemon; Write-Hdr "Tests backend (dans le conteneur)"
-        DC exec -T backend python -m pytest tests/test_api.py -q
+        DC exec -T backend python -m pytest tests/ -q
     }
     'clean' {
         Require-Daemon

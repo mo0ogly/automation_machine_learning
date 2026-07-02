@@ -1,0 +1,79 @@
+"""
+routes_monitor.py — post-deployment drift & stability monitoring endpoint.
+
+A dedicated router (mounted in app.py) so the monitoring concern is isolated and
+app.py stays within the file-size budget. The analyst uploads a NEW batch of raw
+rows; the server compares it to the training reference (data drift), the
+prediction distribution (concept drift), checks reproducibility, and — when the
+batch is labelled — re-calibrates the operating point. No model re-fit.
+"""
+
+import io
+
+import pandas as pd
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+
+from pipeline import SESSIONS
+from pipeline import monitoring
+from pipeline import monitoring_plots
+from pipeline import plotting
+from pipeline.stages.base import to_native
+from session_ingest import read_capped
+
+router = APIRouter(prefix="/api/session", tags=["monitoring"])
+
+
+def _require_trained(session_id: str):
+    session = SESSIONS.get(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session inconnue.")
+    if session.get_run("separate") is None or session.get_run("model") is None:
+        raise HTTPException(status_code=409, detail="Entraînez et évaluez le modèle d'abord.")
+    return session
+
+
+@router.post("/{session_id}/monitor")
+async def monitor(session_id: str, file: UploadFile = File(...),
+                  cost_fn: float = Form(None), cost_fp: float = Form(None)):
+    """Drift & stability report for an uploaded batch of new raw rows.
+
+    Returns the full report (data drift, prediction/concept drift, reproducibility,
+    re-calibrated operating point) plus captioned figures.
+    """
+    session = _require_trained(session_id)
+    try:
+        df = pd.read_csv(io.BytesIO(await read_capped(file)))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CSV illisible : {e}")
+    if df.empty:
+        raise HTTPException(status_code=400, detail="Le lot est vide.")
+
+    try:
+        with plotting.PLOT_LOCK:  # serialise pyplot (not thread-safe)
+            report = monitoring.drift_report(session, df, cost_fn=cost_fn, cost_fp=cost_fp)
+            plots = monitoring_plots.monitoring_plots(report) if report.get("available") else []
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=(
+            f"Surveillance impossible ({type(e).__name__}). Vérifiez que le lot a les mêmes "
+            "colonnes que le jeu d'entraînement."))
+    return to_native({**report, "plots": plots})
+
+
+@router.post("/{session_id}/jitter")
+async def jitter(session_id: str):
+    """Prediction-stability ("jitter") protocol on the reference set.
+
+    No upload needed: the server perturbs the held-out reference with Gaussian
+    noise at increasing amplitudes (fractions of each feature's std), re-scores,
+    and reports the flip-rate curve with a verdict. Deterministic (fixed seed).
+    """
+    session = _require_trained(session_id)
+    try:
+        with plotting.PLOT_LOCK:
+            report = monitoring.jitter_protocol(session)
+            plots = [monitoring_plots.jitter_plot(report)] if report.get("available") else []
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Protocole jitter impossible ({type(e).__name__}).")
+    return to_native({**report, "plots": plots})

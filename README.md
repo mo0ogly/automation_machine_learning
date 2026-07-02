@@ -105,6 +105,18 @@ All **3 learning paradigms** are covered:
   (precision@k / detection@k) and a **SOC deployment playbook**. Recomputed live from the
   stored test predictions (`/operating-point`, no re-fit); adapts to the paradigm (binary/
   multiclass detection, anomaly, regression tolerance bands).
+- **Drift & stability monitoring (post-deployment)**: upload a new batch of rows to compare
+  against the training reference — **data drift** (PSI + Kolmogorov-Smirnov per feature),
+  **concept drift** (prediction-distribution shift / alert-rate change), **reproducibility**
+  (re-score a reference sample: determinism + consistency with the recorded evaluation — the
+  honest, measurable form of "jitter"), and **threshold re-calibration** on the new batch.
+  `POST /monitor`, adaptive to the paradigm, with a per-panel AI helper.
+- **Jitter protocol (prediction stability)**: perturb the reference set with Gaussian noise at
+  increasing amplitudes (0.1% to 10% of each feature's std), re-score, and measure the
+  **flip rate** of the verdicts — with a tolerance curve, a breaking point and a
+  stable/sensitive/unstable verdict. Deterministic (fixed seed), `POST /jitter`, no re-fit.
+  A detector whose verdicts flip at 0.1% noise is unstable in a critical environment
+  regardless of the hardware it runs on.
 - **Cyber demo datasets** (synthetic, for SOC/threat-intel learning): phishing URLs, spam,
   CVE severity (CVSS vector), and KEV exploitation (heavily imbalanced) — alongside the
   existing cyber-risk, prompt-injection and anomaly demos.

@@ -109,6 +109,18 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   **budget d'alertes** (précision@k / détection@k) et **fiche de déploiement SOC**. Recalculé en
   direct depuis les prédictions de test stockées (`/operating-point`, sans ré-entraîner) ;
   s'adapte au paradigme (détection binaire/multiclasse, anomalie, bandes de tolérance en régression).
+- **Surveillance de dérive & stabilité (post-déploiement)** : charger un nouveau lot pour le
+  comparer au jeu d'entraînement — **dérive des données** (PSI + Kolmogorov-Smirnov par variable),
+  **dérive de concept** (déplacement de la distribution des prédictions / du taux d'alertes),
+  **reproductibilité** (re-scoring d'un échantillon de référence : déterminisme + cohérence avec
+  l'évaluation enregistrée — la forme honnête et mesurable du « jitter »), et **re-calibration du
+  seuil** sur le nouveau lot. `POST /monitor`, adaptatif, avec bouton IA d'explication.
+- **Protocole jitter (stabilité des prédictions)** : perturber le jeu de référence avec un bruit
+  gaussien d'amplitude croissante (0,1 % à 10 % de l'écart-type de chaque variable), re-scorer et
+  mesurer le **taux de bascule** des verdicts — courbe de tolérance, point de rupture, verdict
+  stable/sensible/instable. Déterministe (seed fixée), `POST /jitter`, sans ré-entraîner. Un
+  détecteur dont les verdicts basculent à 0,1 % de bruit est instable en environnement critique,
+  quel que soit le matériel qui l'exécute.
 - **Datasets cyber de démonstration** (synthétiques, apprentissage SOC/threat intel) : URLs de
   phishing, spam, sévérité CVE (vecteur CVSS) et exploitation KEV (très déséquilibré) — en plus
   des démos existantes risque cyber, injection de prompt et détection d'anomalies.

@@ -3,6 +3,7 @@ import DiagnosticsView from './DiagnosticsView';
 import ConfigControls from './ConfigControls';
 import AgentRecommendation from './AgentRecommendation';
 import ModelLeaderboard from './ModelLeaderboard';
+import OperatingPoint from './OperatingPoint';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
@@ -472,6 +473,19 @@ export default function StagePanel(props) {
                       </div>
                       <AssistAnswer topic="controle_surapprentissage" answers={assistAnswers} onApply={onApplyAssist} />
                       <OverfitControl data={stage.result.diagnostics.controle_surapprentissage} />
+                    </>
+                  ) : null}
+                  {meta.stage_id === 'evaluate' && stage.result.diagnostics
+                    && stage.result.diagnostics.operational ? (
+                    <>
+                      <div className="substep-bar">
+                        <span className="substep-hint">Vue opérationnelle SOC / threat intel</span>
+                        <AssistButton topic="operational" label="Explique le point de fonctionnement"
+                          onAssist={onAssist} busy={assistBusy} />
+                      </div>
+                      <AssistAnswer topic="operational" answers={assistAnswers} onApply={onApplyAssist} />
+                      <OperatingPoint operational={stage.result.diagnostics.operational}
+                        apiBase={apiBase} sessionId={sessionId} />
                     </>
                   ) : null}
                   {stage.result.warnings && stage.result.warnings.length ? (

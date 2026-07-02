@@ -56,10 +56,12 @@ class FeaturePreprocessor:
     target_col : excluded from the feature matrix (may be absent from served rows).
     """
 
-    def __init__(self, transform_cfg: dict, integrate_cfg: dict, target_col=None):
+    def __init__(self, transform_cfg: dict, integrate_cfg: dict, target_col=None,
+                 problem_type=None):
         self.transform_cfg = dict(transform_cfg or {})
         self.integrate_cfg = dict(integrate_cfg or {})
         self.target_col = target_col
+        self.problem_type = problem_type
         self.fitted_ = False
         # Learned state
         self.typology_ = None
@@ -73,10 +75,11 @@ class FeaturePreprocessor:
         self.scale_cols_ = []
         self.pca_ = None
         self.pca_input_cols_ = []
+        self.selected_features_ = None  # univariate selection result (train-fitted)
         self.feature_names_ = []
 
     # ── fit ──────────────────────────────────────────────────────────────
-    def fit(self, df: pd.DataFrame) -> "FeaturePreprocessor":
+    def fit(self, df: pd.DataFrame, y=None) -> "FeaturePreprocessor":
         cfg = self.transform_cfg
         df = df.copy()
         df, _ = _engineer(df)
@@ -150,8 +153,25 @@ class FeaturePreprocessor:
             self.scaler_ = _SCALERS.get(scaler_kind, StandardScaler)()
             df[self.scale_cols_] = self.scaler_.fit_transform(df[self.scale_cols_])
 
-        # 6. Optional PCA compression, fit on the train matrix.
         feats = [c for c in df.columns if c != self.target_col]
+
+        # 6a. Optional univariate feature selection, fit on the TRAIN matrix only
+        # (leakage-free): keep the top-k features by ANOVA F-test / mutual information
+        # vs the target. Mutually exclusive with PCA (PCA already reduces).
+        self.selected_features_ = None
+        fs = str(self.integrate_cfg.get("feature_selection", "none")).lower()
+        if fs == "univariate" and not self.integrate_cfg.get("pca") and y is not None:
+            num_final = [c for c in feats if pd.api.types.is_numeric_dtype(df[c])]
+            k = int(self.integrate_cfg.get("fs_k", 0) or 0)
+            if k > 0 and 0 < k < len(num_final):
+                kept = self._univariate_select(df[num_final].fillna(0), y, k,
+                                               str(self.integrate_cfg.get("fs_score", "anova")))
+                if kept:
+                    non_num = [c for c in feats if c not in num_final]
+                    feats = [c for c in feats if c in kept or c in non_num]
+                    self.selected_features_ = list(feats)
+
+        # 6b. Optional PCA compression, fit on the train matrix.
         self.pca_, self.pca_input_cols_ = None, []
         if self.integrate_cfg.get("pca"):
             num_final = [c for c in feats if pd.api.types.is_numeric_dtype(df[c])]
@@ -169,6 +189,24 @@ class FeaturePreprocessor:
         self.feature_names_ = list(feats)
         self.fitted_ = True
         return self
+
+    def _univariate_select(self, X, y, k, score):
+        """Top-k feature names by ANOVA F-test / mutual information vs the target
+        (classification or regression score chosen from ``problem_type``)."""
+        from sklearn.feature_selection import (
+            SelectKBest, f_classif, f_regression, mutual_info_classif, mutual_info_regression,
+        )
+        is_reg = self.problem_type == "regression"
+        if score == "mutual_info":
+            func = mutual_info_regression if is_reg else mutual_info_classif
+        else:
+            func = f_regression if is_reg else f_classif
+        try:
+            sel = SelectKBest(func, k=min(k, X.shape[1])).fit(X, y)
+            support = sel.get_support()
+            return [c for c, keep in zip(X.columns, support) if keep]
+        except Exception:
+            return []
 
     # ── transform ────────────────────────────────────────────────────────
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

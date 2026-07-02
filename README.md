@@ -78,12 +78,14 @@ All **3 learning paradigms** are covered:
   (a dedicated lookup table), not alphabetical order; nominals are One-Hot encoded.
 - **Outlier exclusion** driven by univariate analysis, expert-configurable.
 - **Leakage-free preprocessing**: the Separation stage splits FIRST, then fits every
-  data-dependent transformer (skew correction, one-hot categories, scaler statistics, PCA)
-  on the **train partition only** (`pipeline/preprocessing.py`); the fitted preprocessor is
+  data-dependent transformer (skew correction, one-hot categories, scaler statistics,
+  **univariate feature selection** and PCA) on the **train partition only** (`pipeline/preprocessing.py`); the fitted preprocessor is
   reused verbatim by serving (`/predict`) and the model export, so serving can never drift
   from training. The full-frame transform remains for the exploratory EDA views only.
-- **Models**: Linear/Ridge/Lasso/Logistic, Decision Tree, Random Forest, Gradient Boosting,
-  **XGBoost**.
+- **Models**: Linear/Ridge/Lasso/ElasticNet/Logistic, **SVM**, **k-NN**, **Naive Bayes**,
+  Decision Tree, Random Forest, Gradient Boosting, **XGBoost** — every family selectable on the
+  leaderboard, tunable with its own grid, and described inline (with an AI helper button) so a
+  non-expert analyst is never left alone before a technical choice.
 - **Honest model selection**: the Modelling leaderboard ranks candidates by **k-fold
   cross-validation on the train set** (mean ± std, train-vs-CV overfit gap) — the held-out
   test set is never consulted before Evaluation.
@@ -95,6 +97,17 @@ All **3 learning paradigms** are covered:
   (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
 - **Explainability**: `SHAP` importance + waterfall — `TreeExplainer` for tree models,
   `LinearExplainer` for linear families, configurable explained class in multiclass.
+- **Operational evaluation (SOC / threat-intel)**: an adaptive operating-point panel on top of
+  the metrics — an interactive **decision-threshold** slider (0.5 is rarely right in cyber),
+  **cost of errors** (a missed attack vs a false alert), a business confusion matrix
+  (detection / miss / false alert / normal), **calibration** (reliability curve, Brier, ECE),
+  imbalance-robust scores (**MCC**, balanced accuracy, kappa), an **alert-budget** view
+  (precision@k / detection@k) and a **SOC deployment playbook**. Recomputed live from the
+  stored test predictions (`/operating-point`, no re-fit); adapts to the paradigm (binary/
+  multiclass detection, anomaly, regression tolerance bands).
+- **Cyber demo datasets** (synthetic, for SOC/threat-intel learning): phishing URLs, spam,
+  CVE severity (CVSS vector), and KEV exploitation (heavily imbalanced) — alongside the
+  existing cyber-risk, prompt-injection and anomaly demos.
 
 ## Getting started
 

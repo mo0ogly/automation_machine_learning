@@ -382,6 +382,144 @@ CARDS = {
             )},
         ],
     },
+
+    # ── Cyber SOC : détection de phishing ───────────────────────────────
+    "phishing.csv": {
+        "title": "Détection de phishing — URLs malveillantes",
+        "type": "Classification binaire (déséquilibrée, ~22% phishing)",
+        "synthetic": True,
+        "rows": 4000, "cols": 15,
+        "target": "is_phishing — 0 (légitime) / 1 (phishing)",
+        "source": "Features d'URL/hostname simulées (longueur, sous-domaines, âge de domaine, TLD, entropie).",
+        "summary": (
+            "Jeu synthétique de 4000 URLs décrites par 14 caractéristiques structurelles, pour "
+            "l'apprentissage de la détection de phishing en contexte SOC. Le déséquilibre (~22% "
+            "de phishing) et le coût élevé d'une URL manquée en font un cas d'école pour la vue "
+            "opérationnelle : choix du seuil, coût FN/FP, budget d'alertes."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables clés", "table": [
+                ["url_length", "Longueur de l'URL (caractères)"],
+                ["num_dots / num_hyphens / num_digits", "Ponctuation et chiffres — plus élevés en phishing"],
+                ["num_subdomains", "Nombre de sous-domaines (dilution de marque)"],
+                ["domain_age_days", "Âge du domaine — les domaines de phishing sont jeunes"],
+                ["has_ip / has_at_symbol", "IP littérale ou '@' dans l'URL (0/1)"],
+                ["https / shortened", "HTTPS présent / URL raccourcie (0/1)"],
+                ["brand_in_subdomain", "Marque imitée placée en sous-domaine (0/1)"],
+                ["host_entropy", "Entropie du hostname (aléa des noms de phishing)"],
+                ["tld", "Extension : com/org/fr… vs xyz/top/tk/zip…"],
+            ]},
+            {"heading": "Usage SOC / threat intel", "text": (
+                "Après entraînement, la vue Évaluation propose un point de fonctionnement : baissez le "
+                "seuil pour ne manquer aucune URL (rappel max) au prix de plus de fausses alertes, ou "
+                "montez-le pour préserver le temps analyste. Le budget d'alertes indique la file à "
+                "traiter pour 1000 URLs. Régénérable via data/generators/phishing_urls.py."
+            )},
+        ],
+    },
+
+    # ── Cyber SOC : détection de spam ───────────────────────────────────
+    "spam.csv": {
+        "title": "Détection de spam — messages indésirables",
+        "type": "Classification binaire (~32% spam)",
+        "synthetic": True,
+        "rows": 3000, "cols": 13,
+        "target": "is_spam — 0 (légitime) / 1 (spam)",
+        "source": "Features dérivées du texte simulées (longueur, majuscules, mots-clés urgence/argent, URL/téléphone).",
+        "summary": (
+            "Jeu synthétique de 3000 messages décrits par 12 caractéristiques de texte, complément "
+            "pédagogique du phishing : même cadre de détection, espace de features différent, classes "
+            "plus équilibrées. Idéal pour comparer précision/rappel et calibration entre deux détecteurs."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables clés", "table": [
+                ["char_length / num_words", "Taille du message"],
+                ["num_digits", "Chiffres (numéros surtaxés, montants)"],
+                ["uppercase_ratio", "Part de majuscules (spam plus 'criard')"],
+                ["num_exclamation", "Points d'exclamation"],
+                ["num_currency", "Symboles monétaires (€, $, £)"],
+                ["num_free_keywords / num_urgent_keywords", "Comptes de mots 'gratuit' / 'urgent'"],
+                ["has_url / has_phone", "Présence d'un lien / numéro (0/1)"],
+                ["avg_word_length", "Longueur moyenne des mots"],
+                ["language", "Langue : fr / en"],
+            ]},
+            {"heading": "Recommandations ML", "text": (
+                "Classes modérément déséquilibrées : lire F1, MCC et la matrice de confusion métier, "
+                "pas seulement l'accuracy. Régénérable via data/generators/spam_messages.py."
+            )},
+        ],
+    },
+
+    # ── Cyber : sévérité CVE (CVSS) ─────────────────────────────────────
+    "cve_severity.csv": {
+        "title": "Sévérité CVE — priorisation des vulnérabilités",
+        "type": "Classification multiclasse (low / medium / high / critical)",
+        "synthetic": True,
+        "rows": 4200, "cols": 12,
+        "target": "severity — low / medium / high / critical (bandes CVSS v3)",
+        "source": "Composantes du vecteur CVSS v3 simulées (AV, AC, PR, UI, scope, impacts C/I/A) + EPSS.",
+        "summary": (
+            "Jeu synthétique de 4200 vulnérabilités décrites par les composantes du vecteur CVSS v3, "
+            "pour apprendre à prédire la bande de sévérité. Le score de base latent est calculé depuis "
+            "les composantes puis découpé selon les seuils officiels CVSS ; le score brut est RETIRÉ "
+            "pour éviter la fuite de cible — on prédit la sévérité depuis le vecteur lui-même."
+        ),
+        "sections": [
+            {"heading": "Schéma — composantes CVSS v3", "table": [
+                ["attack_vector", "Vecteur : network / adjacent / local / physical"],
+                ["attack_complexity", "Complexité : low / high"],
+                ["privileges_required", "Privilèges requis : none / low / high"],
+                ["user_interaction", "Interaction utilisateur : none / required"],
+                ["scope", "Portée : unchanged / changed"],
+                ["confidentiality_impact / integrity_impact / availability_impact", "Impacts C/I/A : none / low / high"],
+                ["epss_score", "Probabilité d'exploitation EPSS (0–1)"],
+                ["exploit_maturity", "Maturité d'exploit : unproven / poc / functional / high"],
+                ["days_since_published", "Ancienneté de publication (jours)"],
+            ]},
+            {"heading": "Cible & fuite", "text": (
+                "severity dérive d'un score de base CVSS calculé à partir des composantes ; ce score "
+                "brut est volontairement absent du dataset pour éviter la fuite. Répartition : "
+                "medium ~52% / high ~31% / low ~11% / critical ~6% (déséquilibre réaliste). "
+                "Régénérable via data/generators/cve_severity.py."
+            )},
+        ],
+    },
+
+    # ── Cyber : exploitation KEV/EPSS ───────────────────────────────────
+    "kev_exploit.csv": {
+        "title": "Exploitation KEV — vulnérabilité activement exploitée",
+        "type": "Classification binaire (très déséquilibrée, ~13% exploité)",
+        "synthetic": True,
+        "rows": 5000, "cols": 12,
+        "target": "exploited — 0 (non exploité) / 1 (exploité, style CISA KEV)",
+        "source": "Signaux vuln. simulés (CVSS, EPSS, exploit public, RCE, accessibilité réseau, popularité éditeur).",
+        "summary": (
+            "Jeu synthétique de 5000 vulnérabilités prédisant l'exploitation active en conditions "
+            "réelles (étiquette de type CISA KEV). Le fort déséquilibre (~13% exploité) et le coût "
+            "élevé d'un raté rendent le seuil 0.5 inutile : c'est le dataset phare pour l'évaluation "
+            "opérationnelle (réglage de seuil, coût FN/FP, budget d'alertes, calibration)."
+        ),
+        "sections": [
+            {"heading": "Schéma — variables clés", "table": [
+                ["cvss_score", "Sévérité CVSS (0–10)"],
+                ["epss_score", "Probabilité d'exploitation EPSS (0–1) — signal fort"],
+                ["age_days", "Ancienneté de la vuln. (jours)"],
+                ["public_exploit_available", "Exploit public disponible (0/1)"],
+                ["is_rce / is_privilege_escalation", "Exécution de code / élévation de privilèges (0/1)"],
+                ["requires_authentication", "Authentification requise (0/1) — réduit le risque"],
+                ["network_reachable", "Atteignable depuis le réseau (0/1)"],
+                ["vendor_popularity", "Popularité de l'éditeur / surface installée (0–1)"],
+                ["cwe_category", "Famille CWE : memory / injection / authz / …"],
+                ["ransomware_association", "Associée à un rançongiciel connu (0/1)"],
+            ]},
+            {"heading": "Pourquoi ce dataset pour l'évaluation opérationnelle", "text": (
+                "Avec ~13% de positifs, un modèle qui prédit 'jamais exploité' atteint ~87% d'accuracy "
+                "tout en ratant TOUTES les vulnérabilités exploitées. Il faut donc lire le rappel, la "
+                "PR-AUC, le MCC, choisir le seuil selon le coût d'un raté, et dimensionner le budget "
+                "d'alertes. Régénérable via data/generators/kev_exploit.py."
+            )},
+        ],
+    },
 }
 
 

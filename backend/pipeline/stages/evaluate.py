@@ -22,7 +22,9 @@ from sklearn.decomposition import PCA
 from ..context import REGRESSION, CLASSIFICATION, ANOMALY
 from ..plotting import style_plot, fig_to_base64, message_plot
 from .. import evaluate_plots as adv
-from .base import toggle
+from .. import operational as opn
+from .. import operational_plots as opn_plots
+from .base import toggle, number
 
 STAGE_ID = "evaluate"
 TITLE = "Évaluation"
@@ -30,15 +32,24 @@ OBJECTIVE = "Mesurer la performance sur le jeu de test et produire les graphique
 
 
 def default_config(ctx):
-    return {"learning_curve": True}
+    return {"learning_curve": True, "cost_fn": opn.DEFAULT_COST_FN,
+            "cost_fp": opn.DEFAULT_COST_FP}
 
 
 def config_schema(ctx):
     if ctx.problem_type not in (REGRESSION, CLASSIFICATION):
         return []
-    return [toggle("learning_curve", "Courbe d'apprentissage", True,
-                   "Ré-entraîne le modèle sur des sous-échantillons croissants (CV) pour voir "
-                   "si davantage de données amélioreraient la performance.")]
+    controls = [toggle("learning_curve", "Courbe d'apprentissage", True,
+                       "Ré-entraîne le modèle sur des sous-échantillons croissants (CV) pour voir "
+                       "si davantage de données amélioreraient la performance.")]
+    if ctx.problem_type == CLASSIFICATION:
+        controls += [
+            number("cost_fn", "Coût d'une attaque manquée (FN)", opn.DEFAULT_COST_FN, 1, 1000,
+                   "Coût opérationnel d'un faux négatif. Sert au seuil coût-minimal (vue opérationnelle SOC)."),
+            number("cost_fp", "Coût d'une fausse alerte (FP)", opn.DEFAULT_COST_FP, 1, 1000,
+                   "Coût opérationnel d'un faux positif (temps de triage analyste)."),
+        ]
+    return controls
 
 
 def diagnose(session):
@@ -106,12 +117,21 @@ def run(session, config):
         if lc:
             plots.append(lc)
 
+    # Operational (SOC / threat-intel) analysis: thresholds, cost, calibration,
+    # alert budget — adapted to the problem type. Recomputable live via /operating-point.
+    op = opn.build_operational(session, threshold=0.5,
+                               cost_fn=float(cfg.get("cost_fn", opn.DEFAULT_COST_FN)),
+                               cost_fp=float(cfg.get("cost_fp", opn.DEFAULT_COST_FP)))
+    if op.get("applicable"):
+        plots += opn_plots.operational_plots(op)
+
     session.ctx.notes.append(f"eval:{metrics}")
     diagnostics = {"metrics": metrics, "n_test": int(len(y_test)),
                    "algorithm": mrun.artifacts.get("algorithm"),
                    # True when the split-first / train-only preprocessor built the matrices:
                    # the scores below are then free of preprocessing leakage.
-                   "leakage_free": art.get("preprocessor") is not None}
+                   "leakage_free": art.get("preprocessor") is not None,
+                   "operational": op}
     if class_report:
         diagnostics["rapport_par_classe"] = class_report
     report = dict(metrics)
@@ -392,11 +412,15 @@ def _evaluate_anomaly(session, art, mrun):
     top_rows = _top_anomalies(raw_df, preds, scores)
 
     plots = [_anomaly_score_hist(scores, preds), _anomaly_scatter(X, preds)]
+    # Operational reading: alert volume per anomaly-score quantile (SOC budget).
+    op = opn.build_operational(session)
+    if op.get("applicable"):
+        plots += opn_plots.operational_plots(op)
     log = [f"{algo} : {n_anom} anomalies ({rate}%) sur {n} observations."]
     result = {
         "report": metrics,
         "diagnostics": {"metrics": metrics, "algorithm": algo, "anomaly_rate": rate,
-                        "top_anomalies": top_rows},
+                        "top_anomalies": top_rows, "operational": op},
         "log": log, "warnings": [], "plots": plots, "metrics": metrics,
     }
     return result, {"metrics": metrics}

@@ -62,7 +62,9 @@ def config_schema(ctx):
                    "Points minimum pour former un cœur de densité (DBSCAN)."),
         ]
     controls = [
-        select("algorithm", "Algorithme", algos, "RandomForest", "Modèle entraîné."),
+        select("algorithm", "Algorithme", algos, "RandomForest",
+               "Famille de modèle entraînée. Chaque famille a ses forces (voir le leaderboard "
+               "pour comparer) ; en cas de doute, cliquez « IA » pour un conseil adapté à vos données."),
         rng("n_estimators", "Nombre d'arbres", 10, 500, 10, 100, "Pour Random Forest / Gradient Boosting."),
         number("max_depth", "Profondeur max (0 = illimité)", 0, 0, 40, "Limite la profondeur des arbres."),
     ]
@@ -127,6 +129,7 @@ def _leaderboard(art, ptype, n_est, max_depth, class_weight=None):
     best = rows[0]["model"] if rows else None
     for r in rows:
         r["recommended"] = (r["model"] == best)
+        r["help"] = est_factory.algo_help(r["model"])   # analyst-facing description
     return rows, best, cv
 
 

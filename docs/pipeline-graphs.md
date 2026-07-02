@@ -30,7 +30,7 @@ C'est pourquoi le nombre « monte » quand on exécute une étape (ex. Nettoyage
 | **4. Séparation** (`stages/separate.py`) | `Classes de <cible>` ou `Distribution de <cible>` (1) | `Équilibre des classes par jeu` ou `Distribution de la cible par jeu` (1) |
 | **5. Modélisation** (`stages/model.py`) | Supervisé : `R²/Accuracy (validation croisée, train) par modèle` (leaderboard CV — le test reste vierge). Clustering : `Méthode du coude — choix de K` + `Graphe k-distance — calibrer eps (DBSCAN)` | Supervisé : `Importance des variables (top 12)`. Agglomératif : `Méthode du coude` + `Dendrogramme (Ward) — fusions hiérarchiques` ; messages selon le cas |
 | **6. Fine-tuning** (`stages/tune.py`) | — | `Score CV par combinaison d'hyperparamètres (top 10)` |
-| **7. Évaluation** (`stages/evaluate.py`) | — | Régression : `Réel vs Prédit` + `Résidus` + `Courbe d'apprentissage`. Classification : `Matrice de confusion` + `Courbe ROC (jeu de test)` + `Courbe précision-rappel (jeu de test)` (binaire) + `Contrôle du surapprentissage (train / test / CV)` + `Courbe d'apprentissage`. Clustering : `Clusters (projection PCA)` + `Profil moyen des clusters (écarts standardisés)`. Anomalies : `Distribution des scores d'anomalie` + `Anomalies (projection PCA)` |
+| **7. Évaluation** (`stages/evaluate.py`) | — | Régression : `Réel vs Prédit` + `Résidus` + `Courbe d'apprentissage`. Classification : `Matrice de confusion` + `Courbe ROC (jeu de test)` + `Courbe précision-rappel (jeu de test)` (binaire) + `Contrôle du surapprentissage (train / test / CV)` + `Courbe d'apprentissage` + **vue opérationnelle** (`Précision / rappel / F2 selon le seuil`, `Coût opérationnel attendu selon le seuil`, `Diagramme de fiabilité`, `Budget d'alertes`). Clustering : `Clusters (projection PCA)` + `Profil moyen des clusters (écarts standardisés)`. Anomalies : `Distribution des scores d'anomalie` + `Anomalies (projection PCA)` + `Volume d'alertes selon le seuil d'anomalie` |
 | **8. Explicabilité** (`stages/explain.py`) | — | SHAP : summary + waterfall (TreeExplainer pour les arbres, LinearExplainer pour Linear/Ridge/Lasso/Logistic ; message sinon) |
 
 ## Règles anti-doublon (qui fait quoi)
@@ -119,6 +119,19 @@ Chaque type de graphe a **une seule étape propriétaire** :
 - **Profil moyen des clusters (écarts standardisés)** — ce qui caractérise chaque cluster.
 - **Distribution des scores d'anomalie** / **Anomalies (projection PCA)** — scores et
   points jugés anormaux.
+
+### Évaluation opérationnelle (SOC / threat intel — `operational_plots.py`)
+- **Précision / rappel / F2 selon le seuil** — arbitrage détection vs fausses alertes ; les
+  points recommandés (coût min, FPR 1%) sont marqués. Baisser le seuil = plus de détection,
+  plus de fausses alertes.
+- **Coût opérationnel attendu selon le seuil** — coût = FN×coût(FN) + FP×coût(FP) ; le minimum
+  donne le seuil coût-optimal (en cyber, un raté coûte plus qu'une fausse alerte).
+- **Diagramme de fiabilité** — probabilité prédite vs fréquence observée ; sur la diagonale =
+  calibré (un score de 0.8 = ~80% de vrais positifs). Brier / ECE en sous-titre.
+- **Budget d'alertes** — précision@k (pureté de la file) et détection@k (couverture) selon le
+  nombre d'alertes revues, triées par score.
+- **Volume d'alertes selon le seuil d'anomalie** (non supervisé) — alertes pour 1000 événements
+  par quantile de score, faute de vérité terrain.
 
 ### Explicabilité
 - **SHAP summary** — contribution (et direction) de chaque variable aux prédictions, globalement.

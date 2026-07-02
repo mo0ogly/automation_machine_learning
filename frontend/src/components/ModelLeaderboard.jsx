@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
+import './leaderboard-extra.css';
 
 // Model comparison leaderboard (Modelling stage) — ranked by k-fold
 // cross-validation ON THE TRAIN SET (the held-out test set stays virgin until
@@ -18,7 +19,7 @@ const LB_LABELS = {
 
 // Columns folded into another column's "± std" display rather than shown alone.
 const STD_OF = { rmse_cv: 'rmse_cv_std', accuracy_cv: 'accuracy_cv_std' };
-const HIDDEN = new Set(['model', 'recommended', 'rmse_cv_std', 'accuracy_cv_std']);
+const HIDDEN = new Set(['model', 'recommended', 'rmse_cv_std', 'accuracy_cv_std', 'help']);
 // 0..1 metrics that get an inline score bar.
 const BAR_KEYS = new Set(['r2_cv', 'accuracy_cv', 'f1_cv', 'r2_test', 'accuracy_test', 'f1_test']);
 
@@ -132,9 +133,10 @@ export default function ModelLeaderboard(props) {
               const isSel = selected === r.model;
               return (
                 <tr key={r.model} className={r.recommended ? 'lb-best' : ''}>
-                  <td className="lb-model">
+                  <td className="lb-model" title={r.help || ''}>
                     {r.model}
                     {r.recommended ? <span className="lb-badge">recommandé</span> : null}
+                    {r.help ? <span className="lb-model-help">{r.help}</span> : null}
                   </td>
                   {cols.map((c) => {
                     if (c === 'overfit') {

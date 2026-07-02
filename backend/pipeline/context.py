@@ -33,6 +33,12 @@ def detect_target_and_type(df: pd.DataFrame):
         return cols_lower["saleprice"], REGRESSION
     if "diagnosis" in cols_lower:
         return cols_lower["diagnosis"], CLASSIFICATION
+    # Cyber demos: the label is unambiguous, but a stray 2-value categorical
+    # feature (language, attack_complexity, scope…) would otherwise be mis-picked
+    # as the target by the generic binary-column heuristic below.
+    for tgt in ("is_phishing", "is_spam", "exploited", "severity"):
+        if tgt in cols_lower:
+            return cols_lower[tgt], CLASSIFICATION
     if "client_id" in cols_lower or "customer_id" in cols_lower:
         return None, CLUSTERING
 

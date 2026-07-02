@@ -81,12 +81,14 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Exclusion d'aberrants** pilotée par l'analyse univariée, configurable par l'expert.
 - **Prétraitement anti-fuite** : l'étape Séparation découpe D'ABORD, puis ajuste chaque
   transformateur dépendant des données (redressement d'asymétrie, catégories One-Hot,
-  statistiques d'échelle, PCA) sur la **partition train uniquement**
-  (`pipeline/preprocessing.py`) ; le préprocesseur ajusté est réutilisé tel quel par le
+  statistiques d'échelle, **sélection univariée de variables** et PCA) sur la **partition train
+  uniquement** (`pipeline/preprocessing.py`) ; le préprocesseur ajusté est réutilisé tel quel par le
   serving (`/predict`) et l'export du modèle — le serving ne peut pas dériver de
   l'entraînement. La transformation plein-cadre ne sert plus qu'aux vues exploratoires (EDA).
-- **Modèles** : Linéaire/Ridge/Lasso/Logistique, Arbre de décision, Random Forest,
-  Gradient Boosting, **XGBoost**.
+- **Modèles** : Linéaire/Ridge/Lasso/ElasticNet/Logistique, **SVM**, **k-NN**, **Naïve Bayes**,
+  Arbre de décision, Random Forest, Gradient Boosting, **XGBoost** — chaque famille est comparée
+  au leaderboard, réglable avec sa propre grille, et décrite en ligne (avec un bouton IA) pour
+  qu'un analyste non expert ne soit jamais seul devant un choix technique.
 - **Sélection honnête du modèle** : le leaderboard de Modélisation classe les candidats par
   **validation croisée k-fold sur le train** (moyenne ± écart-type, écart train/CV de
   surapprentissage) — le jeu de test n'est jamais consulté avant l'Évaluation.
@@ -99,6 +101,17 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   `class_weight='balanced'` pour le déséquilibre.
 - **Explicabilité** : `SHAP` importance + waterfall — `TreeExplainer` pour les arbres,
   `LinearExplainer` pour les familles linéaires, classe expliquée configurable en multiclasse.
+- **Évaluation opérationnelle (SOC / threat intel)** : un panneau de point de fonctionnement
+  adaptatif au-dessus des métriques — curseur de **seuil de décision** interactif (0.5 est
+  rarement optimal en cyber), **coût d'erreur** (attaque manquée vs fausse alerte), matrice de
+  confusion métier (détection / raté / fausse alerte / normal), **calibration** (courbe de
+  fiabilité, Brier, ECE), scores robustes au déséquilibre (**MCC**, balanced accuracy, kappa),
+  **budget d'alertes** (précision@k / détection@k) et **fiche de déploiement SOC**. Recalculé en
+  direct depuis les prédictions de test stockées (`/operating-point`, sans ré-entraîner) ;
+  s'adapte au paradigme (détection binaire/multiclasse, anomalie, bandes de tolérance en régression).
+- **Datasets cyber de démonstration** (synthétiques, apprentissage SOC/threat intel) : URLs de
+  phishing, spam, sévérité CVE (vecteur CVSS) et exploitation KEV (très déséquilibré) — en plus
+  des démos existantes risque cyber, injection de prompt et détection d'anomalies.
 
 ## Démarrer
 

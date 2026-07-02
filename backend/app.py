@@ -24,6 +24,7 @@ from pathlib import Path
 from pipeline import SESSIONS
 from pipeline import diagnostics as dg
 from pipeline import explanations
+from pipeline import operational as operational_eval
 from pipeline import plotting
 from pipeline import scoring
 from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_IDS
@@ -97,6 +98,14 @@ def list_demo_datasets():
     return {"datasets": [
         {"name": "cyber_risk.csv", "type": "Classification multiclasse",
          "description": "Risque cyber — priorisation d'actifs (4 niveaux, synthétique)"},
+        {"name": "phishing.csv", "type": "Classification binaire",
+         "description": "Détection de phishing — URLs malveillantes vs légitimes (déséquilibré, synthétique)"},
+        {"name": "spam.csv", "type": "Classification binaire",
+         "description": "Détection de spam — messages indésirables vs légitimes (synthétique)"},
+        {"name": "cve_severity.csv", "type": "Classification multiclasse",
+         "description": "Sévérité CVE — priorisation vuln. depuis le vecteur CVSS (4 niveaux, synthétique)"},
+        {"name": "kev_exploit.csv", "type": "Classification binaire",
+         "description": "Exploitation KEV — vuln. activement exploitée (très déséquilibré, synthétique)"},
         {"name": "prompt_injection.csv", "type": "Classification binaire",
          "description": "Détection d'injection de prompt — prévoir les attaques (synthétique)"},
         {"name": "prompt_injection_technique.csv", "type": "Classification multiclasse",
@@ -665,6 +674,28 @@ def predict_tornado(session_id: str, body: dict = Body(default={})):
 def get_model_card(session_id: str):
     """A presentable dossier of the trained model (what it does + how good)."""
     return to_native(scoring.model_card(_require_trained(session_id)))
+
+
+@app.post("/api/session/{session_id}/operating-point")
+def operating_point(session_id: str, body: dict = Body(default={})):
+    """Recompute the operational (SOC/threat-intel) analysis at an analyst-chosen
+    threshold and error costs — from the stored test predictions, no model re-fit."""
+    session = _require_trained(session_id)
+
+    def _num(key, default):
+        try:
+            return float(body.get(key, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    threshold = min(max(_num("threshold", 0.5), 0.0), 1.0)
+    cost_fn = max(_num("cost_fn", operational_eval.DEFAULT_COST_FN), 0.0)
+    cost_fp = max(_num("cost_fp", operational_eval.DEFAULT_COST_FP), 0.0)
+    focus = body.get("focus_idx")
+    focus_idx = int(focus) if isinstance(focus, (int, float)) else None
+    op = operational_eval.build_operational(session, threshold=threshold,
+                                            cost_fn=cost_fn, cost_fp=cost_fp, focus_idx=focus_idx)
+    return to_native(op)
 
 
 @app.post("/api/session/{session_id}/explain")

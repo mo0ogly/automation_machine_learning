@@ -474,6 +474,141 @@ def test_separate_stores_train_only_preprocessor():
     assert r.status_code == 200 and "prediction" in r.json()
 
 
+def test_operational_analysis_binary():
+    """Binary classification exposes the full operational (SOC) analysis."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    ev = client.get(f"/api/session/{sid}/stage/evaluate").json()
+    op = ev["result"]["diagnostics"]["operational"]
+    assert op["applicable"] is True and op["mode"] == "binary"
+    assert op["threshold_sweep"] and "recommended_thresholds" in op
+    assert set(op["recommended_thresholds"]) >= {"min_cost", "max_fbeta", "youden", "fpr_1pct"}
+    assert "calibration" in op and "ece" in op["calibration"]
+    assert set(op["robust_metrics"]) == {"mcc", "balanced_accuracy", "cohen_kappa"}
+    assert op["alert_budget"] and "precision_at_k" in op["alert_budget"][0]
+    assert op["soc_playbook"]["sections"]
+
+
+def test_operating_point_endpoint_recomputes():
+    """The endpoint recomputes the operating point at a chosen threshold/cost."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    r = client.post(f"/api/session/{sid}/operating-point",
+                    json={"threshold": 0.2, "cost_fn": 20, "cost_fp": 1})
+    assert r.status_code == 200, r.text
+    op = r.json()
+    assert op["current"]["threshold"] == 0.2
+    assert op["cost"]["cost_fn"] == 20
+
+
+def test_operational_regression_tolerance_bands():
+    sid = _start_demo("house_price_data.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    op = client.post(f"/api/session/{sid}/operating-point", json={}).json()
+    assert op["mode"] == "regression" and op["tolerance_bands"]
+    assert "within" in op["tolerance_bands"][0]
+
+
+def test_operational_anomaly_alert_budget():
+    sid = _start_demo("transactions.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    op = client.post(f"/api/session/{sid}/operating-point", json={}).json()
+    assert op["mode"] == "anomaly" and op["budget_curve"]
+    assert "alerts_per_1000" in op["budget_curve"][0]
+
+
+def test_cyber_kev_dataset_imbalanced_detection():
+    """The KEV demo loads as imbalanced binary and its operating point beats the
+    naive 0.5 threshold (the whole point of the operational view)."""
+    body = _start_demo("kev_exploit.csv")
+    assert body["context"]["problem_type"] == "classification"
+    assert body["context"]["target_col"] == "exploited"
+    sid = body["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    op = client.post(f"/api/session/{sid}/operating-point", json={}).json()
+    assert op["mode"] == "binary"
+    # min-cost threshold is well below 0.5 on this imbalanced target.
+    assert op["recommended_thresholds"]["min_cost"] < 0.5
+
+
+def test_cyber_cve_multiclass_focus_rarest():
+    """CVE severity loads as multiclass; the default OVR focus is the rarest class."""
+    body = _start_demo("cve_severity.csv")
+    assert body["context"]["target_col"] == "severity"
+    sid = body["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    op = client.post(f"/api/session/{sid}/operating-point", json={}).json()
+    assert op["mode"] == "multiclass_ovr"
+    assert op["focus_class"] == "critical"
+
+
+def test_cyber_phishing_and_spam_load():
+    for name, target in (("phishing.csv", "is_phishing"), ("spam.csv", "is_spam")):
+        body = _start_demo(name)
+        assert body["context"]["target_col"] == target, name
+        card = client.get(f"/api/dataset-card/{name}")
+        assert card.status_code == 200 and card.json()["synthetic"] is True
+
+
+def test_new_algorithms_in_leaderboard():
+    """SVM, KNN, Naive Bayes are offered and cross-validated on the classification leaderboard."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    for stg in ("clean", "transform", "integrate", "separate"):
+        client.post(f"/api/session/{sid}/stage/{stg}/run", json={"config": {}})
+    view = client.get(f"/api/session/{sid}/stage/model").json()
+    models = {r["model"] for r in view["diagnostics"]["leaderboard"]}
+    assert {"SVM", "KNN", "NaiveBayes", "LogisticRegression"} <= models
+    assert all(r.get("help") for r in view["diagnostics"]["leaderboard"])   # AI-friendly descriptions
+    # SVM config schema exposes the algorithm choice with the new options.
+    algos = next(c for c in view["schema"] if c["name"] == "algorithm")
+    assert {"SVM", "KNN", "NaiveBayes"} <= {o["value"] for o in algos["options"]}
+
+
+def test_svm_trains_with_probabilities():
+    """A chosen SVM keeps predict_proba → ROC/PR + operational view stay available."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    client.post(f"/api/session/{sid}/stage/model/run", json={"config": {"algorithm": "SVM"}})
+    ev = client.post(f"/api/session/{sid}/stage/evaluate/run", json={"config": {}}).json()
+    metrics = ev["result"]["metrics"]
+    assert "ROC-AUC" in metrics
+    assert ev["result"]["diagnostics"]["operational"]["applicable"] is True
+
+
+def test_elasticnet_regression_tunable():
+    """ElasticNet is offered for regression and tunable with its own grid."""
+    sid = _start_demo("house_price_data.csv")["session_id"]
+    client.post(f"/api/session/{sid}/autorun")
+    client.post(f"/api/session/{sid}/stage/model/run", json={"config": {"algorithm": "ElasticNet"}})
+    t = client.post(f"/api/session/{sid}/stage/tune/run", json={"config": {"cv": 2}})
+    assert t.status_code == 200, t.text
+    bp = t.json()["result"]["diagnostics"]["best_params"]
+    assert "alpha" in bp or "l1_ratio" in bp
+
+
+def test_univariate_feature_selection_reduces_features():
+    """Univariate selection keeps k features, fit on the train split (leakage-free)."""
+    from app import SESSIONS
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    for stg in ("clean", "transform"):
+        client.post(f"/api/session/{sid}/stage/{stg}/run", json={"config": {}})
+    client.post(f"/api/session/{sid}/stage/integrate/run",
+                json={"config": {"feature_selection": "univariate", "fs_score": "anova", "fs_k": 6}})
+    client.post(f"/api/session/{sid}/stage/separate/run", json={"config": {}})
+    art = SESSIONS.get(sid).get_run("separate").artifacts
+    assert len(art["feature_names"]) == 6
+    assert art["preprocessor"].selected_features_ is not None
+    # Integrate exposes the selection controls only for supervised problems.
+    view = client.get(f"/api/session/{sid}/stage/integrate").json()
+    assert any(c["name"] == "feature_selection" for c in view["schema"])
+
+
+def test_feature_selection_absent_for_clustering():
+    sid = _start_demo("client_data.csv")["session_id"]
+    view = client.get(f"/api/session/{sid}/stage/integrate").json()
+    assert not any(c["name"] == "feature_selection" for c in view["schema"])
+
+
 def test_sanitize_config_column_table_filters_unknown_columns():
     schema = [{"name": "dropped_features", "type": "column_table",
                "columns": [{"column": "a"}, {"column": "b"}]}]

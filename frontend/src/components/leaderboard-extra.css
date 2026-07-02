@@ -1,0 +1,3 @@
+/* Leaderboard extras — kept out of components.css (size-capped). */
+.lb-model-help { display: block; font-size: 0.64rem; color: var(--text-tertiary);
+  font-weight: 400; margin-top: 0.15rem; max-width: 260px; line-height: 1.3; }

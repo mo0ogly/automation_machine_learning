@@ -16,7 +16,7 @@ from .. import diagnostics as dg
 from .. import typology as typ
 from ..plotting import style_plot, fig_to_base64, message_plot
 from ..context import REGRESSION
-from .base import toggle, rng, column_table, counts
+from .base import select, toggle, rng, number, column_table, counts
 
 STAGE_ID = "integrate"
 TITLE = "Intégration"
@@ -77,20 +77,40 @@ _FEATURE_COLS = [
 
 def default_config(df, ctx):
     _, rec_drop = feature_analysis(df, ctx)
-    return {"dropped_features": rec_drop, "pca": False, "pca_variance": 0.95}
+    return {"dropped_features": rec_drop, "feature_selection": "none",
+            "fs_score": "anova", "fs_k": 10, "pca": False, "pca_variance": 0.95}
 
 
 def config_schema(df, ctx):
     rows, rec_drop = feature_analysis(df, ctx)
-    return [
+    controls = [
         column_table("dropped_features", "Variables — vous décidez lesquelles garder", rows, rec_drop,
                      "Cochez les variables à RETIRER. Les redondantes (très corrélées entre elles) sont pré-cochées.",
                      cols=_FEATURE_COLS),
+    ]
+    if ctx.supervised:
+        controls += [
+            select("feature_selection", "Sélection automatique de variables",
+                   [("none", "Aucune (garder toutes)"),
+                    ("univariate", "Univariée — garder les k plus liées à la cible")], "none",
+                   "Retient automatiquement les variables les plus prédictives de la cible. Ajustée "
+                   "sur le train uniquement (sans fuite). En cas de doute, cliquez « IA »."),
+            select("fs_score", "Critère de sélection",
+                   [("anova", "Test F (ANOVA) — relations linéaires"),
+                    ("mutual_info", "Information mutuelle — relations non linéaires")], "anova",
+                   "Comment mesurer le lien variable↔cible. Le test F est rapide ; l'information "
+                   "mutuelle capte aussi les liens non linéaires."),
+            number("fs_k", "Nombre de variables à garder (k)", 10, 1, 200,
+                   "Taille du sous-ensemble retenu quand la sélection univariée est active."),
+        ]
+    controls += [
         toggle("pca", "Réduction PCA (compression)", False,
-               "Remplace les variables numériques par des composantes principales."),
+               "Remplace les variables numériques par des composantes principales. "
+               "Alternative à la sélection univariée (ne pas cumuler)."),
         rng("pca_variance", "Variance retenue (PCA)", 0.7, 0.99, 0.01, 0.95,
             "Part de variance que les composantes doivent conserver."),
     ]
+    return controls
 
 
 def diagnose(df, ctx):

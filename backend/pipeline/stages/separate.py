@@ -115,11 +115,15 @@ def _train_only_matrices(session, df, target, cfg, ctx, log):
         transform_cfg=(session.get_run("transform").config if session.get_run("transform") else {}),
         integrate_cfg=(session.get_run("integrate").config if session.get_run("integrate") else {}),
         target_col=target,
+        problem_type=ctx.problem_type,
     )
-    X_train = pre.fit(tr_df.drop(columns=[target])).transform(tr_df.drop(columns=[target]))
+    # Pass the TRAIN target so univariate feature selection is fit on train only.
+    X_train = pre.fit(tr_df.drop(columns=[target]), y=tr_df[target]).transform(tr_df.drop(columns=[target]))
     X_test = pre.transform(te_df.drop(columns=[target]))
-    log.append("Prétraitement anti-fuite : encodeurs/échelles/PCA ajustés sur le train "
+    log.append("Prétraitement anti-fuite : encodeurs/échelles/sélection/PCA ajustés sur le train "
                f"seul ({len(tr_df)} lignes), appliqués tels quels au test.")
+    if pre.selected_features_ is not None:
+        log.append(f"Sélection de variables (train) : {len(pre.feature_names_)} variables retenues.")
     return X_train, X_test, tr_df[target], te_df[target], list(pre.feature_names_), pre
 
 

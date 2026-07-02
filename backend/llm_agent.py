@@ -351,6 +351,26 @@ def _strip_reasoning(content: str) -> str:
     return content
 
 
+def exploit_advice(kind: str, context: dict, journal: str = "", params: dict = None) -> dict:
+    """Specialised free-text assistant for the Exploit view: ``kind`` in
+    ``operational`` (threshold advice), ``evasion`` (defensive reading of a
+    counterfactual) or ``sigma`` (draft detection rule). Grounded on ``context``."""
+    if kind not in ("operational", "evasion", "sigma"):
+        return {"source": "error", "available": False, "model": None, "text": "Type d'aide inconnu."}
+    if not _usable():
+        return {"source": "none", "available": False, "model": None,
+                "text": ("Aucun backend IA configuré. Active un backend dans "
+                         "Configuration → IA pour obtenir ce conseil.")}
+    try:
+        messages = agent_prompts.build_exploit_messages(kind, context or {}, journal)
+        text = _strip_reasoning(_call_llm(messages, params=params, json_object=False))
+        return {"source": "llm", "available": True, "model": get_active_model(),
+                "text": text or "(réponse vide)"}
+    except Exception as e:
+        return {"source": "error", "available": False, "model": get_active_model(),
+                "text": f"Conseil IA indisponible ({type(e).__name__}). Vérifie le backend IA actif."}
+
+
 def _extract_json(content: str) -> str:
     """Pull the JSON object out of a reply, tolerant to reasoning tags / code fences."""
     content = (content or "").strip()

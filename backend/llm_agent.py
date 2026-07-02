@@ -320,7 +320,7 @@ def _call_llm(messages: list, params: dict = None, json_object: bool = True) -> 
 
 
 def chat(history: list, user_msg: str, journal: str = "", context: dict = None,
-         params: dict = None) -> dict:
+         params: dict = None, recalled: list = None) -> dict:
     """Multi-turn conversational reply for the AI cockpit. Replays the recorded
     ``history`` ([{role, content}]) plus the new ``user_msg``, grounded in the
     session ``context`` and ``journal`` memory. Free-text (not JSON)."""
@@ -332,7 +332,7 @@ def chat(history: list, user_msg: str, journal: str = "", context: dict = None,
                 "reply": ("Aucun backend IA configuré. Ouvre Configuration → IA → « Backends IA… » "
                           "pour en activer un, puis reviens dialoguer ici.")}
     try:
-        messages = agent_prompts.build_chat_messages(history, user_msg, journal, context)
+        messages = agent_prompts.build_chat_messages(history, user_msg, journal, context, recalled)
         reply = _call_llm(messages, params=params, json_object=False)
         reply = _strip_reasoning(reply)
         return {"source": "llm", "available": True, "model": get_active_model(),

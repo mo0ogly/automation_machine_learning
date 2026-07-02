@@ -28,11 +28,13 @@ from pipeline import plotting
 from pipeline import scoring
 from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_IDS
 from pipeline.stages.base import to_native
+import conv_memory
 import llm_agent
 import prompt_guard
 import session_ingest
 import stage_runner
 import routes_ai
+import routes_deeprl
 import routes_exploit
 import routes_monitor
 import routes_prompts
@@ -78,6 +80,8 @@ app.include_router(routes_prompts.router)
 app.include_router(routes_exploit.router)
 # Post-deployment drift & stability monitoring (upload a batch -> drift report).
 app.include_router(routes_monitor.router)
+# Deep RL workbench (Gymnasium + Stable-Baselines3): DQN/PPO/A2C on continuous envs.
+app.include_router(routes_deeprl.router)
 
 
 # ── basic / meta ────────────────────────────────────────────────────────
@@ -400,13 +404,17 @@ def session_chat(session_id: str, body: dict = Body(default={})):
     message = str(body.get("message") or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="Message vide.")
+    # Semantic recall: surface relevant EARLIER exchanges (beyond the replayed
+    # window) so the copilot has long-term memory. Retrieval is on the thread as
+    # it stands BEFORE this new turn is appended.
+    recalled = conv_memory.relevant_exchanges(message, session.chat_thread(), k=3)
     out = llm_agent.chat(session.chat_history(), message, session.journal_summary(),
-                         _chat_context(session), params=body.get("params"))
+                         _chat_context(session), params=body.get("params"), recalled=recalled)
     session.add_chat_message("user", message, source="user")
     entry = session.add_chat_message("assistant", out.get("reply", ""),
                                      source=out.get("source", "llm"), model=out.get("model"))
     SESSIONS.save(session)  # conversation mutated -> persist
-    return to_native({**out, "id": entry["id"], "thread": session.chat_thread()})
+    return to_native({**out, "id": entry["id"], "thread": session.chat_thread(), "recalled": recalled})
 
 
 @app.get("/api/session/{session_id}/chat")

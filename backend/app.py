@@ -583,7 +583,10 @@ def rl_train(req: RLTrainRequest):
         "metrics": summarise(result, env),
         "plots": figs,
         "config": {"size": size, "episodes": episodes, "alpha": alpha, "gamma": gamma,
-                   "epsilon": epsilon, "n_traps": n_traps, "n_goals": n_goals},
+                   "epsilon": epsilon, "n_traps": n_traps, "n_goals": n_goals,
+                   # Reward constants, so the UI legend never drifts from the env.
+                   "rewards": {"step": env.step_penalty, "goal": env.goal_reward,
+                               "trap": env.trap_reward}},
         "env": {"size": size, "start": list(env.start),
                 "goals": [list(g) for g in env.goals],
                 "obstacles": [list(o) for o in obstacles], "traps": [list(t) for t in traps]},

@@ -47,6 +47,8 @@ flowchart LR
 | `typology.py` | Typologie **4 voies** : continue / discrète / nominale / ordinale, + `encode_ordinal` (ordre sémantique préservé : absent=0, Po=1, Fa=2, TA=3, Gd=4, Ex=5). |
 | `plotting.py` | `style_plot()`, **`fig_to_base64(fig) → {img, caption, topic}`** (DPI 160, caption auto-extraite du titre de la figure), `message_plot()`. |
 | `eda_plots.py` | Univariée / bivariée — **une figure par variable** (lisible + IA par graphe). |
+| `monitoring.py` | Surveillance post-déploiement (métriques pures, sans matplotlib) : dérive données (PSI + KS par variable), dérive de concept (TVD sur les prédictions), reproductibilité (déterminisme + cohérence avec l'évaluation enregistrée), re-calibration du seuil sur lot labellisé, et **`jitter_protocol`** (taux de bascule des verdicts sous bruit gaussien croissant, 0,1 %→10 % de l'écart-type par variable, seed fixée, verdict stable/sensible/instable ; LOF refusé honnêtement — pas de re-scoring). |
+| `monitoring_plots.py` | Figures du rapport de surveillance : PSI par variable, distribution des prédictions référence vs lot, **courbe de tolérance au jitter** (bascule vs amplitude, point de rupture). |
 
 ### Contrat d'une étape (`stages/*.py`)
 
@@ -158,7 +160,8 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | GET | `/api/session/{id}/journal` | Journal mémoire des échanges IA |
 | POST | `/api/session/{id}/level` | Niveau Novice/Expert |
 | POST | `/autorun` · `/predict` · GET `/download-model` | Pipeline complet / inférence / export `.pkl` |
-| POST | `/api/session/{id}/monitor` | Surveillance post-déploiement : upload d'un lot → dérive (PSI/KS), dérive de concept, reproductibilité, re-calibration du seuil (`monitoring.py`) |
+| POST | `/api/session/{id}/monitor` | Surveillance post-déploiement : upload d'un lot → dérive (PSI/KS), dérive de concept, reproductibilité, re-calibration du seuil (`monitoring.py`, routeur `routes_monitor.py`) |
+| POST | `/api/session/{id}/jitter` | Protocole jitter (stabilité des prédictions) : sans upload — bruit gaussien croissant sur le jeu de référence → courbe de taux de bascule, point de rupture, verdict. Déterministe (seed fixée) |
 | POST | `/api/agent/model` · GET `/agent-status` | Sélection du modèle Groq |
 
 ---
@@ -173,6 +176,7 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | `ColumnTable.jsx` | Tables de décision génériques (Nettoyage colonnes, Intégration variables) |
 | `PlotModal.jsx` · `AssistButton.jsx` · `AssistAnswer.jsx` | Modale zoom · bouton `✦` · réponse IA inline |
 | `ConfigControls.jsx` · `DiagnosticsView.jsx` · `ModelSelector.jsx` | Contrôles de config · diagnostics génériques · sélecteur de modèle |
+| `MonitoringPanel.jsx` (+ `monitoring.css`) | Panneau Surveillance (étape Évaluation) : upload d'un lot → rapport de dérive (tableau PSI/KS, concept, reproductibilité, re-calibration) + section **jitter** (bouton de mesure, badge de verdict, courbe de tolérance) |
 
 ---
 

@@ -582,6 +582,9 @@ def rl_train(req: RLTrainRequest):
     return to_native({
         "metrics": summarise(result, env),
         "plots": figs,
+        # Greedy policy (action index per flattened state), so the UI can replay
+        # the learned trajectory step by step on its interactive grid.
+        "policy": result["policy"],
         "config": {"size": size, "episodes": episodes, "alpha": alpha, "gamma": gamma,
                    "epsilon": epsilon, "n_traps": n_traps, "n_goals": n_goals,
                    # Reward constants, so the UI legend never drifts from the env.

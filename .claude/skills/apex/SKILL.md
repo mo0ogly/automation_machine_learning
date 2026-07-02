@@ -628,6 +628,11 @@ Verification croisee :
 
 Quand `-rc` est actif, **ETAPE 04 (VALIDATE)** est remplacee par un cycle **PDCA-C complet** orchestrant un swarm de 6 agents paralleles sur 65 checks repartis en 6 categories. A la fin, un scorecard /100 est produit et integre dans ETAPE 09 (FINISH).
 
+> **Catalogue par projet.** Les checks C-01..C-65 ci-dessous ciblent poc_medical/AEGIS.
+> Pour le depot **automation_machine_learning** (frontend 5173 / backend 8000), utiliser
+> le catalogue adapte : `.claude/skills/apex/recette-ml.md` (memes agents, memes
+> ponderations, checks specifiques ML/RL).
+
 ### Declenchement
 
 ```

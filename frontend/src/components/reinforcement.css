@@ -73,6 +73,14 @@
 .rl-cell-goal, .rl-cell-goal-auto { font-size: clamp(0.4rem, 1.4vw, 0.6rem); letter-spacing: 0.02em; }
 .rl-chip-goal { font-size: 0.4rem; letter-spacing: 0; }
 
+/* Trajectory replay: current agent cell + visited trail. */
+.rl-cell-agent { background: rgba(59, 130, 246, 0.45); border-color: var(--accent-primary);
+  color: #fff; box-shadow: 0 0 0 2px var(--accent-primary), 0 0 12px rgba(59, 130, 246, 0.55); }
+.rl-cell-visited { background: rgba(59, 130, 246, 0.14); border-color: rgba(59, 130, 246, 0.35); }
+.rl-replay { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.rl-replay-btn { font-size: 0.78rem; padding: 0.35rem 0.8rem; }
+.rl-replay-status { font-size: 0.75rem; color: var(--text-secondary); }
+
 .rl-legend-chips { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0.7rem 0 0;
   padding: 0; list-style: none; font-size: 0.72rem; color: var(--text-tertiary); }
 .rl-legend-chips li { display: flex; align-items: center; gap: 0.35rem; }

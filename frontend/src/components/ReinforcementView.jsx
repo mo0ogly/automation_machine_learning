@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
@@ -53,6 +53,39 @@ const inList = (list, cell) => list.some((x) => sameCell(x, cell));
 const ARROW_DELTA = {
   ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
 };
+// Action deltas, index-aligned with the backend (GridWorld.ACTIONS: up/right/down/left).
+const ACTION_DELTA = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+// Default reward constants, superseded by config.rewards from the API response.
+const DEFAULT_REWARDS = { step: -1, goal: 10, trap: -10 };
+const fmtReward = (v) => (v > 0 ? '+' + v : String(v).replace('-', '−'));
+
+// Greedy rollout of the learned policy on the trained environment. Returns the
+// visited cells plus how the episode ended (goal / trap / stuck / loop guard).
+function greedyPath(env, policy) {
+  const n = env.size;
+  let cur = [env.start[0], env.start[1]];
+  const path = [cur];
+  let outcome = 'loop';
+  for (let i = 0; i < n * n * 2; i++) {
+    if (inList(env.goals, cur)) { outcome = 'goal'; break; }
+    if (inList(env.traps, cur)) { outcome = 'trap'; break; }
+    const a = policy[cur[0] * n + cur[1]];
+    const d = ACTION_DELTA[a] || [0, 0];
+    let nr = cur[0] + d[0], nc = cur[1] + d[1];
+    if (nr < 0 || nr >= n || nc < 0 || nc >= n || inList(env.obstacles, [nr, nc])) {
+      nr = cur[0]; nc = cur[1];
+    }
+    if (nr === cur[0] && nc === cur[1]) { outcome = 'stuck'; break; }
+    cur = [nr, nc];
+    path.push(cur);
+  }
+  return { path, outcome };
+}
+const OUTCOME_TEXT = {
+  goal: 'but atteint.', trap: 'tombé dans un piège.',
+  stuck: 'bloqué (la politique pousse contre un mur).',
+  loop: 'boucle sans fin — la politique n’a pas convergé ici.',
+};
 
 // The agent <-> environment interaction loop, the founding diagram of RL.
 function LoopDiagram() {
@@ -97,6 +130,10 @@ export default function ReinforcementView() {
   // Roving tabindex: a single grid cell is tabbable, arrows move the focus.
   const [focus, setFocus] = useState([0, 0]);
   const gridRef = useRef(null);
+  // Trajectory replay: greedy rollout animated cell by cell on the grid.
+  const [trail, setTrail] = useState(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
 
   const start = [0, 0];
   const goal = [cfg.size - 1, cfg.size - 1];
@@ -167,19 +204,47 @@ export default function ReinforcementView() {
     if (inList(autoMarks.traps, [r, c])) return 'trap-auto';
     return 'free';
   };
+  // Reward values come from the trained response when available, so the legend
+  // and tooltips never drift from the backend constants.
+  const rewards = (result && result.config && result.config.rewards) || DEFAULT_REWARDS;
   // Same visual language as the backend plots: S / BUT / X.
   const CELL_GLYPH = {
     start: 'S', goal: 'BUT', 'goal-auto': 'BUT', obstacle: '', trap: 'X', 'trap-auto': 'X', free: '',
   };
   const CELL_TITLE = {
-    start: 'Départ de l’agent', goal: 'But (récompense +10)',
+    start: 'Départ de l’agent', goal: 'But (récompense ' + fmtReward(rewards.goal) + ')',
     'goal-auto': 'But placé automatiquement', obstacle: 'Obstacle (infranchissable)',
-    trap: 'Piège (pénalité −10, fin d’épisode)', 'trap-auto': 'Piège placé automatiquement',
+    trap: 'Piège (pénalité ' + fmtReward(rewards.trap) + ', fin d’épisode)',
+    'trap-auto': 'Piège placé automatiquement',
     free: 'Case libre',
   };
 
   const applyPreset = (p) => { setCfg({ ...p.cfg }); setError(null); setFocus([0, 0]); };
   const clearBoard = () => setCfg((p) => ({ ...p, obstacles: [], traps: [] }));
+
+  // Replay overlay is only meaningful for the trained (non-stale) environment.
+  const replayInfo = useMemo(() => {
+    if (!result || !result.policy || !result.env || stale || !trail) return null;
+    return { agent: trail.path[Math.min(stepIdx, trail.path.length - 1)], step: stepIdx };
+  }, [result, stale, trail, stepIdx]);
+
+  const replay = () => {
+    if (!result || !result.policy || !result.env) return;
+    setTrail(greedyPath(result.env, result.policy));
+    setStepIdx(0);
+    setPlaying(true);
+  };
+
+  useEffect(() => {
+    if (!playing || !trail) return undefined;
+    const id = setInterval(() => {
+      setStepIdx((i) => {
+        if (i + 1 >= trail.path.length) { setPlaying(false); return i; }
+        return i + 1;
+      });
+    }, 280);
+    return () => clearInterval(id);
+  }, [playing, trail]);
 
   // Per-hyperparameter AI helper: explains one slider (reuses the session-free
   // assist agent via /api/rl/explain); a suggested value is one-click applicable.
@@ -209,6 +274,8 @@ export default function ReinforcementView() {
       if (!res.ok) { setError(data.detail || "Échec de l'entraînement"); setBusy(false); return; }
       setResult(data);
       setLastCfg(sent);
+      setTrail(null);
+      setPlaying(false);
     } catch {
       setError("Échec de l'entraînement — le backend est-il démarré ?");
     }
@@ -313,31 +380,51 @@ export default function ReinforcementView() {
                 {Array.from({ length: cfg.size }, (_, c) => {
                   const kind = cellKind(r, c);
                   const fixed = kind === 'start' || kind === 'goal';
+                  const onAgent = replayInfo && sameCell(replayInfo.agent, [r, c]);
+                  const visited = replayInfo && !onAgent
+                    && inList(trail.path.slice(0, replayInfo.step), [r, c]);
                   return (
                     <button key={r + '-' + c} type="button" role="gridcell"
-                      className={'rl-cell rl-cell-' + kind}
+                      className={'rl-cell rl-cell-' + kind
+                        + (onAgent ? ' rl-cell-agent' : '') + (visited ? ' rl-cell-visited' : '')}
                       title={CELL_TITLE[kind]} aria-disabled={fixed}
                       data-cell={r + '-' + c}
                       tabIndex={focus[0] === r && focus[1] === c ? 0 : -1}
                       onFocus={() => setFocus([r, c])}
                       aria-label={'Case ' + (r + 1) + ',' + (c + 1) + ' : ' + CELL_TITLE[kind]}
                       onClick={() => paintCell(r, c)}>
-                      {CELL_GLYPH[kind]}
+                      {onAgent && kind === 'free' ? '●' : CELL_GLYPH[kind]}
                     </button>
                   );
                 })}
               </div>
             ))}
           </div>
-          {/* Reward values mirror the backend defaults (rl/gridworld.py) and the
-              response's config.rewards — keep the three in sync. */}
+          {/* Reward values come from config.rewards (API) after a run, with the
+              backend defaults (rl/gridworld.py) as pre-training fallback. */}
           <ul className="rl-legend-chips" aria-label="Légende">
             <li><span className="rl-chip rl-cell-start">S</span> départ</li>
-            <li><span className="rl-chip rl-chip-goal rl-cell-goal">BUT</span> but (+10)</li>
-            <li><span className="rl-chip rl-cell-trap">X</span> piège (−10)</li>
+            <li><span className="rl-chip rl-chip-goal rl-cell-goal">BUT</span> but
+              ({fmtReward(rewards.goal)})</li>
+            <li><span className="rl-chip rl-cell-trap">X</span> piège
+              ({fmtReward(rewards.trap)})</li>
             <li><span className="rl-chip rl-cell-obstacle" /> obstacle</li>
-            <li><span className="rl-chip rl-cell-free" /> libre (−1 / pas)</li>
+            <li><span className="rl-chip rl-cell-free" /> libre
+              ({fmtReward(rewards.step)} / pas)</li>
           </ul>
+          {result && result.policy && !stale ? (
+            <div className="rl-replay">
+              <button type="button" className="btn btn-secondary rl-replay-btn"
+                onClick={replay} disabled={playing}>
+                {playing ? 'Rejeu en cours…' : 'Rejouer la trajectoire'}
+              </button>
+              {trail ? (
+                <span className="rl-replay-status" role="status">
+                  Trajectoire gloutonne : {trail.path.length - 1} pas — {OUTCOME_TEXT[trail.outcome]}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {(cfg.n_goals > 1 || cfg.n_traps > 0) ? (
             <p className="rl-auto-note">
               {cfg.n_goals > 1 ? '+' + (cfg.n_goals - 1) + ' but(s) ' : ''}

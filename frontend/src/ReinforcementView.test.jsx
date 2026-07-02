@@ -81,6 +81,36 @@ describe('ReinforcementView (smoke)', () => {
     expect(screen.getByText(/Configuration modifiée depuis cet entraînement/)).toBeTruthy();
   });
 
+  it('shows the API reward constants in the legend after training', async () => {
+    const payload = trainPayload();
+    payload.config = { ...payload.config, rewards: { step: -2, goal: 20, trap: -15 } };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })));
+    render(<ReinforcementView />);
+    // Pre-training fallback = backend defaults.
+    expect(screen.getByText((_, el) => el.tagName === 'LI' && /but\s*\(\+10\)/.test(el.textContent))).toBeTruthy();
+    fireEvent.click(screen.getByText("Entraîner l'agent"));
+    await waitFor(() => expect(
+      screen.getByText((_, el) => el.tagName === 'LI' && /but\s*\(\+20\)/.test(el.textContent))).toBeTruthy());
+    expect(screen.getByText((_, el) => el.tagName === 'LI' && /piège\s*\(−15\)/.test(el.textContent))).toBeTruthy();
+    expect(screen.getByText((_, el) => el.tagName === 'LI' && /libre\s*\(−2 \/ pas\)/.test(el.textContent))).toBeTruthy();
+  });
+
+  it('replays the greedy trajectory and reports the outcome', async () => {
+    // Policy: go right along row 0, then down column 4 -> reaches the goal in 8 steps.
+    const policy = Array(25).fill(0);
+    [0, 1, 2, 3].forEach((s) => { policy[s] = 1; });
+    [4, 9, 14, 19].forEach((s) => { policy[s] = 2; });
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => trainPayload({ policy }) })));
+    render(<ReinforcementView />);
+    fireEvent.click(screen.getByText("Entraîner l'agent"));
+    await waitFor(() => expect(screen.getByText('Rejouer la trajectoire')).toBeTruthy());
+    fireEvent.click(screen.getByText('Rejouer la trajectoire'));
+    expect(screen.getByText(/8 pas — but atteint/)).toBeTruthy();
+    // Changing the config hides the replay controls (stale environment).
+    fireEvent.click(screen.getByText('Champ de mines'));
+    expect(screen.queryByText(/Rejouer la trajectoire|Rejeu en cours/)).toBeNull();
+  });
+
   it('does not resurrect an erased explicit trap as an auto marker', async () => {
     render(<ReinforcementView />);
     // Place an explicit trap at (2,2) -> Case 3,3.

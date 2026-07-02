@@ -16,6 +16,8 @@ from sklearn.metrics import r2_score, accuracy_score
 
 from ..context import REGRESSION, CLASSIFICATION, CLUSTERING, ANOMALY
 from ..plotting import style_plot, fig_to_base64, message_plot
+from .. import environment
+from .. import resampling
 from . import estimators as est_factory
 from .base import select, toggle, rng, number
 
@@ -34,7 +36,7 @@ def default_config(ctx):
     return {"algorithm": algo, "n_estimators": 100, "max_depth": 0, "n_clusters": 0,
             "cluster_algo": "kmeans", "eps": 0.5, "min_samples": 5,
             "anomaly_algo": "iforest", "contamination": 0.05,
-            "class_weight_balanced": False}
+            "imbalance": "none"}
 
 
 def config_schema(ctx):
@@ -69,11 +71,26 @@ def config_schema(ctx):
         number("max_depth", "Profondeur max (0 = illimité)", 0, 0, 40, "Limite la profondeur des arbres."),
     ]
     if ctx.problem_type == CLASSIFICATION:
-        controls.append(toggle(
-            "class_weight_balanced", "Pondérer les classes (déséquilibre)", False,
-            "class_weight='balanced' : sur-pondère les classes rares (Logistic / Arbre / "
-            "Random Forest). Utile si une classe domine fortement."))
+        controls.append(select(
+            "imbalance", "Déséquilibre des classes",
+            [("none", "Aucun traitement"),
+             ("class_weight", "Pondération (class_weight='balanced')"),
+             ("oversample", "Sur-échantillonnage aléatoire"),
+             ("undersample", "Sous-échantillonnage aléatoire"),
+             ("smote", "SMOTE (exemples synthétiques)")], "none",
+            "Quand une classe rare est noyée (attaques rares), rééquilibre l'apprentissage. "
+            "La pondération est prise en compte au leaderboard ; le rééchantillonnage "
+            "s'applique au modèle final (train uniquement). En cas de doute, cliquez « IA »."))
     return controls
+
+
+def _resolve_imbalance(cfg):
+    """(imbalance_mode, class_weight, resampling_method) from the config, tolerant
+    to the legacy ``class_weight_balanced`` toggle."""
+    imb = str(cfg.get("imbalance") or ("class_weight" if cfg.get("class_weight_balanced") else "none"))
+    cw = "balanced" if imb == "class_weight" else None
+    method = imb if imb in resampling.METHODS else None
+    return imb, cw, method
 
 
 def _cv_folds(ptype, y_tr):
@@ -166,7 +183,7 @@ def diagnose(session):
 
     ptype = session.ctx.problem_type
     cfg = default_config(session.ctx)
-    cw = "balanced" if cfg.get("class_weight_balanced") else None
+    _imb, cw, _method = _resolve_imbalance(cfg)
     rows, best, cv = _cached_leaderboard(session, sep, ptype, int(cfg["n_estimators"]),
                                          int(cfg["max_depth"]) or None, cw)
     info = {"ready": True, "mode": "supervised", "train_size": int(len(art["X_train"])),
@@ -189,13 +206,30 @@ def run(session, config):
     n_est = int(cfg["n_estimators"])
 
     if ptype == ANOMALY:
-        return _fit_anomaly(session, art, cfg)
+        result, artifacts = _fit_anomaly(session, art, cfg)
+        artifacts["env_fingerprint"] = environment.capture_fingerprint()
+        return result, artifacts
     if art.get("mode") == "unsupervised" or ptype == CLUSTERING:
-        return _fit_clustering(session, art, cfg)
+        result, artifacts = _fit_clustering(session, art, cfg)
+        artifacts["env_fingerprint"] = environment.capture_fingerprint()
+        return result, artifacts
 
     X_train, y_train = art["X_train"], art["y_train"]
     algo = cfg["algorithm"]
-    cw = "balanced" if cfg.get("class_weight_balanced") else None
+    imb, cw, method = _resolve_imbalance(cfg)
+
+    # Resampling rebalances the TRAINING rows only, for the final fit — never the
+    # held-out test, never inside the leaderboard CV (that would leak). class_weight
+    # goes through the estimator (leaderboard-safe) instead.
+    resample_info, warnings = None, ["Score d'entraînement uniquement — voir l'Évaluation pour la performance sur test."]
+    if method and ptype == CLASSIFICATION:
+        before = resampling.class_distribution(y_train)
+        X_train, y_train = resampling.resample(X_train, y_train, method)
+        after = resampling.class_distribution(y_train)
+        resample_info = {"method": method, "before": before, "after": after}
+        warnings.append("Rééchantillonnage appliqué au jeu d'entraînement du modèle final "
+                        "(le leaderboard, lui, compare sans rééchantillonnage).")
+
     model = est_factory.make_estimator(ptype, algo, n_est, max_depth, cw)
     if model is None:  # unknown algorithm name → safe default (don't rely on estimator truthiness)
         fallback = RandomForestRegressor if ptype == REGRESSION else RandomForestClassifier
@@ -211,15 +245,22 @@ def run(session, config):
         train_score = round(float(accuracy_score(y_train, train_pred)), 4)
         score_label = "Accuracy (train)"
 
-    artifacts = {"model": model, "algorithm": algo}
+    artifacts = {"model": model, "algorithm": algo,
+                 "env_fingerprint": environment.capture_fingerprint()}
+    imb_label = {"class_weight": "pondération (balanced)", "oversample": "sur-échantillonnage",
+                 "undersample": "sous-échantillonnage", "smote": "SMOTE"}.get(imb)
+    report = {"Algorithme": algo, "n_estimators": n_est if "Forest" in algo or "Boosting" in algo else "—",
+              "max_depth": max_depth or "illimité",
+              **({"Déséquilibre": imb_label} if imb_label else {}),
+              score_label: train_score}
+    diagnostics = {"algorithm": algo, "train_score": train_score, "score_label": score_label}
+    if resample_info:
+        diagnostics["resampling"] = resample_info
     result = {
-        "report": {"Algorithme": algo, "n_estimators": n_est if "Forest" in algo or "Boosting" in algo else "—",
-                   "max_depth": max_depth or "illimité",
-                   **({"Pondération classes": "balanced"} if cw else {}),
-                   score_label: train_score},
-        "diagnostics": {"algorithm": algo, "train_score": train_score, "score_label": score_label},
+        "report": report,
+        "diagnostics": diagnostics,
         "log": [f"Modèle {algo} entraîné sur {len(X_train)} observations."],
-        "warnings": ["Score d'entraînement uniquement — voir l'Évaluation pour la performance sur test."],
+        "warnings": warnings,
         "plots": [_importance_plot(model, art["feature_names"])],
     }
     return result, artifacts

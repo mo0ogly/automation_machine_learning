@@ -14,9 +14,22 @@ joblib>=1.3
 xgboost>=2.0
 shap>=0.44
 
+# Deep RL workbench (3rd paradigm): Gymnasium environments + Stable-Baselines3
+# agents (DQN/PPO/A2C). SB3 depends on torch; the Docker image pre-installs the
+# CPU-only torch build from the PyTorch index in a dedicated step (see Dockerfile)
+# so this file stays PyPI-only and sb3 reuses that torch instead of pulling CUDA.
+gymnasium[classic-control]>=0.29
+stable-baselines3>=2.4
+
 # LLM agent (Groq via OpenAI-compatible REST) + TLS
 httpx>=0.27
 certifi>=2024.2.2
+
+# Conversational memory (semantic recall in the AI cockpit). Reuses the CPU torch
+# installed above for SB3, so this only adds transformers + the ST wrapper. The
+# MiniLM model is pre-baked into the image (see Dockerfile) so conv_memory loads
+# it offline; without this package it degrades gracefully to a TF-IDF fallback.
+sentence-transformers>=3.0
 
 # Tests
 pytest>=8.0

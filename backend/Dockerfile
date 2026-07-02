@@ -28,6 +28,14 @@ RUN apt-get update \
 # Dedicated non-root runtime user (least privilege; binds 8000 which is > 1024).
 RUN useradd --create-home --shell /usr/sbin/nologin mlauto
 
+# CPU-only torch first, from the dedicated PyTorch index, in its own layer.
+# Stable-Baselines3 needs torch; the default PyPI wheel is the CUDA build
+# (~2 GB + nvidia-* deps). Installing the CPU wheel (~200 MB) here — with an
+# ISOLATED --index-url (not --extra-index-url, which would mix indexes for every
+# package and trip pip's hash check) — means the requirements install below
+# reuses this torch instead of resolving the CUDA one.
+RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3.0"
+
 # Dependency manifest first for better layer caching (deps change rarely).
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install -r backend/requirements.txt

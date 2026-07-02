@@ -22,7 +22,6 @@ from fastapi.responses import FileResponse, Response
 from pathlib import Path
 
 from pipeline import SESSIONS
-from pipeline import diagnostics as dg
 from pipeline import explanations
 from pipeline import operational as operational_eval
 from pipeline import plotting
@@ -31,6 +30,8 @@ from pipeline.registry import get_stage, stage_meta, all_stage_meta, DATA_STAGE_
 from pipeline.stages.base import to_native
 import llm_agent
 import prompt_guard
+import session_ingest
+import stage_runner
 import routes_ai
 import routes_exploit
 import routes_prompts
@@ -137,43 +138,12 @@ def dataset_card(name: str):
     return card
 
 
-# ── session lifecycle ───────────────────────────────────────────────────
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 Mo — rejeté AVANT parsing (garde DoS mémoire)
-
-
-async def _read_capped(file) -> bytes:
-    """Read an upload but reject oversized bodies before pandas parses them."""
-    raw = await file.read(MAX_UPLOAD_BYTES + 1)
-    if len(raw) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 25 Mo).")
-    return raw
-
-
-def _read_csv(file_bytes: bytes) -> pd.DataFrame:
-    try:
-        return pd.read_csv(io.BytesIO(file_bytes))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"CSV illisible : {e}")
-
-
-def _session_payload(session) -> dict:
-    ctx = session.ctx
-    return to_native({
-        "session_id": session.id,
-        "filename": session.filename,
-        "context": ctx.to_dict(),
-        "overview": dg.overview(session.raw_df, ctx.target_col),
-        "stages": all_stage_meta(),
-        "status": session.stage_status(),
-        "agent": llm_agent.agent_status(),
-    })
-
-
+# ── session lifecycle (ingestion helpers in session_ingest.py) ───────────
 @app.post("/api/session/start")
 async def session_start(file: UploadFile = File(...)):
-    df = _read_csv(await _read_capped(file))
-    session = SESSIONS.create(file.filename, df)
-    return _session_payload(session)
+    df = session_ingest.read_csv(await session_ingest.read_capped(file))
+    session = session_ingest.validated_session(file.filename, df)
+    return session_ingest.session_payload(session)
 
 
 @app.post("/api/session/start-demo/{dataset_name}")
@@ -181,17 +151,17 @@ def session_start_demo(dataset_name: str):
     csv_path = DATA_DIR / dataset_name
     if not csv_path.exists():
         raise HTTPException(status_code=404, detail=f"Dataset '{dataset_name}' introuvable.")
-    df = _read_csv(csv_path.read_bytes())
+    df = session_ingest.read_csv(csv_path.read_bytes())
     drop = [c for c in _DEMO_DROP.get(dataset_name, []) if c in df.columns]
     if drop:  # remove a non-predictive key / a leaking second target before detection
         df = df.drop(columns=drop)
-    session = SESSIONS.create(dataset_name, df)
+    session = session_ingest.validated_session(dataset_name, df)
     if dataset_name in _ANOMALY_DEMOS:  # dedicated unsupervised anomaly-detection demo
         from pipeline.context import ANOMALY
         session.ctx.problem_type = ANOMALY
         session.ctx.target_col = None
         SESSIONS.save(session)  # ctx overridden after create -> re-persist
-    return _session_payload(session)
+    return session_ingest.session_payload(session)
 
 
 @app.get("/api/sessions")
@@ -203,7 +173,7 @@ def list_sessions():
 @app.get("/api/session/{session_id}")
 def session_info(session_id: str):
     session = _require_session(session_id)
-    return _session_payload(session)
+    return session_ingest.session_payload(session)
 
 
 @app.patch("/api/session/{session_id}")
@@ -214,7 +184,7 @@ def rename_session(session_id: str, body: dict = Body(default={})):
     session = SESSIONS.rename(session_id, name)
     if session is None:
         raise HTTPException(status_code=404, detail="Session inconnue ou expirée.")
-    return _session_payload(session)
+    return session_ingest.session_payload(session)
 
 
 @app.delete("/api/session/{session_id}")
@@ -297,33 +267,9 @@ def stage_recommend(session_id: str, stage_id: str, body: dict = Body(default={}
     return to_native(rec)
 
 
-def _run_stage(session, stage_id, config):
-    stage = get_stage(stage_id)
-    ctx = session.ctx
-    if stage_id in DATA_STAGE_IDS:
-        df_in, err = session.input_df_for(stage_id)
-        if err:
-            raise HTTPException(status_code=409, detail=err)
-        with plotting.PLOT_LOCK:  # serialise pyplot (not thread-safe)
-            if getattr(stage, "NEEDS_SESSION", False):  # separate: train-only preprocessor fit
-                out = stage.run(df_in, config, ctx, session=session)
-            else:
-                out = stage.run(df_in, config, ctx)
-        if isinstance(out, tuple) and len(out) == 3:
-            df_out, result, artifacts = out
-        else:
-            df_out, result = out
-            artifacts = None
-        session.record(stage_id, config, result, output_df=df_out, artifacts=artifacts)
-        return result
-    # model / evaluate operate on session artefacts
-    try:
-        with plotting.PLOT_LOCK:  # serialise pyplot (not thread-safe)
-            result, artifacts = stage.run(session, config)
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    session.record(stage_id, config, result, output_df=None, artifacts=artifacts)
-    return result
+# Resilient single-stage execution lives in stage_runner.py (any failure -> clean
+# 409/422, never an opaque 500), which also keeps autorun resilient.
+_run_stage = stage_runner.run_stage
 
 
 @app.post("/api/session/{session_id}/stage/{stage_id}/run")
@@ -727,7 +673,7 @@ async def predict_batch(session_id: str, file: UploadFile = File(...)):
     """Score an uploaded CSV of new rows -> enriched CSV + a distribution summary."""
     session = _require_trained(session_id)
     try:
-        df = pd.read_csv(io.BytesIO(await _read_capped(file)))
+        df = pd.read_csv(io.BytesIO(await session_ingest.read_capped(file)))
     except HTTPException:
         raise
     except Exception as e:

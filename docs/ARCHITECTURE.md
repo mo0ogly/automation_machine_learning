@@ -140,9 +140,18 @@ onglet caché / bfcache et laissait des graphes vides).
 
 ## 6. Routes API (`backend/app.py`)
 
+**Robustesse & orchestration.** L'ingestion (`session_ingest.py`) enchaîne garde-taille
+→ parse CSV → **validation** (`validation.py`) : un jeu dégénéré (vide, < 5 lignes, cible
+mono-classe/vide) est rejeté par un **400 clair** avant toute étape ; les problèmes non
+bloquants (colonnes constantes, missingness lourde, cible quasi-dégénérée, forte cardinalité,
+échantillon minuscule) sont attachés à la session (`data_quality`) et remontés à l'analyste
+(bannière + bouton IA). L'exécution d'une étape (`stage_runner.py`) enveloppe toute exception :
+`ValueError` → 409 (précondition expliquée), autre → **422 attribué à l'étape** (jamais de 500
+opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPException`).
+
 | Méthode | Route | Rôle |
 |---------|-------|------|
-| POST | `/api/session/start` · `/start-demo/{name}` | Crée une session (upload CSV ou jeu de démo) |
+| POST | `/api/session/start` · `/start-demo/{name}` | Crée une session (upload CSV ou jeu de démo) — validée, avec avertissements `data_quality` |
 | GET | `/api/session/{id}` | Résumé de session (restauration au reload) |
 | GET | `/api/session/{id}/stage/{stage}` | Vue d'étape (schema, diagnostics, plots, result) |
 | POST | `/stage/{stage}/run` · `/recommend` · `/interpret` · **`/assist`** | Exécuter / affiner / interpréter / **expliquer un élément** |

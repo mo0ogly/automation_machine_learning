@@ -609,6 +609,69 @@ def test_feature_selection_absent_for_clustering():
     assert not any(c["name"] == "feature_selection" for c in view["schema"])
 
 
+def _upload(name, content: bytes):
+    import io
+    return client.post("/api/session/start",
+                       files={"file": (name, io.BytesIO(content), "text/csv")})
+
+
+def test_ingestion_rejects_too_few_rows():
+    r = _upload("tiny.csv", b"a,b\n1,2\n3,4\n")   # 2 data rows < MIN_ROWS
+    assert r.status_code == 400
+    assert "lignes" in r.json()["detail"].lower()
+
+
+def test_ingestion_rejects_single_class_target():
+    rows = "\n".join(f"{i},1" for i in range(40))
+    r = _upload("mono.csv", ("x,y\n" + rows).encode())
+    assert r.status_code == 400
+    assert "seule valeur" in r.json()["detail"]
+
+
+def test_ingestion_rejects_empty_columns():
+    r = _upload("empty.csv", b"\n\n\n")
+    assert r.status_code == 400
+
+
+def test_data_quality_warnings_surfaced():
+    """A usable-but-flawed dataset is accepted, with warnings in the payload."""
+    import io
+    # A constant column + a heavily-missing column, valid binary target.
+    lines = ["const,mostly_missing,y"]
+    for i in range(60):
+        miss = "" if i < 50 else "1"
+        lines.append(f"7,{miss},{i % 2}")
+    body = ("\n".join(lines)).encode()
+    r = _upload("flawed.csv", body)
+    assert r.status_code == 200, r.text
+    codes = {w["code"] for w in r.json()["data_quality"]}
+    assert "constant_columns" in codes
+    assert "heavy_missing" in codes
+
+
+def test_clean_demo_has_no_fatal_and_payload_shape():
+    body = _start_demo("breastcancer.csv")
+    assert "data_quality" in body           # always present (list)
+    assert isinstance(body["data_quality"], list)
+
+
+def test_stage_failure_is_clean_error_not_500():
+    """Running a model stage before separation yields a clean 409, never a 500."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    r = client.post(f"/api/session/{sid}/stage/model/run", json={"config": {}})
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"]                # actionable message present
+
+
+def test_autorun_resilient_returns_status_on_stop():
+    """Autorun always returns a structured status, never propagates a 500."""
+    sid = _start_demo("breastcancer.csv")["session_id"]
+    r = client.post(f"/api/session/{sid}/autorun")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "ran" in body and "status" in body
+
+
 def test_sanitize_config_column_table_filters_unknown_columns():
     schema = [{"name": "dropped_features", "type": "column_table",
                "columns": [{"column": "a"}, {"column": "b"}]}]

@@ -60,6 +60,10 @@ class Session:
         # conversation of {role, content} turns replayed to the LLM each turn.
         self.chat: list[dict] = []
         self._chat_seq = 0
+        # Data-quality warnings from ingestion validation (validation.py). Non-fatal
+        # issues (constant columns, heavy missing, degenerate target…) surfaced to
+        # the analyst. Set by the ingestion route; None until then.
+        self.data_quality: Optional[list] = None
 
     # ── assisted-mode memory ────────────────────────────────────────────
     def add_insight(self, stage: str, topic: str, label: str, text,

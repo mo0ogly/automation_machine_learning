@@ -10,6 +10,7 @@ import SessionsMenu from './SessionsMenu';
 import { isCyber } from './cyber';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
+import DataQualityBanner from './DataQualityBanner';
 import './components.css';
 
 // API base: configurable at build time (Docker passes VITE_API_URL), defaults to
@@ -481,6 +482,9 @@ const Dashboard = ({ aiRefresh }) => {
           <AssistAnswer topic="cible" answers={assistAnswers} />
         </div>
       ) : null}
+
+      <DataQualityBanner warnings={session.data_quality} onAssist={askAssist}
+        assistBusy={assistLoading} assistAnswers={assistAnswers} />
 
       <StageStepper stages={session.stages} status={session.status}
         activeStage={activeStage} onSelect={(id) => loadStage(session.session_id, id)}

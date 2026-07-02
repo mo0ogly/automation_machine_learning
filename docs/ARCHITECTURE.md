@@ -78,7 +78,7 @@ Les `control` sont rendus tels quels par le frontend. `column_table` = table de 
 | 2 | `transform` | Features dérivées, asymétrie, encodage **ordinal ordonné** / One-Hot nominales, scaling. **EDA univariée + bivariée par type**. | idem | bivariée vs cible désactivée (pas de cible) |
 | 3 | `integrate` | Matrice finale : **table de décision des variables** (redondance signalée), **sélection univariée** (SelectKBest F-test / info mutuelle, ajustée train-only dans `preprocessing.py`) et PCA optionnelles. | corr vs cible | corr inter-variables |
 | 4 | `separate` | Split train/test stratifié + contrôle de fuite ; **préprocesseur anti-fuite** ajusté sur le train seul (`preprocessing.py`), réutilisé par serving/export. | X/y train/test | `X_full` (pas de split) |
-| 5 | `model` | **Leaderboard** N modèles par **validation croisée sur le train** (RMSE/R² ou Acc/F1, moyenne ± σ — test vierge) + choix expert. | régression/classif | **KMeans / DBSCAN / Agglomératif** (clustering, k auto par coude/k-distance) · **Isolation Forest / LOF** (anomalies) |
+| 5 | `model` | **Leaderboard** N modèles par **validation croisée sur le train** (RMSE/R² ou Acc/F1, moyenne ± σ — test vierge) + choix expert. **Déséquilibre** : class_weight (leaderboard-safe) ou rééchantillonnage over/under/SMOTE train-only (`resampling.py`). | régression/classif | **KMeans / DBSCAN / Agglomératif** (clustering, k auto par coude/k-distance) · **Isolation Forest / LOF** (anomalies) |
 | 6 | `tune` | GridSearch hyperparamètres. | oui | rejeté (409) |
 | 7 | `evaluate` | Métriques test + **contrôle surapprentissage** (train/test/CV) + **vue opérationnelle SOC** (`operational.py` : seuils, coût FN/FP, calibration, budget d'alertes, métriques robustes MCC/bal-acc/kappa ; fiche SOC/TI). Recalcul live via `/operating-point`. | régression : scatter + résidus + bandes de tolérance · classif : confusion + **précision/rappel/F1 pondérés + rapport par classe** + ROC/PR + point de fonctionnement | clustering : **silhouette + lecture métier (valeurs brutes) + PCA + profil** · anomalies : **taux + histogramme des scores + PCA + top lignes atypiques** + budget d'alertes |
 | 8 | `explain` | SHAP (importance globale + waterfall individuel). | oui | n/a |
@@ -181,6 +181,8 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | `ConfigControls.jsx` · `DiagnosticsView.jsx` · `ModelSelector.jsx` | Contrôles de config · diagnostics génériques · sélecteur de modèle |
 | `MonitoringPanel.jsx` (+ `monitoring.css`) | Panneau Surveillance (étape Évaluation) : upload d'un lot → rapport de dérive (tableau PSI/KS, concept, reproductibilité, re-calibration) + section **jitter** (bouton de mesure, badge de verdict, courbe de tolérance) |
 | `StabilityPanel.jsx` | Cartes génériques des 5 analyses de stabilité avancées (bouton Lancer → badge verdict + tableau chiffres clés + notes + figure) — rendu piloté par le contrat d'affichage du backend |
+| `LanguageSwitcher.jsx` | Bascule FR/EN dans la barre de nav (`i18n.changeLanguage`), persistée en `localStorage` (`ml.lang`) |
+| `i18n/index.js` | Init `react-i18next` ; charge tous les namespaces via `import.meta.glob('./locales/*/*.json')` ; `fallbackLng: 'fr'` ; force `lng: 'fr'` sous Vitest (`i18n/testSetup.js`) pour ne pas casser les assertions FR des tests |
 
 ---
 

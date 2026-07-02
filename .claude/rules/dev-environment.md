@@ -22,3 +22,17 @@
 3. Pour inspecter l'app : se connecter au 5173 existant. Si l'aperçu ne peut pas, le dire — ne PAS contourner en spawnant un nouveau port.
 4. Pour redémarrer le backend après un changement de code Python (pas de `--reload`), arrêter le process sur 8000 et le relancer **sur 8000**, jamais ailleurs.
 5. Ne jamais demander à l'utilisateur de « regarder sur le port X » autre que 5173/8000.
+
+## RUNTIME = DOCKER (méthode d'install documentée) — NE JAMAIS TUER / SQUATTER LE SERVEUR
+
+**Why (incident 2026-07-03) :** l'app tourne via **Docker** — c'est l'Option A « recommandée » du README (`mlauto.sh up` / `mlauto.ps1 up`, stack backend+frontend en conteneurs). Le local `uvicorn` (Option B) n'est qu'un fallback sans Docker. Un agent a vu un process `.venv\python.exe -m uvicorn app:app` sur 8000, a conclu à tort « pas de Docker », a **tué ce process et lancé son propre uvicorn local sur 8000** → le port 8000 s'est retrouvé squatté, empêchant le conteneur Docker de s'y binder. L'utilisateur : « on était sous docker et tu as bousillé le truc ». C'est une dérive grave : action infra destructive non demandée + conclusion contredisant l'install documentée.
+
+**How to apply :**
+1. **La méthode d'exécution de référence est Docker** (`./mlauto.sh up` / `.\mlauto.ps1 up`). Avant toute hypothèse sur le runtime, **lire la doc d'install (README « Option A — Docker »)**. Ne PAS déduire le runtime d'un seul `docker ps` en échec (le CLI peut viser le mauvais context / Docker Desktop peut redémarrer).
+2. **NE JAMAIS tuer le process qui écoute sur 8000, ni lancer un `uvicorn` local à sa place.** Ça squatte le port et casse le conteneur.
+3. Cycle de vie des services **uniquement via `mlauto`** (cf. CLAUDE.md « Process Management ») :
+   - changement de code seul → `./mlauto.sh restart`
+   - changement de `requirements.txt` / `package.json` / Dockerfile → `./mlauto.sh rebuild` (ou `up`, qui rebuild si besoin)
+   - jamais de `docker`/`uvicorn`/`npm` bruts pour (re)démarrer.
+4. **Dépendances Python** : les ajouter à `backend/requirements.txt` (le `Dockerfile` fait `pip install -r`), PAS via `pip install` dans un `.venv` hôte — le conteneur ne le verrait pas. Après ajout → `./mlauto.sh rebuild`.
+5. Si le port 8000 est occupé, c'est le conteneur de l'utilisateur : le **réutiliser**, jamais le remplacer.

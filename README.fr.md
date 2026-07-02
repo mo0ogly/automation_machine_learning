@@ -34,8 +34,11 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Non supervisé** — **clustering** (KMeans / DBSCAN / Agglomératif ; silhouette,
   Davies-Bouldin, Calinski-Harabasz ; lecture métier en valeurs réelles + **table de
   décision** pour nommer les clusters) **et détection d'anomalies** (Isolation Forest / LOF).
-- **Renforcement** — Q-learning sur un environnement GridWorld (un ou plusieurs buts,
-  pièges visibles), onglet « Renforcement » dédié.
+- **Renforcement** — deux modes dans l'onglet « Renforcement » dédié : une démo **Q-learning**
+  tabulaire sur GridWorld (un ou plusieurs buts, pièges visibles), et un atelier **Deep RL**
+  (Gymnasium + Stable-Baselines3 : DQN/PPO/A2C) sur des environnements à états continus — dont un
+  environnement **cyber défense** sur mesure (triage d'alertes SOC sous budget de réponse), des
+  presets cyber-first prêts à entraîner (« modèles de base »), et un agent entraîné téléchargeable (`.zip`).
 
 > **Architecture détaillée** (socle, couche agentique, 3 paradigmes) :
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -49,6 +52,9 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Tables de décision** : l'expert coche les colonnes/variables à garder (avis + raison IA)
   et nomme les clusters.
 - Bascule **Novice / Expert** sur la verbosité des explications.
+- **Interface FR / EN** (`react-i18next`) : un sélecteur de langue dans la barre de nav bascule
+  toute l'UI entre français et anglais, persisté en `localStorage`. Le français est la source
+  de vérité et la langue de repli.
 
 ## Architecture
 
@@ -72,6 +78,7 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 | `Copilot.jsx` | Copilote d'analyse : assistants contextuels + journal mémoire + niveau Novice/Expert |
 | `ReinforcementView.jsx` | Onglet « Renforcement » : réglages, métriques, politique/valeur/récompense |
 | `PlotModal.jsx` · `ColumnTable.jsx` | Modale de zoom des graphes · tables de décision |
+| `LanguageSwitcher.jsx` · `i18n/` | Bascule FR/EN · configuration `react-i18next`, un namespace JSON par composant sous `i18n/locales/{fr,en}/` |
 
 ## Modélisation & traitement des données
 
@@ -92,6 +99,12 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Sélection honnête du modèle** : le leaderboard de Modélisation classe les candidats par
   **validation croisée k-fold sur le train** (moyenne ± écart-type, écart train/CV de
   surapprentissage) — le jeu de test n'est jamais consulté avant l'Évaluation.
+- **Gestion du déséquilibre des classes** : sur les cibles cyber déséquilibrées (KEV ~13%,
+  phishing ~22%), l'étape Modélisation propose `class_weight='balanced'` (compatible validation
+  croisée, utilisé par le leaderboard) et le **rééchantillonnage** — sur/sous-échantillonnage
+  aléatoire et **SMOTE** (interpolation d'exemples synthétiques, sans dépendance
+  `imbalanced-learn`) appliqué à l'**entraînement final uniquement** (jamais le test, jamais dans
+  les plis CV). Sur KEV, le rappel de la classe rare est multiplié par ~4 au seuil par défaut.
 - **Fine-tuning** : grilles d'hyperparamètres par famille (linéaire, arbre, forêt, boosting,
   XGBoost), `GridSearchCV` ou `RandomizedSearchCV`, algorithme du baseline par défaut ;
   comparaison tuné-vs-baseline en CV (et sur le jeu de validation optionnel), jamais sur le test.
@@ -166,7 +179,7 @@ python -m uvicorn app:app --port 8000
 
 # Frontend (second terminal)
 cd frontend
-npm install
+npm install                   # inclut react-i18next / i18next / i18next-browser-languagedetector
 npm run dev                   # http://localhost:5173 (appelle le backend :8000)
 ```
 
@@ -178,6 +191,9 @@ npm run dev                   # http://localhost:5173 (appelle le backend :8000)
 | POST | `/api/session/{sid}/stage/{stage}/run` · `/recommend` · `/assist` | Exécute · affine · explique un élément |
 | POST | `/api/session/{sid}/autorun` | Exécute toutes les étapes (config par défaut) |
 | POST | `/api/rl/train` | Entraîne un agent Q-learning sur GridWorld → métriques + graphes |
+| GET | `/api/rl/deep/catalog` | Environnements Deep RL, algorithmes + hyperparamètres, presets |
+| POST | `/api/rl/deep/train` | Démarre un job d'entraînement Deep RL (DQN/PPO/A2C) → `job_id` |
+| GET | `/api/rl/deep/job/{id}` · `/download` | Suit un job (progression + résultat) · télécharge l'agent entraîné (`.zip`) |
 
 ## Tests
 ```bash

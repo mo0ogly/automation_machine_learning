@@ -1,7 +1,9 @@
 // i18n bootstrap. Loads every locale JSON under ./locales/{lng}/{ns}.json and wires
-// react-i18next. FR is the source of truth (the app was authored in French), so it is
-// the fallback. Language is detected from localStorage (key ml.lang) then the browser,
-// and persisted back to localStorage on change.
+// react-i18next. FR is the source of truth (the app was authored in French) and the
+// always-on default: language only ever changes via the explicit LanguageSwitcher,
+// which persists the choice to localStorage (key ml.lang). The browser/OS locale is
+// intentionally NOT consulted — an English-locale machine must still see the app in
+// French until the user opts into English.
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
@@ -33,7 +35,7 @@ i18n
     supportedLngs: ['fr', 'en'],
     defaultNS: 'common',
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: 'ml.lang',
       caches: isTest ? [] : ['localStorage'],
     },

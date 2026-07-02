@@ -32,8 +32,11 @@ All **3 learning paradigms** are covered:
 - **Unsupervised** — **clustering** (KMeans / DBSCAN / Agglomerative; silhouette,
   Davies-Bouldin, Calinski-Harabasz; business reading in real units + a **decision table**
   to name clusters) **and anomaly detection** (Isolation Forest / LOF).
-- **Reinforcement** — Q-learning on a GridWorld environment (one or several goals, visible
-  traps), in a dedicated "Reinforcement" tab.
+- **Reinforcement** — two modes in a dedicated "Reinforcement" tab: a tabular **Q-learning**
+  demo on a GridWorld (one or several goals, visible traps), and a **Deep RL** workbench
+  (Gymnasium + Stable-Baselines3: DQN/PPO/A2C) on continuous-state environments — including a
+  custom **cyber-defense** environment (SOC alert triage under a response budget), ready-to-train
+  cyber-first presets ("base models"), and a downloadable trained agent (`.zip`).
 
 > **Detailed architecture** (core, agentic layer, 3 paradigms):
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -47,6 +50,9 @@ All **3 learning paradigms** are covered:
 - **Decision tables**: the expert ticks the columns/features to keep (AI advice + reason)
   and names the clusters.
 - **Novice / Expert** toggle on explanation verbosity.
+- **FR / EN interface** (`react-i18next`): a language switch in the top nav toggles the whole
+  UI between French and English, persisted in `localStorage`. French is the source of truth
+  and the fallback language.
 
 ## Architecture
 
@@ -70,6 +76,7 @@ All **3 learning paradigms** are covered:
 | `Copilot.jsx` | Analysis copilot: contextual assistants + memory journal + Novice/Expert level |
 | `ReinforcementView.jsx` | "Reinforcement" tab: settings, metrics, policy/value/reward plots |
 | `PlotModal.jsx` · `ColumnTable.jsx` | Chart zoom modal · decision tables |
+| `LanguageSwitcher.jsx` · `i18n/` | FR/EN toggle · `react-i18next` setup, one JSON namespace per component under `i18n/locales/{fr,en}/` |
 
 ## Modeling & data handling
 
@@ -89,6 +96,12 @@ All **3 learning paradigms** are covered:
 - **Honest model selection**: the Modelling leaderboard ranks candidates by **k-fold
   cross-validation on the train set** (mean ± std, train-vs-CV overfit gap) — the held-out
   test set is never consulted before Evaluation.
+- **Class-imbalance handling**: on skewed cyber targets (KEV ~13%, phishing ~22%), the
+  Modelling stage offers `class_weight='balanced'` (cross-validation-safe, used by the
+  leaderboard) and **resampling** — random over/under-sampling and **SMOTE** (synthetic
+  minority interpolation, no `imbalanced-learn` dependency) applied to the **final training
+  fit only** (never the test set, never inside the CV folds). On KEV this lifts rare-class
+  recall ~4x at the default threshold.
 - **Fine-tuning**: per-family hyperparameter grids (linear, tree, forest, boosting, XGBoost),
   `GridSearchCV` or `RandomizedSearchCV`, defaults to the baseline algorithm; tuned-vs-baseline
   compared on CV (and the optional validation carve-out), never on the test set.
@@ -161,7 +174,7 @@ python -m uvicorn app:app --port 8000
 
 # Frontend (second terminal)
 cd frontend
-npm install
+npm install                   # includes react-i18next / i18next / i18next-browser-languagedetector
 npm run dev                   # http://localhost:5173 (calls the backend on :8000)
 ```
 
@@ -173,6 +186,9 @@ npm run dev                   # http://localhost:5173 (calls the backend on :800
 | POST | `/api/session/{sid}/stage/{stage}/run` · `/recommend` · `/assist` | Run · refine · explain an element |
 | POST | `/api/session/{sid}/autorun` | Run all stages (default config) |
 | POST | `/api/rl/train` | Train a Q-learning agent on GridWorld → metrics + plots |
+| GET | `/api/rl/deep/catalog` | Deep RL environments, algorithms + hyperparameters, presets |
+| POST | `/api/rl/deep/train` | Start a Deep RL training job (DQN/PPO/A2C) → `job_id` |
+| GET | `/api/rl/deep/job/{id}` · `/download` | Poll a job (progress + result) · download the trained agent (`.zip`) |
 
 ## Tests
 ```bash

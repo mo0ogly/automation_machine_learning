@@ -19,10 +19,15 @@ import os
 
 import numpy as np
 
+import prompt_guard
+
 _ST_MODEL_NAME = "all-MiniLM-L6-v2"
-_MIN_SIM = 0.25          # ignore weakly-related exchanges
-_model = None            # lazy sentence-transformers singleton
-_backend = None          # "st" | "tfidf" — resolved on first use
+# Calibrated for MiniLM / French: generic sentences share a high baseline cosine,
+# so a low cut-off lets topical noise through. Recall must be selective.
+_MIN_SIM = 0.45
+_MAX_CANDIDATES = 400   # bound the per-turn embedding cost on very long sessions
+_model = None           # lazy sentence-transformers singleton
+_backend = None         # "st" | "tfidf" — resolved on first use
 
 
 def _load_embedder():
@@ -63,8 +68,10 @@ def _embed(texts: list) -> np.ndarray:
 
 
 def _exchanges(thread: list) -> list:
-    """Pair each user turn with the following assistant reply. Returns a list of
-    ``{"i": last_turn_index, "user": ..., "assistant": ..., "text": ...}``."""
+    """Pair each user turn with the following assistant reply. Skips exchanges
+    whose reply is a static failure message (``source`` none/error) — those are
+    hidden from replay too, so they must not be recalled either. Returns a list
+    of ``{"i": last_turn_index, "user": ..., "assistant": ..., "text": ...}``."""
     out = []
     i = 0
     n = len(thread)
@@ -72,12 +79,14 @@ def _exchanges(thread: list) -> list:
         t = thread[i]
         if t.get("role") == "user":
             user = str(t.get("content") or "")
-            assistant, j = "", i
+            assistant, j, src = "", i, None
             if i + 1 < n and thread[i + 1].get("role") == "assistant":
                 assistant = str(thread[i + 1].get("content") or "")
+                src = thread[i + 1].get("source")
                 j = i + 1
-            out.append({"i": j, "user": user, "assistant": assistant,
-                        "text": (user + "\n" + assistant).strip()})
+            if src not in ("none", "error"):   # do not recall unusable turns
+                out.append({"i": j, "user": user, "assistant": assistant,
+                            "text": (user + "\n" + assistant).strip()})
             i = j + 1
         else:
             i += 1
@@ -85,19 +94,25 @@ def _exchanges(thread: list) -> list:
 
 
 def relevant_exchanges(query: str, thread: list, k: int = 3,
-                       exclude_recent_turns: int = 16) -> list:
+                       exclude_recent_turns: int = 20) -> list:
     """Top-``k`` earlier exchanges most relevant to ``query``.
 
     Exchanges whose last turn falls in the last ``exclude_recent_turns`` turns are
     skipped — they are already replayed verbatim, so recall targets what scrolled
-    out of the window. Returns ``[{user, assistant, score}]`` (empty if nothing
-    relevant or the conversation is too short). Never raises."""
+    out of the window (default matches ``chat_history``'s 20-turn window to avoid
+    duplicating what is already in context). Exchanges whose content looks like a
+    prompt injection are dropped: recall must not proactively RE-SERVE a payload
+    that already aged out of context. Returns ``[{user, assistant, score}]``
+    (empty if nothing relevant or the conversation is too short). Never raises."""
     query = str(query or "").strip()
     if not query or not thread:
         return []
     try:
         cutoff = max(0, len(thread) - int(exclude_recent_turns))
-        cands = [e for e in _exchanges(thread) if e["i"] < cutoff and e["text"]]
+        cands = [e for e in _exchanges(thread) if e["i"] < cutoff and e["text"]
+                 and not prompt_guard.looks_like_injection(e["user"])
+                 and not prompt_guard.looks_like_injection(e["assistant"])]
+        cands = cands[-_MAX_CANDIDATES:]   # bound the embedding cost
         if not cands:
             return []
         mat = _embed([query] + [e["text"] for e in cands])

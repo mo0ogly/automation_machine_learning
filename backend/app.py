@@ -407,7 +407,8 @@ def session_chat(session_id: str, body: dict = Body(default={})):
     # Semantic recall: surface relevant EARLIER exchanges (beyond the replayed
     # window) so the copilot has long-term memory. Retrieval is on the thread as
     # it stands BEFORE this new turn is appended.
-    recalled = conv_memory.relevant_exchanges(message, session.chat_thread(), k=3)
+    recalled = conv_memory.relevant_exchanges(message, session.chat_thread(), k=3,
+                                              exclude_recent_turns=20)  # = chat_history window
     out = llm_agent.chat(session.chat_history(), message, session.journal_summary(),
                          _chat_context(session), params=body.get("params"), recalled=recalled)
     session.add_chat_message("user", message, source="user")

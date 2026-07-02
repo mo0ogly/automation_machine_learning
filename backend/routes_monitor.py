@@ -9,6 +9,7 @@ batch is labelled — re-calibrates the operating point. No model re-fit.
 """
 
 import io
+import json
 
 import pandas as pd
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -36,11 +37,15 @@ def _require_trained(session_id: str):
 
 @router.post("/{session_id}/monitor")
 async def monitor(session_id: str, file: UploadFile = File(...),
-                  cost_fn: float = Form(None), cost_fp: float = Form(None)):
+                  cost_fn: float = Form(None), cost_fp: float = Form(None),
+                  metadata: str = Form(None)):
     """Drift & stability report for an uploaded batch of new raw rows.
 
     Returns the full report (data drift, prediction/concept drift, reproducibility,
-    re-calibrated operating point) plus captioned figures.
+    execution-environment comparison, re-calibrated operating point) plus figures.
+    ``metadata`` is an optional JSON object of operational context for the batch
+    (e.g. ``{"node": "gpu-03", "throttling": true, "temp_c": 82}``); malformed
+    JSON is ignored rather than failing the request.
     """
     session = _require_trained(session_id)
     try:
@@ -52,9 +57,18 @@ async def monitor(session_id: str, file: UploadFile = File(...),
     if df.empty:
         raise HTTPException(status_code=400, detail="Le lot est vide.")
 
+    exec_meta = None
+    if metadata:
+        try:
+            parsed = json.loads(metadata)
+            exec_meta = parsed if isinstance(parsed, dict) else None
+        except Exception:
+            exec_meta = None  # best-effort hint; never fail the report on bad JSON
+
     try:
         with plotting.PLOT_LOCK:  # serialise pyplot (not thread-safe)
-            report = monitoring.drift_report(session, df, cost_fn=cost_fn, cost_fp=cost_fp)
+            report = monitoring.drift_report(session, df, cost_fn=cost_fn, cost_fp=cost_fp,
+                                             exec_meta=exec_meta)
             plots = monitoring_plots.monitoring_plots(report) if report.get("available") else []
     except Exception as e:
         raise HTTPException(status_code=422, detail=(

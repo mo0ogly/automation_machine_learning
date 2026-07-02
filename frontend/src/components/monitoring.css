@@ -1,4 +1,7 @@
-/* Drift & stability monitoring panel — dedicated file (components.css is size-capped). */
+/* Shared stylesheet for the monitoring feature — MonitoringPanel (mon-*) AND
+   StabilityPanel (stab-*, which also reuses the mon-* primitives below). Both
+   components import this file directly, so neither depends on the other's import
+   order. Dedicated file because components.css is size-capped. */
 
 /* ── Shell ────────────────────────────────────────────────────────────────── */
 .mon-panel {
@@ -170,6 +173,7 @@
   background: color-mix(in srgb, var(--status-warning) 8%, transparent);
 }
 .mon-schema-warn strong { color: var(--status-warning); }
+.mon-warn-inline { color: var(--status-warning); }
 
 /* ── Jitter + advanced stability sub-panels ───────────────────────────────── */
 .mon-jitter { margin-top: 1.1rem; border-top: 1px solid var(--border-subtle); padding-top: 0.8rem; }

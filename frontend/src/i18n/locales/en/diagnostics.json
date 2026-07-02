@@ -1,0 +1,22 @@
+{
+  "labels": {
+    "overview": "Overview",
+    "overview_after": "Overview (after)",
+    "missing_by_column": "Missing values per column",
+    "constant_columns": "Constant columns",
+    "outliers_iqr": "Outliers (IQR)",
+    "skewness": "Skewness",
+    "cardinality": "Categorical cardinality",
+    "high_correlation_pairs": "Highly correlated pairs",
+    "target_correlation": "Correlation with target",
+    "leakage_candidates": "Leakage suspects",
+    "target_distribution": "Target distribution",
+    "metrics": "Metrics",
+    "valeurs_categorielles": "Distinct values (categorical)",
+    "lignes_extremes": "Extreme rows (high target)",
+    "analyse_descriptive": "Descriptive analysis (by type)"
+  },
+  "none": "none",
+  "empty": "No diagnostics available.",
+  "upstreamRequired": "Upstream step required."
+}

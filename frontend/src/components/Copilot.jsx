@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 function Spark() {
   return (
@@ -8,19 +9,19 @@ function Spark() {
   );
 }
 
-const LEVELS = [{ id: 'novice', label: 'Novice' }, { id: 'expert', label: 'Expert' }];
-
 // Assisted-analysis copilot. Replaces the decorative loop: it offers context-aware
 // AI helpers and shows the analysis JOURNAL — every AI exchange is remembered and
 // re-injected into later prompts, so the assistant builds on what it already said.
 export default function Copilot({ stage, insights, level, busy, onAssist, onSetLevel }) {
+  const { t } = useTranslation('copilot');
+  const LEVELS = [{ id: 'novice', label: t('levelNovice') }, { id: 'expert', label: t('levelExpert') }];
   const meta = stage && stage.meta;
   const ran = !!(stage && stage.result);
   const quick = [
-    { topic: 'diagnostics', label: 'Explique les diagnostics' },
-    { topic: 'decision', label: 'Que dois-je décider ?' },
+    { topic: 'diagnostics', label: t('quickDiagnostics') },
+    { topic: 'decision', label: t('quickDecision') },
   ];
-  if (ran) quick.push({ topic: 'result', label: 'Interprète le résultat' });
+  if (ran) quick.push({ topic: 'result', label: t('quickResult') });
 
   const journal = [...(insights || [])].reverse();
   const fmt = (t) => (Array.isArray(t) ? t.join(' · ') : String(t || ''));
@@ -28,18 +29,18 @@ export default function Copilot({ stage, insights, level, busy, onAssist, onSetL
   return (
     <div className="copilot">
       <div className="copilot-head">
-        <span className="copilot-title"><Spark /> Copilote d'analyse</span>
-        <div className="level-toggle" role="group" aria-label="Niveau d'assistance">
+        <span className="copilot-title"><Spark /> {t('title')}</span>
+        <div className="level-toggle" role="group" aria-label={t('levelGroupAria')}>
           {LEVELS.map((l) => (
             <button key={l.id} type="button" className={level === l.id ? 'lvl lvl-on' : 'lvl'}
-              onClick={() => onSetLevel(l.id)} title={'Explications niveau ' + l.label}>{l.label}</button>
+              onClick={() => onSetLevel(l.id)} title={t('levelTitle', { level: l.label })}>{l.label}</button>
           ))}
         </div>
       </div>
 
       {meta ? (
         <p className="copilot-ctx"><strong>{meta.title}</strong> — {meta.objective}</p>
-      ) : <p className="copilot-ctx muted">Sélectionnez une étape.</p>}
+      ) : <p className="copilot-ctx muted">{t('selectStage')}</p>}
 
       <div className="copilot-actions">
         {quick.map((q) => (
@@ -50,15 +51,12 @@ export default function Copilot({ stage, insights, level, busy, onAssist, onSetL
 
       <div className="copilot-journal">
         <div className="copilot-journal-head">
-          <span>Journal d'analyse</span>
-          <span className="copilot-count" title="Mémoire ré-injectée dans les prompts">{journal.length}</span>
+          <span>{t('journalTitle')}</span>
+          <span className="copilot-count" title={t('memoryTitle')}>{journal.length}</span>
         </div>
-        {busy ? <div className="copilot-loading"><span className="spinner" /> L'assistant réfléchit…</div> : null}
+        {busy ? <div className="copilot-loading"><span className="spinner" /> {t('thinking')}</div> : null}
         {journal.length === 0 && !busy ? (
-          <p className="muted copilot-empty">
-            Aucune note pour l'instant. Demande une explication à l'IA (ici ou via les boutons ✦ des
-            sous-étapes) : chaque réponse est mémorisée et nourrit les recommandations suivantes.
-          </p>
+          <p className="muted copilot-empty">{t('empty')}</p>
         ) : null}
         <ul className="journal-list">
           {journal.map((e) => (

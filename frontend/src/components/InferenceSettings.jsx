@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './ai-cockpit.css';
 
 // Reusable inference-parameter editor (temperature, top_p, max_tokens, penalties).
@@ -7,6 +8,7 @@ import './ai-cockpit.css';
 // the current overrides (a partial map); a field left at its default is not sent.
 // Used both per-backend (persisted defaults, Backends IA) and per-request (Cockpit).
 export default function InferenceSettings({ apiBase, value, onChange, title }) {
+  const { t } = useTranslation('inference');
   const [fields, setFields] = useState([]);
   const [err, setErr] = useState(false);
 
@@ -34,8 +36,8 @@ export default function InferenceSettings({ apiBase, value, onChange, title }) {
     onChange(next);
   };
 
-  if (err) return <div className="muted infp-err">Réglages d'inférence indisponibles.</div>;
-  if (!fields.length) return <div className="muted infp-loading">Chargement des réglages…</div>;
+  if (err) return <div className="muted infp-err">{t('unavailable')}</div>;
+  if (!fields.length) return <div className="muted infp-loading">{t('loading')}</div>;
 
   return (
     <div className="infp">
@@ -48,7 +50,7 @@ export default function InferenceSettings({ apiBase, value, onChange, title }) {
             <div className="infp-head">
               <label className="infp-label" title={f.help}>
                 {f.label}
-                {isSet(f.name) ? <span className="infp-badge" title="Valeur personnalisée">•</span> : null}
+                {isSet(f.name) ? <span className="infp-badge" title={t('customValue')}>•</span> : null}
               </label>
               <span className="infp-controls">
                 <input
@@ -61,7 +63,7 @@ export default function InferenceSettings({ apiBase, value, onChange, title }) {
                   }}
                 />
                 {isSet(f.name) ? (
-                  <button type="button" className="infp-reset" title="Revenir au défaut"
+                  <button type="button" className="infp-reset" title={t('resetDefault')}
                     onClick={() => clear(f.name)}>↺</button>
                 ) : null}
               </span>

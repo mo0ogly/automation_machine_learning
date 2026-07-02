@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Copilot from './Copilot';
 import ChatDock from './ChatDock';
 import StageStepper from './StageStepper';
@@ -17,13 +18,13 @@ import './components.css';
 // the local dev backend so `npm run dev` keeps working unchanged.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Human-readable label for the detected problem type (badge in the session bar).
-const PTYPE_LABELS = {
-  regression: 'Régression', classification: 'Classification',
-  clustering: 'Clustering', anomaly: "Détection d'anomalies",
-};
-
 const Dashboard = ({ aiRefresh }) => {
+  const { t } = useTranslation('dashboard');
+  // Human-readable label for the detected problem type (badge in the session bar).
+  const PTYPE_LABELS = {
+    regression: t('problemTypes.regression'), classification: t('problemTypes.classification'),
+    clustering: t('problemTypes.clustering'), anomaly: t('problemTypes.anomaly'),
+  };
   const [session, setSession] = useState(null);
   const [activeStage, setActiveStage] = useState(null);
   const [stageData, setStageData] = useState(null);
@@ -82,13 +83,13 @@ const Dashboard = ({ aiRefresh }) => {
     try {
       const res = await fetch(API_URL + '/api/session/' + sessionId + '/stage/' + stageId);
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Erreur de chargement'); return; }
+      if (!res.ok) { setError(data.detail || t('errors.loadFailed')); return; }
       setStageData(data);
       setActiveStage(stageId);
       setConfig(data.current_config || data.default_config || {});
       setSubPhase(data.result ? 'act' : 'observe');
     } catch (e) {
-      setError('API injoignable — le backend tourne-t-il sur :8000 ?');
+      setError(t('errors.apiUnreachablePort8000'));
     }
   };
 
@@ -107,10 +108,10 @@ const Dashboard = ({ aiRefresh }) => {
     try {
       const res = await fetch(API_URL + '/api/session/' + id);
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Session introuvable'); return; }
+      if (!res.ok) { setError(data.detail || t('errors.sessionNotFound')); return; }
       openSession(data);
     } catch (e) {
-      setError('API injoignable — démarrez le backend (uvicorn) sur :8000.');
+      setError(t('errors.apiUnreachableStartBackend'));
     }
   };
 
@@ -123,9 +124,9 @@ const Dashboard = ({ aiRefresh }) => {
       fd.append('file', file);
       const res = await fetch(API_URL + '/api/session/start', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Erreur'); } else { openSession(data); }
+      if (!res.ok) { setError(data.detail || t('errors.generic')); } else { openSession(data); }
     } catch (e) {
-      setError('API injoignable — démarrez le backend (uvicorn) sur :8000.');
+      setError(t('errors.apiUnreachableStartBackend'));
     }
     setBusy(false);
   };
@@ -135,9 +136,9 @@ const Dashboard = ({ aiRefresh }) => {
     try {
       const res = await fetch(API_URL + '/api/session/start-demo/' + name, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Erreur'); } else { openSession(data); }
+      if (!res.ok) { setError(data.detail || t('errors.generic')); } else { openSession(data); }
     } catch (e) {
-      setError('API injoignable — démarrez le backend (uvicorn) sur :8000.');
+      setError(t('errors.apiUnreachableStartBackend'));
     }
     setBusy(false);
   };
@@ -153,10 +154,10 @@ const Dashboard = ({ aiRefresh }) => {
       const res = await fetch(API_URL + '/api/session/' + session.session_id + '/stage/' + activeStage + '/recommend',
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config }) });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Agent indisponible'); }
+      if (!res.ok) { setError(data.detail || t('errors.agentUnavailable')); }
       else { setReco(data); refreshJournal(session.session_id); }
     } catch (e) {
-      setError('Agent injoignable.');
+      setError(t('errors.agentUnreachable'));
     }
     setRecoLoading(false);
   };
@@ -190,8 +191,8 @@ const Dashboard = ({ aiRefresh }) => {
         .map(([k, v]) => k + ' = ' + (Array.isArray(v) ? v.length + ' var.' : v)).join(', ');
       fetch(API_URL + '/api/session/' + session.session_id + '/journal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: activeStage, topic: 'action', label: 'Action appliquée',
-          text: 'Appliqué : ' + summary, source: 'user' }),
+        body: JSON.stringify({ stage: activeStage, topic: 'action', label: t('journal.actionApplied'),
+          text: t('journal.appliedPrefix') + summary, source: 'user' }),
       }).then(() => refreshJournal(session.session_id)).catch(() => {});
     }
   };
@@ -203,9 +204,9 @@ const Dashboard = ({ aiRefresh }) => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       const data = await res.json();
       if (res.ok) { setInterpretation(data); refreshJournal(session.session_id); }
-      else setError(data.detail || 'Interprétation indisponible');
+      else setError(data.detail || t('errors.interpretationUnavailable'));
     } catch (e) {
-      setError('Interprétation injoignable.');
+      setError(t('errors.interpretationUnreachable'));
     }
     setInterpretLoading(false);
   };
@@ -227,13 +228,13 @@ const Dashboard = ({ aiRefresh }) => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topic, label, level, config }) });
       const data = await res.json();
-      if (!res.ok) setError(data.detail || 'Assistant indisponible');
+      if (!res.ok) setError(data.detail || t('errors.assistUnavailable'));
       else {
         setAssistAnswers((prev) => ({ ...prev, [topic]: data }));
         await refreshJournal(session.session_id);
       }
     } catch (e) {
-      setError('Assistant injoignable.');
+      setError(t('errors.assistUnreachable'));
     }
     setAssistLoading(false);
   };
@@ -248,13 +249,13 @@ const Dashboard = ({ aiRefresh }) => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topic, label, level, config: {} }) });
       const data = await res.json();
-      if (!res.ok) setError(data.detail || 'Assistant indisponible');
+      if (!res.ok) setError(data.detail || t('errors.assistUnavailable'));
       else {
         setAssistAnswers((prev) => ({ ...prev, [topic]: data }));
         await refreshJournal(session.session_id);
       }
     } catch (e) {
-      setError('Assistant injoignable.');
+      setError(t('errors.assistUnreachable'));
     }
     setAssistLoading(false);
   };
@@ -285,11 +286,11 @@ const Dashboard = ({ aiRefresh }) => {
       const res = await fetch(API_URL + '/api/session/' + session.session_id + '/stage/' + activeStage + '/run',
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config }) });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || "Échec de l'exécution"); setBusy(false); return; }
+      if (!res.ok) { setError(data.detail || t('errors.runFailed')); setBusy(false); return; }
       setSession((prev) => ({ ...prev, status: data.status }));
       await loadStage(session.session_id, activeStage);
     } catch (e) {
-      setError("Échec de l'exécution.");
+      setError(t('errors.runFailedDot'));
     }
     setBusy(false);
   };
@@ -303,11 +304,11 @@ const Dashboard = ({ aiRefresh }) => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ config: { cluster_labels: labels } }) });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Échec du renommage'); setBusy(false); return; }
+      if (!res.ok) { setError(data.detail || t('errors.renameFailed')); setBusy(false); return; }
       setSession((prev) => ({ ...prev, status: data.status }));
       await loadStage(session.session_id, 'evaluate');
     } catch (e) {
-      setError('Échec du renommage des clusters.');
+      setError(t('errors.renameClustersFailed'));
     }
     setBusy(false);
   };
@@ -331,7 +332,7 @@ const Dashboard = ({ aiRefresh }) => {
         <strong>{ds.type}</strong>{cyber ? <span className="badge-cyber">CYBER</span> : null}<br />
         <span className="demo-desc">{ds.description}</span>
       </button>
-      <button type="button" className="demo-info-btn" title="Voir la fiche du jeu de données"
+      <button type="button" className="demo-info-btn" title={t('landing.datasetCardTitle')}
         onClick={() => setCardName(ds.name)}>i</button>
     </div>
   );
@@ -343,33 +344,32 @@ const Dashboard = ({ aiRefresh }) => {
     return (
       <div className="landing">
         <div className="panel glass-panel landing-card">
-          <h2 className="panel-header">Construire un modèle, étape par étape</h2>
+          <h2 className="panel-header">{t('landing.title')}</h2>
           <p className="muted">
-            Pipeline agentique : Nettoyage › Transformation › Intégration › Séparation › Modèle › Fine-tuning
-            › Évaluation › Explicabilité. À chaque étape, l'agent propose un affinage ; l'expert valide ou ajuste.
+            {t('landing.pipelineDescription')}
           </p>
 
           <div className="card mt-3">
-            <h3 className="text-sm text-secondary mb-2">Importer un CSV</h3>
+            <h3 className="text-sm text-secondary mb-2">{t('landing.importCsv')}</h3>
             <div className="upload-zone" onClick={() => fileInputRef.current.click()}>
               <span className="icon">+</span>
-              <p>Choisir un fichier CSV</p>
+              <p>{t('landing.chooseCsvFile')}</p>
               <input type="file" accept=".csv" style={{ display: 'none' }} ref={fileInputRef}
                 onChange={startUpload} />
             </div>
           </div>
 
           <div className="card mt-2">
-            <h3 className="text-sm text-secondary mb-2">Ou un jeu de démonstration</h3>
+            <h3 className="text-sm text-secondary mb-2">{t('landing.orDemoDataset')}</h3>
             {cyberDemos.length ? (
               <div className="cyber-block">
-                <div className="cyber-subhead"><span className="badge-cyber">CYBER</span> Jeux cyber</div>
+                <div className="cyber-subhead"><span className="badge-cyber">CYBER</span> {t('landing.cyberDatasets')}</div>
                 {cyberDemos.map((ds) => renderDemo(ds, true))}
               </div>
             ) : null}
             {otherDemos.length ? (
               <>
-                {cyberDemos.length ? <div className="other-subhead">Autres jeux</div> : null}
+                {cyberDemos.length ? <div className="other-subhead">{t('landing.otherDatasets')}</div> : null}
                 {otherDemos.map((ds) => renderDemo(ds, false))}
               </>
             ) : null}
@@ -378,9 +378,9 @@ const Dashboard = ({ aiRefresh }) => {
           {recentSessions.length ? (
             <div className="card mt-2">
               <div className="recent-head">
-                <h3 className="text-sm text-secondary mb-2">Sessions récentes</h3>
+                <h3 className="text-sm text-secondary mb-2">{t('landing.recentSessions')}</h3>
                 <button type="button" className="ai-link" onClick={() => setSessionsOpen(true)}>
-                  Gérer toutes les sessions…
+                  {t('landing.manageSessions')}
                 </button>
               </div>
               <div className="recent-list">
@@ -391,13 +391,13 @@ const Dashboard = ({ aiRefresh }) => {
                     : '';
                   return (
                     <button key={s.id} type="button" className="recent-row" disabled={busy}
-                      onClick={() => openSessionById(s.id)} title="Rouvrir cette session">
+                      onClick={() => openSessionById(s.id)} title={t('landing.reopenSession')}>
                       <span className="recent-name">
-                        {s.filename || '(sans nom)'}
+                        {s.filename || t('landing.unnamed')}
                         {isCyber(s.filename) ? <span className="badge-cyber">CYBER</span> : null}
                       </span>
                       <span className={sm.model ? 'recent-model recent-model-on' : 'recent-model'}>
-                        {sm.model ? '● ' + sm.model : '○ pas de modèle'}
+                        {sm.model ? '● ' + sm.model : '○ ' + t('landing.noModel')}
                       </span>
                       <span className="recent-date">{when}</span>
                     </button>
@@ -410,8 +410,8 @@ const Dashboard = ({ aiRefresh }) => {
           {agent ? (
             <div className={agent.configured ? 'agent-chip agent-ok' : 'agent-chip agent-off'}>
               {agent.configured
-                ? 'Agent IA actif'
-                : 'Aucun backend IA configuré — recommandations heuristiques'}
+                ? t('landing.agentActive')
+                : t('landing.noAgentConfigured')}
             </div>
           ) : null}
           {agent ? (
@@ -443,26 +443,26 @@ const Dashboard = ({ aiRefresh }) => {
       <div className="lab-bar glass-panel">
         <div className="lab-meta">
           <strong>{session.filename}</strong>
-          <span>{session.overview.rows} lignes · {session.overview.cols} colonnes</span>
+          <span>{t('lab.overview', { rows: session.overview.rows, cols: session.overview.cols })}</span>
           <span className="badge-ia">
             <span className={session.context.supervised ? 'tag tag-sup' : 'tag tag-unsup'}>
-              {session.context.supervised ? 'Supervisé' : 'Non supervisé'}
+              {session.context.supervised ? t('lab.supervised') : t('lab.unsupervised')}
             </span>
-            <AssistButton topic="paradigme" text="IA" busy={assistLoading} onAssist={askAssist}
-              label={session.context.supervised ? 'Pourquoi supervisé ?' : 'Pourquoi non supervisé ?'} />
+            <AssistButton topic="paradigme" text={t('ai', { ns: 'stage' })} busy={assistLoading} onAssist={askAssist}
+              label={session.context.supervised ? t('lab.whySupervised') : t('lab.whyUnsupervised')} />
           </span>
           <span className="badge-ia">
             <span className="tag tag-type">
               {PTYPE_LABELS[session.context.problem_type] || session.context.problem_type}
             </span>
-            <AssistButton topic="type_probleme" text="IA" busy={assistLoading} onAssist={askAssist}
-              label={'Explique le type « ' + (PTYPE_LABELS[session.context.problem_type] || session.context.problem_type) + ' »'} />
+            <AssistButton topic="type_probleme" text={t('ai', { ns: 'stage' })} busy={assistLoading} onAssist={askAssist}
+              label={t('lab.explainType', { type: PTYPE_LABELS[session.context.problem_type] || session.context.problem_type })} />
           </span>
           {session.context.target_col ? (
             <span className="badge-ia">
-              <span className="tag">cible : {session.context.target_col}</span>
-              <AssistButton topic="cible" text="IA" busy={assistLoading} onAssist={askAssist}
-                label={'Rôle de la cible « ' + session.context.target_col + ' »'} />
+              <span className="tag">{t('lab.target')} : {session.context.target_col}</span>
+              <AssistButton topic="cible" text={t('ai', { ns: 'stage' })} busy={assistLoading} onAssist={askAssist}
+                label={t('lab.targetRole', { target: session.context.target_col })} />
             </span>
           ) : null}
           {agent ? (
@@ -470,8 +470,8 @@ const Dashboard = ({ aiRefresh }) => {
           ) : null}
         </div>
         <div className="lab-bar-actions">
-          <button className="btn btn-secondary" onClick={() => setSessionsOpen(true)}>Mes sessions</button>
-          <button className="btn btn-secondary" onClick={reset}>Nouvelle analyse</button>
+          <button className="btn btn-secondary" onClick={() => setSessionsOpen(true)}>{t('lab.mySessions')}</button>
+          <button className="btn btn-secondary" onClick={reset}>{t('lab.newAnalysis')}</button>
         </div>
       </div>
 
@@ -511,7 +511,7 @@ const Dashboard = ({ aiRefresh }) => {
             onSetLevel={setLevelRemote}
           />
           <ChatDock apiBase={API_URL} sessionId={session && session.session_id}
-            title="Cockpit IA — copilote" />
+            title={t('lab.copilotTitle')} />
         </aside>
 
         <main className="lab-main glass-panel">

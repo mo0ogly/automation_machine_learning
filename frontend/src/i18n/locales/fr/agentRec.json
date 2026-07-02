@@ -1,0 +1,15 @@
+{
+  "loading": "L'agent lit les diagnostics et prépare un affinage...",
+  "varsToRemove": "{{count}} variable(s) à retirer",
+  "noneToRemove": "aucune à retirer",
+  "sourceLlm": "Agent Groq (LLM)",
+  "sourceHeuristic": "Repli heuristique",
+  "confidence": "Confiance {{conf}}%",
+  "risk": "Risque : {{risk}}",
+  "hint": "Applique chaque réglage individuellement, ou tout d'un coup. Tu peux ensuite ajuster manuellement ci-dessous.",
+  "applied": "appliqué",
+  "apply": "Appliquer",
+  "allApplied": "Tout appliqué",
+  "applyAll": "Appliquer tout l'affinage",
+  "noChange": "Aucun changement de configuration proposé."
+}

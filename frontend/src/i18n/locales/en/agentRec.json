@@ -1,0 +1,15 @@
+{
+  "loading": "The agent is reading the diagnostics and preparing a refinement...",
+  "varsToRemove": "{{count}} variable(s) to drop",
+  "noneToRemove": "none to drop",
+  "sourceLlm": "Groq agent (LLM)",
+  "sourceHeuristic": "Heuristic fallback",
+  "confidence": "Confidence {{conf}}%",
+  "risk": "Risk: {{risk}}",
+  "hint": "Apply each setting individually, or all at once. You can still adjust manually below afterward.",
+  "applied": "applied",
+  "apply": "Apply",
+  "allApplied": "All applied",
+  "applyAll": "Apply full refinement",
+  "noChange": "No configuration change proposed."
+}

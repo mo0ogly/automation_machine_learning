@@ -1,0 +1,19 @@
+{
+  "triageUnavailable": "Triage indisponible.",
+  "exportFilename": "file_alertes.csv",
+  "title": "Triage par lot — file d'alertes",
+  "explainQueue": "Explique la file d'alertes",
+  "ai": "IA",
+  "intro": "Dépose un CSV d'événements (mêmes colonnes que le jeu d'origine, sans la cible) : le modèle score chaque ligne et la <strong>file est triée du plus suspect au moins suspect</strong>. Filtre par verdict et envoie un cas dans le simulateur pour l'investiguer.",
+  "scoring": "Scoring…",
+  "chooseCsvFile": "Choisir un fichier CSV",
+  "verdict": "Verdict",
+  "all": "tous",
+  "exportQueue": "Exporter la file",
+  "scoredCount": "{{n}} scorés",
+  "cappedSuffix": " (limité à 5000)",
+  "sortedBy": " · triés par {{col}}",
+  "fileOrder": " · ordre du fichier (non priorisable)",
+  "score": "score",
+  "inspect": "Inspecter"
+}

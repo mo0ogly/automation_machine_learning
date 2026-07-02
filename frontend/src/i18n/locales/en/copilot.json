@@ -1,0 +1,15 @@
+{
+  "levelNovice": "Novice",
+  "levelExpert": "Expert",
+  "quickDiagnostics": "Explain the diagnostics",
+  "quickDecision": "What should I decide?",
+  "quickResult": "Interpret the result",
+  "title": "Analysis copilot",
+  "levelGroupAria": "Assistance level",
+  "levelTitle": "{{level}}-level explanations",
+  "selectStage": "Select a stage.",
+  "journalTitle": "Analysis journal",
+  "memoryTitle": "Memory re-injected into prompts",
+  "thinking": "The assistant is thinking…",
+  "empty": "No notes yet. Ask the AI for an explanation (here or via the sub-step ✦ buttons): every answer is remembered and feeds the next recommendations."
+}

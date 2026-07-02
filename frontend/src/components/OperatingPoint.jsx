@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import './operating-point.css';
 
 // OperatingPoint — the operational (SOC / threat-intel) evaluation panel.
@@ -33,12 +34,13 @@ function nearestRow(sweep, t) {
 
 // Business-labelled 2x2 confusion matrix (attack vs normal).
 function ConfusionGrid({ row }) {
+  const { t } = useTranslation('operating');
   if (!row) return null;
   const cells = [
-    { k: 'tp', label: 'Détection correcte', v: row.tp, cls: 'op-cell-good' },
-    { k: 'fn', label: 'Attaque manquée', v: row.fn, cls: 'op-cell-bad' },
-    { k: 'fp', label: 'Fausse alerte', v: row.fp, cls: 'op-cell-warn' },
-    { k: 'tn', label: 'Trafic normal', v: row.tn, cls: 'op-cell-good' },
+    { k: 'tp', label: t('confusion.tp'), v: row.tp, cls: 'op-cell-good' },
+    { k: 'fn', label: t('confusion.fn'), v: row.fn, cls: 'op-cell-bad' },
+    { k: 'fp', label: t('confusion.fp'), v: row.fp, cls: 'op-cell-warn' },
+    { k: 'tn', label: t('confusion.tn'), v: row.tn, cls: 'op-cell-good' },
   ];
   return (
     <div className="op-confusion">
@@ -53,15 +55,16 @@ function ConfusionGrid({ row }) {
 }
 
 function MetricCards({ row }) {
+  const { t } = useTranslation('operating');
   if (!row) return null;
   const items = [
-    ['Rappel (détection)', pct(row.recall)],
-    ['Précision', pct(row.precision)],
-    ['Spécificité', pct(row.specificity)],
-    ['Taux de fausses alertes', pct(row.fpr)],
-    ['F2 (rappel prioritaire)', num(row.fbeta)],
-    ['Alertes', num(row.alerts) + ' (' + pct(row.alert_rate) + ')'],
-    ['Coût attendu', num(row.cost)],
+    [t('metric.recall'), pct(row.recall)],
+    [t('metric.precision'), pct(row.precision)],
+    [t('metric.specificity'), pct(row.specificity)],
+    [t('metric.fpr'), pct(row.fpr)],
+    [t('metric.fbeta'), num(row.fbeta)],
+    [t('metric.alerts'), num(row.alerts) + ' (' + pct(row.alert_rate) + ')'],
+    [t('metric.cost'), num(row.cost)],
   ];
   return (
     <div className="op-metrics">
@@ -73,17 +76,18 @@ function MetricCards({ row }) {
 }
 
 function RecoChips({ reco, onPick }) {
+  const { t } = useTranslation('operating');
   if (!reco) return null;
   const labels = {
-    min_cost: 'Coût minimal', max_fbeta: 'F2 max', youden: 'Youden J', fpr_1pct: 'Budget FPR 1%',
+    min_cost: t('reco.minCost'), max_fbeta: t('reco.maxFbeta'), youden: t('reco.youden'), fpr_1pct: t('reco.fprBudget'),
   };
   return (
     <div className="op-reco">
-      <span className="op-reco-lbl">Points recommandés :</span>
+      <span className="op-reco-lbl">{t('reco.label')}</span>
       {Object.entries(labels).map(([k, lbl]) => (
         reco[k] !== undefined ? (
           <button key={k} type="button" className="op-chip" onClick={() => onPick(reco[k])}
-            title={'Appliquer le seuil ' + reco[k]}>
+            title={t('reco.applyThreshold', { value: reco[k] })}>
             {lbl} · {reco[k]}
           </button>
         ) : null
@@ -93,40 +97,43 @@ function RecoChips({ reco, onPick }) {
 }
 
 function Calibration({ calib }) {
+  const { t } = useTranslation('operating');
   if (!calib) return null;
   return (
     <div className="op-block">
-      <h6>Calibration des probabilités</h6>
+      <h6>{t('calibration.title')}</h6>
       <div className="op-inline">
         <span>ECE : <strong>{num(calib.ece)}</strong></span>
         <span>Brier : <strong>{num(calib.brier)}</strong></span>
       </div>
-      <p className="op-note">Un score de 0.8 devrait correspondre à ~80% de vrais positifs (ECE proche de 0 = fiable pour trier par score).</p>
+      <p className="op-note">{t('calibration.note')}</p>
     </div>
   );
 }
 
 function RobustMetrics({ robust }) {
+  const { t } = useTranslation('operating');
   if (!robust) return null;
   return (
     <div className="op-block">
-      <h6>Métriques robustes au déséquilibre</h6>
+      <h6>{t('robust.title')}</h6>
       <div className="op-inline">
         <span>MCC : <strong>{num(robust.mcc)}</strong></span>
-        <span>Balanced accuracy : <strong>{num(robust.balanced_accuracy)}</strong></span>
-        <span>Cohen's kappa : <strong>{num(robust.cohen_kappa)}</strong></span>
+        <span>{t('robust.balancedAccuracy')} : <strong>{num(robust.balanced_accuracy)}</strong></span>
+        <span>{t('robust.cohenKappa')} : <strong>{num(robust.cohen_kappa)}</strong></span>
       </div>
     </div>
   );
 }
 
 function AlertBudget({ rows }) {
+  const { t } = useTranslation('operating');
   if (!rows || !rows.length) return null;
   return (
     <div className="op-block">
-      <h6>Budget d'alertes (file triée par score)</h6>
+      <h6>{t('alertBudget.title')}</h6>
       <table className="diag-table">
-        <thead><tr><th>k alertes revues</th><th>Précision@k</th><th>Détection@k</th><th>Vrais positifs</th></tr></thead>
+        <thead><tr><th>{t('alertBudget.th.k')}</th><th>{t('alertBudget.th.precisionAtK')}</th><th>{t('alertBudget.th.detectionAtK')}</th><th>{t('alertBudget.th.truePositives')}</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.k}><td>{r.k}</td><td>{pct(r.precision_at_k)}</td><td>{pct(r.detection_at_k)}</td><td>{r.caught}/{r.total_positives}</td></tr>
@@ -138,10 +145,11 @@ function AlertBudget({ rows }) {
 }
 
 function Playbook({ pb }) {
+  const { t } = useTranslation('operating');
   if (!pb || !pb.sections) return null;
   return (
     <div className="op-playbook">
-      <h6>Fiche SOC / threat intel — déploiement</h6>
+      <h6>{t('playbook.title')}</h6>
       {pb.sections.map((s, i) => (
         <div key={i} className="op-pb-sec">
           <div className="op-pb-h">{s.heading}</div>
@@ -154,12 +162,13 @@ function Playbook({ pb }) {
 }
 
 function AnomalyBudget({ rows }) {
+  const { t } = useTranslation('operating');
   if (!rows || !rows.length) return null;
   return (
     <div className="op-block">
-      <h6>Budget d'alertes selon le seuil d'anomalie</h6>
+      <h6>{t('anomalyBudget.title')}</h6>
       <table className="diag-table">
-        <thead><tr><th>Quantile</th><th>Seuil de score</th><th>Alertes</th><th>Alertes / 1000</th></tr></thead>
+        <thead><tr><th>{t('anomalyBudget.th.quantile')}</th><th>{t('anomalyBudget.th.scoreThreshold')}</th><th>{t('anomalyBudget.th.alerts')}</th><th>{t('anomalyBudget.th.alertsPer1000')}</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.quantile}><td>{r.quantile}</td><td>{num(r.score_threshold)}</td><td>{r.alerts}</td><td>{r.alerts_per_1000}</td></tr>
@@ -171,13 +180,16 @@ function AnomalyBudget({ rows }) {
 }
 
 function ToleranceBands({ bands, mae }) {
+  const { t } = useTranslation('operating');
   if (!bands || !bands.length) return null;
   return (
     <div className="op-block">
-      <h6>Bandes de tolérance (fiabilité opérationnelle)</h6>
-      <p className="op-note">Erreur absolue moyenne (MAE) : <strong>{num(mae)}</strong>.</p>
+      <h6>{t('tolerance.title')}</h6>
+      <p className="op-note">
+        <Trans i18nKey="tolerance.mae" ns="operating" components={{ strong: <strong /> }} values={{ mae: num(mae) }} />
+      </p>
       <table className="diag-table">
-        <thead><tr><th>Tolérance (±)</th><th>Part des prédictions dans la bande</th></tr></thead>
+        <thead><tr><th>{t('tolerance.th.tolerance')}</th><th>{t('tolerance.th.withinBand')}</th></tr></thead>
         <tbody>
           {bands.map((b, i) => (
             <tr key={i}><td>{num(b.tolerance)} ({b.tolerance_sigma}σ)</td><td>{pct(b.within)}</td></tr>
@@ -189,6 +201,7 @@ function ToleranceBands({ bands, mae }) {
 }
 
 export default function OperatingPoint({ operational, apiBase, sessionId }) {
+  const { t } = useTranslation('operating');
   const initial = operational || {};
   const [op, setOp] = useState(initial);
   const [threshold, setThreshold] = useState(() => {
@@ -244,8 +257,8 @@ export default function OperatingPoint({ operational, apiBase, sessionId }) {
   if (!op || op.applicable === false) {
     return (
       <div className="op-panel">
-        <div className="substep-bar"><h5>Point de fonctionnement opérationnel</h5></div>
-        <p className="muted">{op && op.reason ? op.reason : 'Analyse opérationnelle non applicable à ce modèle.'}</p>
+        <div className="substep-bar"><h5>{t('title')}</h5></div>
+        <p className="muted">{op && op.reason ? op.reason : t('notApplicable')}</p>
       </div>
     );
   }
@@ -253,12 +266,12 @@ export default function OperatingPoint({ operational, apiBase, sessionId }) {
   return (
     <div className="op-panel">
       <div className="substep-bar">
-        <h5>Point de fonctionnement opérationnel (SOC / threat intel){loading ? ' …' : ''}</h5>
+        <h5>{t('titleSoc')}{loading ? ' …' : ''}</h5>
       </div>
 
       {mode === 'multiclass_ovr' && op.classes ? (
         <div className="op-focus">
-          <label>Classe à escalader (une-contre-le-reste) :</label>
+          <label>{t('focusLabel')}</label>
           <select value={focusIdx === null ? '' : focusIdx}
             onChange={(e) => setFocusIdx(parseInt(e.target.value, 10))}>
             {op.classes.map((c, i) => <option key={i} value={i}>{c}</option>)}
@@ -270,23 +283,23 @@ export default function OperatingPoint({ operational, apiBase, sessionId }) {
         <>
           <p className="op-context">
             {mode === 'multiclass_ovr'
-              ? 'Escalade « ' + (op.focus_class || '?') + ' » vs le reste.'
-              : 'Classe positive : ' + (op.positive_class || '1') + '.'}
+              ? t('context.escalate', { cls: op.focus_class || '?' })
+              : t('context.positiveClass', { cls: op.positive_class || '1' })}
           </p>
 
           <div className="op-controls">
             <div className="op-slider">
-              <label>Seuil de décision : <strong>{Number(threshold).toFixed(3)}</strong></label>
+              <label>{t('slider.label')} <strong>{Number(threshold).toFixed(3)}</strong></label>
               <input type="range" min={0} max={1} step={0.005} value={threshold}
                 onChange={(e) => setThreshold(parseFloat(e.target.value))} />
-              <div className="op-slider-ends"><span>tout est alerte</span><span>rien n'est alerte</span></div>
+              <div className="op-slider-ends"><span>{t('slider.allAlert')}</span><span>{t('slider.noAlert')}</span></div>
             </div>
             <div className="op-costs">
-              <label>Coût attaque manquée (FN)
+              <label>{t('cost.fn')}
                 <input type="number" min={0} value={costFn}
                   onChange={(e) => setCostFn(Math.max(0, parseFloat(e.target.value) || 0))} />
               </label>
-              <label>Coût fausse alerte (FP)
+              <label>{t('cost.fp')}
                 <input type="number" min={0} value={costFp}
                   onChange={(e) => setCostFp(Math.max(0, parseFloat(e.target.value) || 0))} />
               </label>

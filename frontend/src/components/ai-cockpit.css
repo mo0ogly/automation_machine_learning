@@ -39,6 +39,11 @@
 .chat-msg-ai .chat-bubble { background: var(--bg-surface-elevated); color: var(--text-primary); }
 .chat-thinking { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.8rem; padding: 0.3rem 0.5rem; }
 .chatdock-err { margin: 0; }
+.chat-recall { font-size: 0.72rem; color: var(--text-tertiary); border: 1px solid var(--border-subtle);
+  border-radius: 8px; padding: 0.3rem 0.55rem; background: var(--bg-surface); }
+.chat-recall summary { cursor: pointer; color: var(--text-secondary); }
+.chat-recall ul { margin: 0.35rem 0 0; padding-left: 1rem; }
+.chat-recall-q { color: var(--text-secondary); }
 .chatdock-compose { display: flex; gap: 0.5rem; align-items: flex-end; }
 .chatdock-input {
   flex: 1; resize: vertical; min-height: 2.4rem; font: inherit; font-size: 0.85rem;

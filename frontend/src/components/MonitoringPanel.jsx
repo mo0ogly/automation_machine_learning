@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import StabilityPanel from './StabilityPanel';
+import PlotsGrid from './PlotsGrid';
 import './monitoring.css';
 
 // Post-deployment drift & stability monitoring. The analyst uploads a NEW batch
@@ -8,9 +10,6 @@ import './monitoring.css';
 // distribution), reproducibility, and a re-calibrated operating point. Figures
 // render inline; the surrounding AI button (StagePanel) explains the whole panel.
 
-const LEVEL_LABEL = { major: 'majeure', moderate: 'modérée', none: 'stable', stable: 'stable' };
-const overallLabel = (v) => (v === 'major' ? 'DÉRIVE MAJEURE' : v === 'moderate' ? 'Dérive modérée' : 'Stable');
-const JITTER_LABEL = { stable: 'Stable', sensible: 'Sensible au bruit', instable: 'INSTABLE' };
 const JITTER_BADGE = { stable: 'stable', sensible: 'moderate', instable: 'major' };
 
 function pct(v) {
@@ -66,18 +65,19 @@ function PsiBar({ value, level }) {
 }
 
 function DriftTable({ features }) {
+  const { t } = useTranslation('monitoring');
   if (!features || !features.length) return null;
   const top = features.slice(0, 12);
   return (
     <table className="diag-table mon-table mon-drift-table">
-      <thead><tr><th>Variable</th><th>PSI</th><th>KS (p)</th><th>Niveau</th></tr></thead>
+      <thead><tr><th>{t('th.variable')}</th><th>PSI</th><th>KS (p)</th><th>{t('th.level')}</th></tr></thead>
       <tbody>
         {top.map((f) => (
           <tr key={f.feature}>
             <td className="mon-feat">{f.feature}</td>
             <td className="mon-psi-cell"><PsiBar value={f.psi} level={f.level} /></td>
             <td>{f.ks_p}</td>
-            <td><span className={'mon-lvl mon-lvl-' + f.level}>{LEVEL_LABEL[f.level] || f.level}</span></td>
+            <td><span className={'mon-lvl mon-lvl-' + f.level}>{t('level.' + f.level, f.level)}</span></td>
           </tr>
         ))}
       </tbody>
@@ -91,11 +91,12 @@ const CAUSE_BADGE = { major: 'major', moderate: 'moderate', stable: 'stable' };
 // signals — separates infrastructure/environment causes from genuine data/model
 // change so the analyst acts on the right layer (not "unstable → attack").
 function CauseSection({ cause }) {
+  const { t } = useTranslation('monitoring');
   if (!cause || !cause.available) return null;
   if (!cause.primary) {
     return (
       <div className="mon-cause">
-        <h6>Cause probable</h6>
+        <h6>{t('cause.title')}</h6>
         <p className="mon-note">{cause.summary}</p>
       </div>
     );
@@ -104,24 +105,24 @@ function CauseSection({ cause }) {
   const others = (cause.causes || []).slice(1);
   return (
     <div className="mon-cause">
-      <h6>Cause probable</h6>
+      <h6>{t('cause.title')}</h6>
       <div className="mon-head">
         <span className={'mon-badge mon-badge-' + (CAUSE_BADGE[p.severity] || 'moderate')}>{p.label}</span>
-        <span className="mon-sub">confiance {p.confidence}</span>
+        <span className="mon-sub">{t('cause.confidence')} {p.confidence}</span>
       </div>
       {p.evidence && p.evidence.length ? (
         <ul className="mon-evidence">
           {p.evidence.map((e, i) => <li key={i}>{e}</li>)}
         </ul>
       ) : null}
-      <p className="mon-note"><strong>Action :</strong> {p.action}</p>
+      <p className="mon-note"><strong>{t('cause.actionLabel')}</strong> {p.action}</p>
       {others.length ? (
         <details className="mon-other-causes">
-          <summary>{others.length} autre(s) cause(s) possible(s)</summary>
+          <summary>{t('cause.others', { count: others.length })}</summary>
           {others.map((c, i) => (
             <div key={i} className="mon-other-cause">
               <span className={'mon-lvl mon-lvl-' + (CAUSE_BADGE[c.severity] || 'moderate')}>{c.label}</span>
-              <span className="mon-sub"> — confiance {c.confidence}</span>
+              <span className="mon-sub"> — {t('cause.confidence')} {c.confidence}</span>
               <p className="mon-note">{c.action}</p>
             </div>
           ))}
@@ -134,23 +135,22 @@ function CauseSection({ cause }) {
 // Execution environment: training-time fingerprint vs now. A version/platform
 // change is an infrastructure cause to rule out before concluding data drift.
 function EnvironmentSection({ environment }) {
+  const { t } = useTranslation('monitoring');
   if (!environment) return null;
   const cmp = environment.comparison || {};
   const op = environment.operational;
   if (!cmp.available && !op) {
     return (
-      <p className="mon-note">Empreinte d'entraînement indisponible (modèle antérieur à cette version).</p>
+      <p className="mon-note">{t('env.noFingerprint')}</p>
     );
   }
   return (
     <>
       {cmp.changed ? (
         <>
-          <p className="mon-note">
-            L'environnement diffère de celui de l'entraînement — à écarter avant de conclure à une dérive :
-          </p>
+          <p className="mon-note">{t('env.differs')}</p>
           <table className="diag-table mon-table">
-            <thead><tr><th>Champ</th><th>Entraînement</th><th>Maintenant</th></tr></thead>
+            <thead><tr><th>{t('env.field')}</th><th>{t('env.training')}</th><th>{t('env.now')}</th></tr></thead>
             <tbody>
               {(cmp.diffs || []).map((d, i) => (
                 <tr key={i}><td>{d.field}</td><td>{String(d.from)}</td><td>{String(d.to)}</td></tr>
@@ -159,65 +159,68 @@ function EnvironmentSection({ environment }) {
           </table>
         </>
       ) : (
-        <p className="mon-ok-line"><span className="mon-ok-dot" />Conforme à l'entraînement (versions et plateforme identiques).</p>
+        <p className="mon-ok-line"><span className="mon-ok-dot" />{t('env.conform')}</p>
       )}
       {op ? (
-        <p className="mon-note">Métadonnées opérationnelles fournies : {JSON.stringify(op)}.</p>
+        <p className="mon-note">{t('env.opMeta', { data: JSON.stringify(op) })}</p>
       ) : null}
     </>
   );
 }
 
 function JitterSection({ apiBase, sessionId }) {
+  const { t } = useTranslation('monitoring');
   const [jit, setJit] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+
+  const jitterLabel = (v) => t('jitterVerdict.' + v, v);
 
   const run = () => {
     if (!sessionId || busy) return;
     setBusy(true); setErr(null);
     fetch(apiBase + '/api/session/' + sessionId + '/jitter', { method: 'POST' })
       .then((r) => (r.ok ? r.json() : r.json().then((d) => Promise.reject(d.detail || r.status))))
-      .then((d) => setJit(d))
-      .catch((c) => setErr(typeof c === 'string' ? c : 'Protocole jitter indisponible.'))
-      .finally(() => setBusy(false));
+      .then((d) => { if (alive.current) setJit(d); })
+      .catch((c) => { if (alive.current) setErr(typeof c === 'string' ? c : t('jitter.unavailable')); })
+      .finally(() => { if (alive.current) setBusy(false); });
   };
+
+  let breakNote;
+  if (jit && jit.breaking_epsilon !== null && jit.breaking_epsilon !== undefined) {
+    breakNote = t('jitter.breakingPoint', { tol: pctEps(jit.tolerance), eps: pctEps(jit.breaking_epsilon) });
+  } else if (jit) {
+    const limit = jit.curve && jit.curve.length
+      ? t('jitter.noiseStdSuffix', { eps: pctEps(jit.curve[jit.curve.length - 1].epsilon) })
+      : t('jitter.maxAmplitude');
+    breakNote = t('jitter.noBreak', { limit });
+  }
 
   return (
     <div className="mon-jitter">
-      <h6>Stabilité sous perturbation (protocole jitter)</h6>
+      <h6>{t('jitter.title')}</h6>
       <p className="mon-intro">
-        Le protocole injecte un bruit gaussien croissant (fractions de l'écart-type de chaque
-        variable) dans le jeu de référence, re-score, et mesure le <strong>taux de bascule</strong> des
-        verdicts. Un détecteur qui bascule à 0,1&nbsp;% de bruit est instable en environnement
-        critique — quel que soit le matériel qui l'exécute.
+        <Trans i18nKey="jitter.intro" ns="monitoring" components={{ strong: <strong /> }} />
       </p>
       <button className="btn btn-secondary" onClick={run} disabled={busy || !sessionId}>
-        {busy ? 'Mesure en cours…' : 'Mesurer la stabilité (jitter)'}
+        {busy ? t('jitter.measuring') : t('jitter.measure')}
       </button>
       {err ? <div className="warn-text">{err}</div> : null}
       {jit && jit.available ? (
         <div className="mon-report">
           <div className="mon-head">
             <span className={'mon-badge mon-badge-' + (JITTER_BADGE[jit.verdict] || 'stable')}>
-              {JITTER_LABEL[jit.verdict] || jit.verdict}
+              {jitterLabel(jit.verdict)}
             </span>
             <span className="mon-sub">
-              {jit.n_rows} lignes de référence · {jit.repeats} répétitions par amplitude
+              {t('jitter.refRows', { rows: jit.n_rows, repeats: jit.repeats })}
             </span>
           </div>
-          <p className="mon-note">
-            {jit.breaking_epsilon !== null && jit.breaking_epsilon !== undefined
-              ? 'Point de rupture : les verdicts basculent au-delà de la tolérance (' +
-                pctEps(jit.tolerance) + ') dès un bruit de ' + pctEps(jit.breaking_epsilon) +
-                ' de l\'écart-type.'
-              : 'Aucune rupture : les verdicts tiennent jusqu\'à ' +
-                (jit.curve && jit.curve.length
-                  ? pctEps(jit.curve[jit.curve.length - 1].epsilon) + ' de l\'écart-type de bruit.'
-                  : 'l\'amplitude maximale testée.')}
-          </p>
+          <p className="mon-note">{breakNote}</p>
           <table className="diag-table mon-table mon-jit-table">
-            <thead><tr><th>Bruit (% écart-type)</th><th>Bascule moyenne</th><th>Min–max</th></tr></thead>
+            <thead><tr><th>{t('jitter.th.noise')}</th><th>{t('jitter.th.flip')}</th><th>{t('jitter.th.minmax')}</th></tr></thead>
             <tbody>
               {(jit.curve || []).map((c) => (
                 <tr key={c.epsilon}>
@@ -233,29 +236,26 @@ function JitterSection({ apiBase, sessionId }) {
               ))}
             </tbody>
           </table>
-          {jit.plots && jit.plots.length ? (
-            <div className="plots-grid mon-plots">
-              {jit.plots.map((p, i) => (
-                <figure key={i} className="plot-fig">
-                  <img src={typeof p === 'string' ? p : p.img} alt="stabilité jitter"
-                       className="plot-img" decoding="async" />
-                </figure>
-              ))}
-            </div>
-          ) : null}
+          <PlotsGrid plots={jit.plots} alt={t('jitter.plotAlt')} />
         </div>
       ) : jit && !jit.available ? (
-        <div className="mon-note">{jit.reason || 'Protocole non applicable.'}</div>
+        <div className="mon-note">{jit.reason || t('jitter.notApplicable')}</div>
       ) : null}
     </div>
   );
 }
 
 export default function MonitoringPanel({ apiBase, sessionId }) {
+  const { t } = useTranslation('monitoring');
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [meta, setMeta] = useState('');
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+
+  const levelLabel = (lvl) => t('level.' + lvl, lvl);
+  const overallLabel = (v) => (v === 'major' ? t('overall.major') : v === 'moderate' ? t('overall.moderate') : t('overall.stable'));
 
   const upload = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -266,9 +266,9 @@ export default function MonitoringPanel({ apiBase, sessionId }) {
     setBusy(true); setErr(null); setReport(null);
     fetch(apiBase + '/api/session/' + sessionId + '/monitor', { method: 'POST', body: fd })
       .then((r) => (r.ok ? r.json() : r.json().then((d) => Promise.reject(d.detail || r.status))))
-      .then((d) => setReport(d))
-      .catch((c) => setErr(typeof c === 'string' ? c : 'Surveillance indisponible.'))
-      .finally(() => { setBusy(false); e.target.value = ''; });
+      .then((d) => { if (alive.current) setReport(d); })
+      .catch((c) => { if (alive.current) setErr(typeof c === 'string' ? c : t('unavailable')); })
+      .finally(() => { if (alive.current) { setBusy(false); } e.target.value = ''; });
   };
 
   const dd = report && report.data_drift;
@@ -280,22 +280,18 @@ export default function MonitoringPanel({ apiBase, sessionId }) {
   return (
     <div className="mon-panel">
       <p className="mon-intro">
-        Chargez un nouveau lot de données (mêmes colonnes que l'entraînement) pour mesurer la
-        dérive vs le jeu d'entraînement : le vrai risque d'un détecteur en production n'est pas
-        matériel mais la <strong>dérive</strong> (données et concept).
+        <Trans i18nKey="intro" ns="monitoring" components={{ strong: <strong /> }} />
       </p>
       <div className="mon-toolbar">
         <label className={'btn btn-secondary mon-upload' + (busy ? ' mon-upload-busy' : '')}>
-          {busy ? 'Analyse…' : 'Charger un lot à surveiller (CSV)'}
+          {busy ? t('analysing') : t('uploadBatch')}
           <input type="file" accept=".csv,text/csv" hidden onChange={upload} disabled={busy} />
         </label>
       </div>
       <details className="mon-meta">
-        <summary>Contexte d'exécution (optionnel)</summary>
+        <summary>{t('meta.summary')}</summary>
         <p className="mon-note">
-          Métadonnées opérationnelles du lot en JSON — utilisées pour distinguer un changement
-          d'environnement d'un changement de comportement du modèle. Ex.&nbsp;:
-          <code>{' {"node": "gpu-03", "throttling": true, "temp_c": 82}'}</code>
+          {t('meta.note')} <code>{' {"node": "gpu-03", "throttling": true, "temp_c": 82}'}</code>
         </p>
         <textarea className="mon-meta-input" rows={2} value={meta} disabled={busy}
                   onChange={(e) => setMeta(e.target.value)}
@@ -308,113 +304,106 @@ export default function MonitoringPanel({ apiBase, sessionId }) {
           <div className={'mon-hero mon-hero-' + report.overall}>
             <div className="mon-hero-top">
               <span className={'mon-badge mon-badge-lg mon-badge-' + report.overall}>{overallLabel(report.overall)}</span>
-              <span className="mon-sub">{report.n_batch} lignes vs {report.n_reference} de référence</span>
+              <span className="mon-sub">{t('heroSub', { batch: report.n_batch, ref: report.n_reference })}</span>
             </div>
             {dd ? (
               <div className="mon-tiles">
-                <StatTile value={dd.n_features} label="variables suivies" />
-                <StatTile value={dd.n_major} label="dérives majeures" tone={dd.n_major > 0 ? 'major' : 'stable'} />
-                <StatTile value={dd.n_moderate} label="dérives modérées" tone={dd.n_moderate > 0 ? 'moderate' : 'stable'} />
-                <StatTile value={report.n_batch} label="lignes du lot" />
+                <StatTile value={dd.n_features} label={t('tile.tracked')} />
+                <StatTile value={dd.n_major} label={t('tile.majorDrift')} tone={dd.n_major > 0 ? 'major' : 'stable'} />
+                <StatTile value={dd.n_moderate} label={t('tile.moderateDrift')} tone={dd.n_moderate > 0 ? 'moderate' : 'stable'} />
+                <StatTile value={report.n_batch} label={t('tile.batchRows')} />
               </div>
             ) : null}
           </div>
 
           {sc && sc.changed ? (
             <div className="mon-schema-warn">
-              <strong>Schéma différent de l'entraînement.</strong>
+              <strong>{t('schema.changed')}</strong>
               {sc.missing && sc.missing.length
-                ? ' ' + sc.missing.length + ' colonne(s) manquante(s) (imputées) : ' +
-                  sc.missing.slice(0, 6).join(', ') + (sc.missing.length > 6 ? '…' : '') + '.'
+                ? ' ' + t('schema.missing', {
+                    count: sc.missing.length,
+                    list: sc.missing.slice(0, 6).join(', ') + (sc.missing.length > 6 ? '…' : ''),
+                  })
                 : ''}
               {sc.extra && sc.extra.length
-                ? ' ' + sc.extra.length + ' colonne(s) en trop (ignorées) : ' +
-                  sc.extra.slice(0, 6).join(', ') + (sc.extra.length > 6 ? '…' : '') + '.'
+                ? ' ' + t('schema.extra', {
+                    count: sc.extra.length,
+                    list: sc.extra.slice(0, 6).join(', ') + (sc.extra.length > 6 ? '…' : ''),
+                  })
                 : ''}
-              {' '}Les chiffres de dérive ci-dessous sont en partie des artefacts de cette réconciliation.
+              {' '}{t('schema.artefact')}
             </div>
           ) : null}
 
           <CauseSection cause={report.cause} />
 
-          <Section n="1" title="Dérive des données (PSI + Kolmogorov-Smirnov)">
+          <Section n="1" title={t('section.dataDrift')}>
             <p className="mon-note">
-              {dd.n_major} variable(s) en dérive majeure, {dd.n_moderate} modérée(s) sur {dd.n_features}.
+              {t('dataDrift.summary', { major: dd.n_major, moderate: dd.n_moderate, features: dd.n_features })}
             </p>
+            {dd.ks_available === false ? (
+              <p className="mon-note mon-warn-inline">{t('dataDrift.ksUnavailable')}</p>
+            ) : null}
             <DriftTable features={dd.features} />
           </Section>
 
-          <Section n="2" title="Dérive de concept (distribution des prédictions)">
+          <Section n="2" title={t('section.conceptDrift')}>
             {pd && pd.kind === 'categorical' ? (
               <p className="mon-note">
-                Distance de variation totale = <strong>{pd.total_variation}</strong> (niveau {LEVEL_LABEL[pd.level] || pd.level}).
-                Un saut du taux de la classe positive = le « normal » du détecteur a bougé.
+                <Trans i18nKey="concept.categorical" ns="monitoring" components={{ strong: <strong /> }}
+                  values={{ tv: pd.total_variation, level: levelLabel(pd.level) }} />
               </p>
             ) : pd && pd.kind === 'regression' ? (
-              <p className="mon-note">PSI des prédictions = <strong>{pd.psi}</strong> · moyenne {pd.ref_mean} → {pd.cur_mean}.</p>
-            ) : <p className="mon-note">Indisponible.</p>}
+              <p className="mon-note">
+                <Trans i18nKey="concept.regression" ns="monitoring" components={{ strong: <strong /> }}
+                  values={{ psi: pd.psi, ref: pd.ref_mean, cur: pd.cur_mean }} />
+              </p>
+            ) : <p className="mon-note">{t('unavailableShort')}</p>}
           </Section>
 
-          <Section n="3" title="Reproductibilité de l'inférence">
+          <Section n="3" title={t('section.reproducibility')}>
             {rp && rp.available ? (
               <>
                 <div className="mon-chips">
                   <span className={'mon-chip ' + (rp.deterministic ? 'mon-chip-ok' : 'mon-chip-bad')}>
-                    Déterminisme : {rp.deterministic ? 'OK' : 'ÉCHEC'}
+                    {t('repro.determinism')} : {rp.deterministic ? 'OK' : t('repro.fail')}
                   </span>
                   {rp.consistent !== undefined ? (
                     <span className={'mon-chip ' + (rp.consistent ? 'mon-chip-ok' : 'mon-chip-bad')}>
-                      Cohérence éval : {rp.consistent ? 'OK' : 'divergence'}
+                      {t('repro.consistency')} : {rp.consistent ? 'OK' : t('repro.divergence')}
                     </span>
                   ) : null}
                   {rp.recorded_metric !== undefined ? (
                     <span className="mon-chip mon-chip-neutral">{rp.recorded_metric} → {rp.recomputed_metric}</span>
                   ) : null}
                 </div>
-                <p className="mon-note">
-                  C'est la version mesurable du « jitter » : un écart ici = corruption silencieuse du pipeline.
-                </p>
+                <p className="mon-note">{t('repro.note')}</p>
               </>
-            ) : <p className="mon-note">{(rp && rp.reason) || 'Indisponible.'}</p>}
+            ) : <p className="mon-note">{(rp && rp.reason) || t('unavailableShort')}</p>}
           </Section>
 
-          <Section n="4" title="Re-calibration du seuil">
+          <Section n="4" title={t('section.recalibration')}>
             {rc && rc.available ? (
               <>
                 <div className="mon-chips">
-                  <span className="mon-chip mon-chip-accent">seuil {rc.recommended_threshold}</span>
-                  <span className="mon-chip mon-chip-neutral">rappel {pct(rc.recall)}</span>
-                  <span className="mon-chip mon-chip-neutral">précision {pct(rc.precision)}</span>
+                  <span className="mon-chip mon-chip-accent">{t('recal.threshold')} {rc.recommended_threshold}</span>
+                  <span className="mon-chip mon-chip-neutral">{t('recal.recall')} {pct(rc.recall)}</span>
+                  <span className="mon-chip mon-chip-neutral">{t('recal.precision')} {pct(rc.precision)}</span>
                   <span className="mon-chip mon-chip-neutral">FPR {pct(rc.fpr)}</span>
                 </div>
-                <p className="mon-note">
-                  Seuil coût-minimal recommandé sur ce lot. Comparez au seuil déployé : s'il a bougé, re-calibrez.
-                </p>
+                <p className="mon-note">{t('recal.note')}</p>
               </>
-            ) : <p className="mon-note">{(rc && rc.reason) || 'Lot non labellisé.'}</p>}
+            ) : <p className="mon-note">{(rc && rc.reason) || t('recal.unlabelled')}</p>}
           </Section>
 
-          <Section n="5" title="Environnement d'exécution">
+          <Section n="5" title={t('section.environment')}>
             <EnvironmentSection environment={report.environment} />
           </Section>
 
-          {report.plots && report.plots.length ? (
-            <div className="plots-grid mon-plots">
-              {report.plots.map((p, i) => {
-                const src = typeof p === 'string' ? p : p.img;
-                const cap = typeof p === 'string' ? '' : (p.caption || '');
-                return (
-                  <figure key={i} className="plot-fig">
-                    <img src={src} alt={cap || 'figure'} className="plot-img" decoding="async" />
-                    {cap ? <figcaption className="plot-cap"><span className="plot-cap-txt">{cap}</span></figcaption> : null}
-                  </figure>
-                );
-              })}
-            </div>
-          ) : null}
+          <PlotsGrid plots={report.plots} alt={t('plotAlt')} />
         </div>
       ) : report && !report.available ? (
-        <div className="mon-note">{report.reason || 'Surveillance non applicable.'}</div>
+        <div className="mon-note">{report.reason || t('notApplicable')}</div>
       ) : null}
 
       <JitterSection apiBase={apiBase} sessionId={sessionId} />

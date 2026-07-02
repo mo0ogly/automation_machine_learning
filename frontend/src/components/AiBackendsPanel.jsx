@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import InferenceSettings from './InferenceSettings';
 import AiBackendForm from './AiBackendForm';
 import './ai-cockpit.css';
@@ -8,25 +9,28 @@ import './ai-cockpit.css';
 // (AiBackendForm) whose dropdowns are built from the server-side provider catalog
 // (single source of truth). A health indicator probes the active backend live.
 function TestResult({ state }) {
+  const { t } = useTranslation('aiBackends');
   if (!state) return null;
-  if (state.phase === 'testing') return <span className="ai-test-pending">test…</span>;
-  if (state.phase === 'ok') return <span className="ai-test-ok">OK {state.ms} ms — « {state.text} »</span>;
-  return <span className="ai-test-err">échec {state.ms} ms : {state.error}</span>;
+  if (state.phase === 'testing') return <span className="ai-test-pending">{t('testPending')}</span>;
+  if (state.phase === 'ok') return <span className="ai-test-ok">{t('testOk', { ms: state.ms, text: state.text })}</span>;
+  return <span className="ai-test-err">{t('testErr', { ms: state.ms, error: state.error })}</span>;
 }
 
 function HealthBadge({ state }) {
+  const { t } = useTranslation('aiBackends');
   if (!state) return null;
-  if (state.phase === 'checking') return <span className="ai-health-dot checking" title="Vérification…" />;
-  if (!state.configured) return <span className="ai-health-txt muted">aucun backend actif</span>;
+  if (state.phase === 'checking') return <span className="ai-health-dot checking" title={t('checking')} />;
+  if (!state.configured) return <span className="ai-health-txt muted">{t('noActiveBackend')}</span>;
   if (state.ok) {
     return <span className="ai-health-txt ok"><span className="ai-health-dot ok" />
-      {state.provider} / {state.model} — répond ({state.latency_ms} ms)</span>;
+      {t('healthResponds', { provider: state.provider, model: state.model, ms: state.latency_ms })}</span>;
   }
   return <span className="ai-health-txt bad"><span className="ai-health-dot bad" />
-    {(state.provider || 'backend') + ' — ne répond pas : ' + (state.error || 'erreur')}</span>;
+    {t('healthNoResponse', { provider: state.provider || t('backendFallback'), error: state.error || t('errorFallback') })}</span>;
 }
 
 export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
+  const { t } = useTranslation('aiBackends');
   const [providers, setProviders] = useState([]);
   const [backends, setBackends] = useState([]);
   const [err, setErr] = useState(null);
@@ -41,8 +45,8 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
     try {
       const b = await fetch(apiBase + '/api/ai/backends').then((r) => r.json());
       setBackends(b.backends || []);
-    } catch (e) { setErr('Backends injoignables.'); }
-  }, [apiBase]);
+    } catch (e) { setErr(t('backendsUnreachable')); }
+  }, [apiBase, t]);
 
   const loadProviders = useCallback(async () => {
     try {
@@ -51,9 +55,9 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
       setErr(null);
     } catch (e) {
       setProviders([]);
-      setErr('Catalogue providers injoignable — le backend tourne-t-il sur :8000 ?');
+      setErr(t('catalogUnreachable'));
     }
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   const checkHealth = useCallback(async () => {
     setHealth({ phase: 'checking' });
@@ -61,9 +65,9 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
       const d = await fetch(apiBase + '/api/ai/health').then((r) => r.json());
       setHealth({ phase: 'done', ...d });
     } catch (e) {
-      setHealth({ phase: 'done', configured: true, ok: false, error: 'injoignable' });
+      setHealth({ phase: 'done', configured: true, ok: false, error: t('unreachable') });
     }
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   useEffect(() => { loadProviders(); refresh(); }, [loadProviders, refresh]);
   // Probe the active backend once on open so the operator sees its status upfront.
@@ -76,7 +80,7 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
   };
 
   const del = async (id) => {
-    if (!window.confirm('Supprimer le backend « ' + id + ' » ?')) return;
+    if (!window.confirm(t('confirmDelete', { id }))) return;
     await fetch(apiBase + '/api/ai/backends/' + id, { method: 'DELETE' });
     await changed();
   };
@@ -89,7 +93,7 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
     await changed();
   };
   const removeKey = async (id) => {
-    if (!window.confirm('Retirer la clé stockée pour « ' + id + ' » ?')) return;
+    if (!window.confirm(t('confirmRemoveKey', { id }))) return;
     await fetch(apiBase + '/api/ai/backends/' + id + '/secret', { method: 'DELETE' });
     await changed();
   };
@@ -122,7 +126,7 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
         ? { phase: 'ok', ms: d.latency_ms, text: d.text }
         : { phase: 'error', ms: d.latency_ms, error: d.error } }));
     } catch (e) {
-      setTests((p) => ({ ...p, [id]: { phase: 'error', ms: 0, error: 'injoignable' } }));
+      setTests((p) => ({ ...p, [id]: { phase: 'error', ms: 0, error: t('unreachable') } }));
     }
   };
 
@@ -130,71 +134,65 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
     <div className="ai-modal-overlay" onClick={onClose}>
       <div className="ai-modal glass-panel" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal-head">
-          <h2>Backends IA</h2>
-          <button type="button" className="ai-modal-close" onClick={onClose} aria-label="Fermer">×</button>
+          <h2>{t('modalTitle')}</h2>
+          <button type="button" className="ai-modal-close" onClick={onClose} aria-label={t('close')}>×</button>
         </div>
-        <p className="ai-modal-note">
-          Chaque backend fixe un provider + un modèle. La clé est write-only (envoyée, jamais
-          relue) ; sinon repli sur la variable d'environnement du provider. Le bouton radio choisit
-          le backend actif de l'agent.
-        </p>
+        <p className="ai-modal-note">{t('modalNote')}</p>
 
         <div className="ai-health-bar">
-          <span className="ai-health-label">Santé du backend actif</span>
+          <span className="ai-health-label">{t('activeHealth')}</span>
           <HealthBadge state={health} />
           <button type="button" className="ai-btn ai-health-check"
-            disabled={health && health.phase === 'checking'} onClick={checkHealth}>Vérifier</button>
+            disabled={health && health.phase === 'checking'} onClick={checkHealth}>{t('check')}</button>
         </div>
 
         {err ? <div className="banner banner-block">{err}</div> : null}
 
         {backends.length === 0 ? (
           <div className="ai-onboard">
-            <strong>Aucun backend IA configuré.</strong> L'assistant (recommandations, analyses,
-            cockpit de chat) fonctionne en mode heuristique tant qu'aucun backend n'est actif.
-            Choisis un provider ci-dessous, teste la connexion, puis « Créer et activer ».
+            <Trans i18nKey="onboard" ns="aiBackends" components={{ strong: <strong /> }} />
           </div>
         ) : (
           <table className="ai-table">
             <thead>
-              <tr><th>Actif</th><th>Id</th><th>Provider</th><th>Modèle</th><th>Clé</th><th>Test</th><th></th></tr>
+              <tr><th>{t('colActive')}</th><th>{t('colId')}</th><th>{t('colProvider')}</th><th>{t('colModel')}</th><th>{t('colKey')}</th><th>{t('colTest')}</th><th></th></tr>
             </thead>
             <tbody>
               {backends.map((b) => (
                 <React.Fragment key={b.id}>
                 <tr className={b.active ? 'ai-row-active' : ''}>
                   <td><input type="radio" name="ai-active" checked={b.active}
-                    onChange={() => activate(b.id)} title="Activer ce backend" /></td>
+                    onChange={() => activate(b.id)} title={t('activateThis')} /></td>
                   <td>{b.id}</td>
                   <td>{b.provider}</td>
                   <td>{b.model}</td>
                   <td className="ai-key-cell">
                     {b.key_configured ? (
-                      <span className="ai-key-ok">clé ✓ <button type="button" className="ai-link"
-                        onClick={() => removeKey(b.id)}>retirer</button></span>
+                      <span className="ai-key-ok">{t('keyOk')} <button type="button" className="ai-link"
+                        onClick={() => removeKey(b.id)}>{t('remove')}</button></span>
                     ) : (
                       <span className="ai-key-set">
-                        <input type="password" placeholder="clé API" value={keyDrafts[b.id] || ''}
+                        <input type="password" placeholder={t('apiKeyPlaceholder')} value={keyDrafts[b.id] || ''}
                           onChange={(e) => setKeyDrafts((p) => ({ ...p, [b.id]: e.target.value }))} />
-                        <button type="button" className="ai-btn" onClick={() => saveKey(b.id)}>Enregistrer</button>
+                        <button type="button" className="ai-btn" onClick={() => saveKey(b.id)}>{t('save')}</button>
                       </span>
                     )}
                   </td>
                   <td className="ai-test-cell">
                     <div className="ai-test-row">
-                      <input type="text" placeholder="prompt (ou ping)" value={askDrafts[b.id] || ''}
+                      <input type="text" placeholder={t('promptPlaceholder')} value={askDrafts[b.id] || ''}
                         onChange={(e) => setAskDrafts((p) => ({ ...p, [b.id]: e.target.value }))} />
                       <button type="button" className="ai-btn"
                         disabled={tests[b.id] && tests[b.id].phase === 'testing'}
-                        onClick={() => test(b.id)}>Test</button>
+                        onClick={() => test(b.id)}>{t('test')}</button>
                     </div>
                     <TestResult state={tests[b.id]} />
                   </td>
                   <td className="ai-actions-cell">
                     <button type="button" className={'ai-btn' + (openParams === b.id ? ' ai-btn-on' : '')}
-                      onClick={() => toggleParams(b)} title="Réglages d'inférence par défaut">Réglages</button>
+                      onClick={() => toggleParams(b)} title={t('defaultInferenceSettings')}>{t('settings')}</button>
                     <button type="button" className="ai-btn ai-btn-danger"
-                      onClick={() => del(b.id)}>Suppr.</button>
+                      onClick={() => del(b.id)}>{t('deleteShort')}</button>
                   </td>
                 </tr>
                 {openParams === b.id ? (
@@ -202,11 +200,11 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
                     <td colSpan={7}>
                       <InferenceSettings apiBase={apiBase} value={paramDrafts[b.id] || {}}
                         onChange={(v) => setParamDrafts((p) => ({ ...p, [b.id]: v }))}
-                        title={'Paramètres d\'inférence par défaut de « ' + b.id + ' »'} />
+                        title={t('backendDefaultParams', { id: b.id })} />
                       <div className="ai-params-actions">
                         <button type="button" className="ai-btn ai-btn-primary"
-                          onClick={() => saveParams(b.id)}>Enregistrer les réglages</button>
-                        <button type="button" className="ai-btn" onClick={() => setOpenParams(null)}>Annuler</button>
+                          onClick={() => saveParams(b.id)}>{t('saveSettings')}</button>
+                        <button type="button" className="ai-btn" onClick={() => setOpenParams(null)}>{t('cancel')}</button>
                       </div>
                     </td>
                   </tr>
@@ -219,8 +217,8 @@ export default function AiBackendsPanel({ apiBase, onClose, onChanged }) {
 
         {providers.length === 0 ? (
           <div className="ai-catalog-hint ai-catalog-empty">
-            <span>Catalogue providers indisponible (backend injoignable ?).</span>
-            <button type="button" className="ai-btn" onClick={loadProviders}>Réessayer</button>
+            <span>{t('catalogUnavailable')}</span>
+            <button type="button" className="ai-btn" onClick={loadProviders}>{t('retry')}</button>
           </div>
         ) : (
           <AiBackendForm apiBase={apiBase} providers={providers} onCreated={changed} />

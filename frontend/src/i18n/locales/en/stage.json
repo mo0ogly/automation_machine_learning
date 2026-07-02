@@ -1,0 +1,99 @@
+{
+  "tabs": {
+    "observe": "Observation",
+    "graphs": "Graphs",
+    "agent": "AI Help",
+    "config": "Settings",
+    "result": "Result"
+  },
+  "plots": {
+    "enlarge": "Enlarge",
+    "figureAlt": "figure {{n}}"
+  },
+  "ai": "AI",
+  "selectStage": "Select a stage.",
+  "banners": {
+    "stale": "An upstream stage changed — rerun this stage to propagate."
+  },
+  "hints": {
+    "readDiagnostics": "Reading diagnostics",
+    "plotsDiagnostics": "Graphs — diagnostics",
+    "plotsResult": "Graphs — stage result",
+    "noPlots": "No graph for this stage.",
+    "settings": "Settings — your call",
+    "stageResult": "Stage result",
+    "overfitControl": "Overfitting control",
+    "operationalView": "SOC / threat intel operational view",
+    "monitoring": "Drift & stability monitoring (post-deployment)",
+    "plotsPointer": "{{n}} graph(s) — see the \"Graphs\" tab.",
+    "runToSeeResult": "Run the stage to see the result."
+  },
+  "assist": {
+    "explainDiagnostics": "Explain these diagnostics",
+    "explainPlots": "Explain these graphs",
+    "whatToDecide": "What should I decide?",
+    "explainResult": "Explain this result",
+    "explainOverfit": "Explain overfitting",
+    "explainOperatingPoint": "Explain the operating point",
+    "explainMonitoring": "Explain drift monitoring"
+  },
+  "actions": {
+    "askRefine": "Ask the AI for a refinement",
+    "askInterpretation": "Ask the AI for an interpretation",
+    "run": "Run this stage",
+    "replay": "Rerun this stage",
+    "validateNext": "Validate and move to next stage ›"
+  },
+  "busy": {
+    "analyzing": "Analyzing…",
+    "running": "Running…"
+  },
+  "leakageFree": {
+    "title": "Encoders, scalers, and PCA fitted on the train split only: these scores are measured without preprocessing leakage.",
+    "label": "leakage-free preprocessing"
+  },
+  "explanation": {
+    "why": "<strong>Why —</strong> {{why}}",
+    "datasetLogic": "<strong>Dataset logic —</strong> {{logic}}"
+  },
+  "interpretation": {
+    "badge": "AI interpretation",
+    "confidence": "Confidence {{pct}}%"
+  },
+  "normalization": {
+    "title": "Ordinal normalization applied ({{n}})",
+    "column": "Column",
+    "scale": "Scale"
+  },
+  "cluster": {
+    "title": "Business interpretation of clusters (real averages)",
+    "cluster": "Cluster",
+    "businessLabel": "Business label",
+    "size": "Size",
+    "nameAriaLabel": "Cluster {{cluster}} name",
+    "applyNames": "Apply names"
+  },
+  "classReport": {
+    "title": "Per-class report (precision / recall / F1)",
+    "class": "Class",
+    "precision": "Precision",
+    "recall": "Recall",
+    "f1": "F1",
+    "support": "Support"
+  },
+  "anomaly": {
+    "title": "Top anomalies (most atypical rows, real values)"
+  },
+  "overfit": {
+    "title": "Overfitting control (train / test / cross-validation)"
+  },
+  "deploy": {
+    "title": "Deployment",
+    "download": "Download the model (.pkl)",
+    "hint": "Inference test — JSON object of final variables (empty = zero vector):",
+    "test": "Test the prediction",
+    "result": "Result:",
+    "apiError": "API error",
+    "jsonError": "Invalid JSON or API unreachable"
+  }
+}

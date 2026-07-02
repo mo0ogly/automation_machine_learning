@@ -1,0 +1,19 @@
+{
+  "triageUnavailable": "Triage unavailable.",
+  "exportFilename": "alert_queue.csv",
+  "title": "Batch triage — alert queue",
+  "explainQueue": "Explain the alert queue",
+  "ai": "AI",
+  "intro": "Upload a CSV of events (same columns as the original dataset, without the target): the model scores each row and the <strong>queue is sorted from most to least suspicious</strong>. Filter by verdict and send a case to the simulator to investigate.",
+  "scoring": "Scoring…",
+  "chooseCsvFile": "Choose a CSV file",
+  "verdict": "Verdict",
+  "all": "all",
+  "exportQueue": "Export queue",
+  "scoredCount": "{{n}} scored",
+  "cappedSuffix": " (capped at 5000)",
+  "sortedBy": " · sorted by {{col}}",
+  "fileOrder": " · file order (not prioritizable)",
+  "score": "score",
+  "inspect": "Inspect"
+}

@@ -1,0 +1,33 @@
+{
+  "title": "Model comparison",
+  "titleWithMetric": "Model comparison — ranked by {{metric}}",
+  "assistLabel": "Explain the ranking",
+  "cvChipTitle": "Each candidate is evaluated by cross-validation on the train set only.",
+  "cvChipText": "CV {{folds}} folds — test set untouched",
+  "leakageChipTitle": "Encoders, scalers and PCA fitted on the train set only (leak-proof preprocessor).",
+  "leakageChipText": "leak-proof preprocessing",
+  "helpText": "Mean ± std across folds, default hyperparameters. Click a header to sort; pick a family — fine-tuning will then refine its hyperparameters.",
+  "modelColumn": "Model",
+  "sortTitle": "Sort by this column",
+  "recommendedBadge": "recommended",
+  "chosenLabel": "chosen",
+  "chooseButton": "Choose",
+  "columns": {
+    "rmse_cv": "RMSE (CV)",
+    "r2_cv": "R² (CV)",
+    "r2_train": "R² (train)",
+    "accuracy_cv": "Accuracy (CV)",
+    "f1_cv": "F1 (CV)",
+    "accuracy_train": "Accuracy (train)",
+    "overfit": "Overfitting",
+    "rmse_test": "RMSE (test)",
+    "r2_test": "R² (test)",
+    "accuracy_test": "Accuracy (test)",
+    "f1_test": "F1 (test)"
+  },
+  "overfit": {
+    "healthy": "healthy",
+    "high": "high",
+    "moderate": "moderate"
+  }
+}

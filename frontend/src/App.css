@@ -76,6 +76,29 @@
   gap: 2rem;
 }
 
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lang-switch button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+.lang-switch button.active {
+  color: var(--text-primary);
+  background: var(--accent-gradient);
+}
+
 .header-nav a, .header-nav button {
   color: var(--text-secondary);
   font-size: 0.875rem;

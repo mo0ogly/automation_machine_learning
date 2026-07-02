@@ -1,0 +1,40 @@
+{
+  "panel": {
+    "title": "Analyses de stabilité avancées",
+    "intro": "Cinq protocoles déterministes au-delà de la courbe de jitter : précision numérique, marges au seuil, churn de ré-entraînement, couverture conforme, rayon certifié. Chacun tourne sur le jeu de référence, sans upload ni ré-entraînement du modèle déployé."
+  },
+  "card": {
+    "running": "Analyse…",
+    "run": "Lancer",
+    "unavailable": "Analyse indisponible.",
+    "notApplicable": "Analyse non applicable."
+  },
+  "verdict": {
+    "stable": "Stable",
+    "sensible": "Sensible",
+    "instable": "INSTABLE",
+    "info": "Diagnostic"
+  },
+  "analysis": {
+    "numerical": {
+      "title": "Jitter numérique (float32 vs float64, threads)",
+      "desc": "La seule forme logicielle mesurable du « jitter matériel » : re-scorer en float32 vs float64 et sous un seul thread BLAS, compter les verdicts qui basculent."
+    },
+    "margin": {
+      "title": "Analyse de marge (population à risque)",
+      "desc": "Distance de chaque verdict au seuil de décision : quelle part de la population une perturbation quelconque ferait basculer en premier. Déterministe, sans échantillonnage."
+    },
+    "churn": {
+      "title": "Churn de ré-entraînement (instabilité structurelle)",
+      "desc": "Ré-apprendre le même modèle avec des seeds différentes et mesurer le désaccord des verdicts : l'instabilité du modèle lui-même, pas de l'inférence."
+    },
+    "conformal": {
+      "title": "Prédiction conforme (couverture garantie)",
+      "desc": "Ensembles/intervalles de prédiction avec garantie de couverture finite-sample (sous échangeabilité) : isole les verdicts statistiquement ambigus à router vers un analyste."
+    },
+    "smoothing": {
+      "title": "Robustesse certifiée (randomized smoothing)",
+      "desc": "Certificat de Cohen et al. (ICML 2019) : rayon L2 dans lequel le verdict du classifieur lissé ne peut pas changer, avec borne de confiance Clopper-Pearson."
+    }
+  }
+}

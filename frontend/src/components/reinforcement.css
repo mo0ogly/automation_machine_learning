@@ -132,7 +132,64 @@
 .rl-hint { color: var(--text-secondary); margin: 0; font-size: 0.85rem; max-width: 46ch; }
 .rl-result { animation: fadeIn 0.4s ease-out; }
 
+/* ── Deep RL workbench (Gymnasium + Stable-Baselines3) ── */
+.rl-deep { display: flex; flex-direction: column; gap: 1rem; }
+
+/* Paradigm switch: tabular GridWorld demo vs Deep RL. */
+.rl-paradigm { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.rl-paradigm-tab { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 1rem;
+  text-align: left; cursor: pointer; border-radius: 12px; border: 1px solid var(--border-color);
+  background: var(--surface-1, rgba(255, 255, 255, 0.02)); color: var(--text-primary);
+  transition: border-color 0.15s ease, background 0.15s ease; }
+.rl-paradigm-tab:hover { border-color: var(--accent-primary); }
+.rl-paradigm-tab.active { border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.10); }
+.rl-paradigm-tab strong { font-size: 0.9rem; }
+.rl-paradigm-tab small { font-size: 0.72rem; color: var(--text-tertiary); }
+
+/* Environment / preset cards. */
+.rl-env-grid, .rl-preset-grid { display: grid; gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rl-env-card, .rl-preset-card { display: flex; flex-direction: column; gap: 0.3rem;
+  padding: 0.8rem 0.9rem; text-align: left; cursor: pointer; color: var(--text-primary);
+  border-radius: 12px; border: 1px solid var(--border-color);
+  transition: transform 0.15s ease, border-color 0.15s ease; }
+.rl-env-card:hover, .rl-preset-card:hover { transform: translateY(-2px); border-color: var(--accent-primary); }
+.rl-env-card.active { border-color: var(--accent-primary); background: rgba(59, 130, 246, 0.10); }
+.rl-env-card strong, .rl-preset-card strong { font-size: 0.9rem; }
+.rl-env-card small, .rl-preset-card small { font-size: 0.74rem; color: var(--text-tertiary); line-height: 1.35; }
+.rl-preset-meta { font-size: 0.7rem; color: var(--text-secondary); font-family: var(--font-mono, monospace); }
+
+/* Tags: action kind, observation dims, environment group. */
+.rl-env-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.15rem; }
+.rl-tag { display: inline-block; font-size: 0.66rem; padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
+.rl-tag-discrete { background: rgba(59, 130, 246, 0.16); color: var(--accent-primary); }
+.rl-tag-continuous { background: rgba(16, 185, 129, 0.16); color: var(--status-success); }
+.rl-tag-group { align-self: flex-start; font-weight: 600; letter-spacing: 0.03em; }
+.rl-tag-cyber_defense { background: rgba(233, 69, 96, 0.16); color: var(--accent-secondary, #e94560); }
+
+/* Algorithm selector. */
+.rl-algo-row { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.rl-algo { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.65rem 0.8rem; cursor: pointer;
+  text-align: left; color: var(--text-primary); border-radius: 12px; border: 1px solid var(--border-color);
+  transition: border-color 0.15s ease, background 0.15s ease; }
+.rl-algo:hover { border-color: var(--accent-primary); }
+.rl-algo.active { border-color: var(--accent-primary); background: rgba(59, 130, 246, 0.10); }
+.rl-algo.disabled { opacity: 0.4; cursor: not-allowed; }
+.rl-algo small { font-size: 0.72rem; color: var(--text-tertiary); line-height: 1.3; }
+
+/* Training progress bar. */
+.rl-progress { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.8rem; }
+.rl-progress-bar { flex: 1; height: 8px; border-radius: 999px; overflow: hidden;
+  background: rgba(148, 163, 184, 0.2); }
+.rl-progress-bar span { display: block; height: 100%; background: var(--accent-primary);
+  transition: width 0.3s ease; }
+.rl-progress-txt { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+.rl-download { margin-left: auto; }
+
 @media (max-width: 960px) {
   .rl-intro { grid-template-columns: 1fr; }
   .rl-workbench { grid-template-columns: 1fr; }
+  .rl-paradigm { grid-template-columns: 1fr; }
 }

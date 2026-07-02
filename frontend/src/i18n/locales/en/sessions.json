@@ -1,0 +1,36 @@
+{
+  "problemType": {
+    "regression": "Regression",
+    "classification": "Classification",
+    "clustering": "Clustering",
+    "anomaly": "Anomaly detection"
+  },
+  "loadError": "Loading error",
+  "apiUnreachable": "API unreachable — is the backend running on :8000?",
+  "apiUnreachableShort": "API unreachable.",
+  "sessionNotFound": "Session not found",
+  "renameFailed": "Rename failed",
+  "deleteFailed": "Delete failed",
+  "title": "My sessions",
+  "close": "Close",
+  "note": "Reopen, rename or delete an analysis. Sessions and their models are kept across restarts.",
+  "loading": "Loading…",
+  "empty": "No session saved yet.",
+  "columns": {
+    "name": "Name",
+    "type": "Type",
+    "model": "Model",
+    "size": "Size",
+    "modified": "Modified"
+  },
+  "validate": "Save",
+  "cancel": "Cancel",
+  "unnamed": "(unnamed)",
+  "activeSuffix": " · active",
+  "confirmDelete": "Delete?",
+  "yes": "Yes",
+  "no": "No",
+  "open": "Open",
+  "rename": "Rename",
+  "delete": "Delete"
+}

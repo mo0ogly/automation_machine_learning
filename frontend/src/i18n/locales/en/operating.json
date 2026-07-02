@@ -1,0 +1,80 @@
+{
+  "title": "Operational operating point",
+  "titleSoc": "Operational operating point (SOC / threat intel)",
+  "notApplicable": "Operational analysis not applicable to this model.",
+  "focusLabel": "Class to escalate (one-vs-rest):",
+  "context": {
+    "escalate": "Escalating \"{{cls}}\" vs the rest.",
+    "positiveClass": "Positive class: {{cls}}."
+  },
+  "slider": {
+    "label": "Decision threshold:",
+    "allAlert": "everything is an alert",
+    "noAlert": "nothing is an alert"
+  },
+  "cost": {
+    "fn": "Cost of a missed attack (FN)",
+    "fp": "Cost of a false alert (FP)"
+  },
+  "confusion": {
+    "tp": "Correct detection",
+    "fn": "Missed attack",
+    "fp": "False alert",
+    "tn": "Normal traffic"
+  },
+  "metric": {
+    "recall": "Recall (detection)",
+    "precision": "Precision",
+    "specificity": "Specificity",
+    "fpr": "False alert rate",
+    "fbeta": "F2 (recall-weighted)",
+    "alerts": "Alerts",
+    "cost": "Expected cost"
+  },
+  "reco": {
+    "label": "Recommended points:",
+    "minCost": "Min cost",
+    "maxFbeta": "Max F2",
+    "youden": "Youden J",
+    "fprBudget": "FPR budget 1%",
+    "applyThreshold": "Apply threshold {{value}}"
+  },
+  "calibration": {
+    "title": "Probability calibration",
+    "note": "A score of 0.8 should correspond to ~80% true positives (ECE close to 0 = reliable for score-based triage)."
+  },
+  "robust": {
+    "title": "Imbalance-robust metrics",
+    "balancedAccuracy": "Balanced accuracy",
+    "cohenKappa": "Cohen's kappa"
+  },
+  "alertBudget": {
+    "title": "Alert budget (score-sorted queue)",
+    "th": {
+      "k": "k alerts reviewed",
+      "precisionAtK": "Precision@k",
+      "detectionAtK": "Detection@k",
+      "truePositives": "True positives"
+    }
+  },
+  "playbook": {
+    "title": "SOC / threat intel deployment sheet"
+  },
+  "anomalyBudget": {
+    "title": "Alert budget by anomaly threshold",
+    "th": {
+      "quantile": "Quantile",
+      "scoreThreshold": "Score threshold",
+      "alerts": "Alerts",
+      "alertsPer1000": "Alerts / 1000"
+    }
+  },
+  "tolerance": {
+    "title": "Tolerance bands (operational reliability)",
+    "mae": "Mean absolute error (MAE): <strong>{{mae}}</strong>.",
+    "th": {
+      "tolerance": "Tolerance (±)",
+      "withinBand": "Share of predictions within the band"
+    }
+  }
+}

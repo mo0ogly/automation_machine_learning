@@ -1,0 +1,59 @@
+{
+  "problemTypes": {
+    "regression": "Régression",
+    "classification": "Classification",
+    "clustering": "Clustering",
+    "anomaly": "Détection d'anomalies"
+  },
+  "errors": {
+    "loadFailed": "Erreur de chargement",
+    "apiUnreachablePort8000": "API injoignable — le backend tourne-t-il sur :8000 ?",
+    "sessionNotFound": "Session introuvable",
+    "apiUnreachableStartBackend": "API injoignable — démarrez le backend (uvicorn) sur :8000.",
+    "generic": "Erreur",
+    "agentUnavailable": "Agent indisponible",
+    "agentUnreachable": "Agent injoignable.",
+    "interpretationUnavailable": "Interprétation indisponible",
+    "interpretationUnreachable": "Interprétation injoignable.",
+    "assistUnavailable": "Assistant indisponible",
+    "assistUnreachable": "Assistant injoignable.",
+    "runFailed": "Échec de l'exécution",
+    "runFailedDot": "Échec de l'exécution.",
+    "renameFailed": "Échec du renommage",
+    "renameClustersFailed": "Échec du renommage des clusters."
+  },
+  "journal": {
+    "actionApplied": "Action appliquée",
+    "appliedPrefix": "Appliqué : "
+  },
+  "landing": {
+    "title": "Construire un modèle, étape par étape",
+    "pipelineDescription": "Pipeline agentique : Nettoyage › Transformation › Intégration › Séparation › Modèle › Fine-tuning › Évaluation › Explicabilité. À chaque étape, l'agent propose un affinage ; l'expert valide ou ajuste.",
+    "importCsv": "Importer un CSV",
+    "chooseCsvFile": "Choisir un fichier CSV",
+    "orDemoDataset": "Ou un jeu de démonstration",
+    "cyberDatasets": "Jeux cyber",
+    "otherDatasets": "Autres jeux",
+    "recentSessions": "Sessions récentes",
+    "manageSessions": "Gérer toutes les sessions…",
+    "reopenSession": "Rouvrir cette session",
+    "unnamed": "(sans nom)",
+    "noModel": "pas de modèle",
+    "agentActive": "Agent IA actif",
+    "noAgentConfigured": "Aucun backend IA configuré — recommandations heuristiques",
+    "datasetCardTitle": "Voir la fiche du jeu de données"
+  },
+  "lab": {
+    "overview": "{{rows}} lignes · {{cols}} colonnes",
+    "supervised": "Supervisé",
+    "unsupervised": "Non supervisé",
+    "whySupervised": "Pourquoi supervisé ?",
+    "whyUnsupervised": "Pourquoi non supervisé ?",
+    "explainType": "Explique le type « {{type}} »",
+    "target": "cible",
+    "targetRole": "Rôle de la cible « {{target}} »",
+    "mySessions": "Mes sessions",
+    "newAnalysis": "Nouvelle analyse",
+    "copilotTitle": "Cockpit IA — copilote"
+  }
+}

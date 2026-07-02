@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import './leaderboard-extra.css';
@@ -8,14 +9,12 @@ import './leaderboard-extra.css';
 // Evaluation). Sortable columns, mean ± std rendering, inline score bars and an
 // overfit badge; the expert picks a family with "Choisir" before fine-tuning.
 
-const LB_LABELS = {
-  rmse_cv: 'RMSE (CV)', r2_cv: 'R² (CV)', r2_train: 'R² (train)',
-  accuracy_cv: 'Accuracy (CV)', f1_cv: 'F1 (CV)', accuracy_train: 'Accuracy (train)',
-  overfit: 'Surapprentissage',
-  // Legacy sessions (pre-CV leaderboard) may still carry test-based keys.
-  rmse_test: 'RMSE (test)', r2_test: 'R² (test)', accuracy_test: 'Accuracy (test)',
-  f1_test: 'F1 (test)',
-};
+// Known metric columns, resolved to their i18n label (columns.<key>) at render
+// time. Legacy sessions (pre-CV leaderboard) may still carry test-based keys.
+const LB_COLUMN_KEYS = new Set([
+  'rmse_cv', 'r2_cv', 'r2_train', 'accuracy_cv', 'f1_cv', 'accuracy_train',
+  'overfit', 'rmse_test', 'r2_test', 'accuracy_test', 'f1_test',
+]);
 
 // Columns folded into another column's "± std" display rather than shown alone.
 const STD_OF = { rmse_cv: 'rmse_cv_std', accuracy_cv: 'accuracy_cv_std' };
@@ -40,12 +39,13 @@ function ScoreBar({ value }) {
 }
 
 function OverfitBadge({ value }) {
+  const { t } = useTranslation('leaderboard');
   const v = Number(value);
   if (!isFinite(v)) return <span>{fmt(value)}</span>;
   let cls = 'lb-fit lb-fit-ok';
-  let label = 'sain';
-  if (v > 0.1) { cls = 'lb-fit lb-fit-bad'; label = 'élevé'; }
-  else if (v > 0.05) { cls = 'lb-fit lb-fit-warn'; label = 'modéré'; }
+  let label = t('overfit.healthy');
+  if (v > 0.1) { cls = 'lb-fit lb-fit-bad'; label = t('overfit.high'); }
+  else if (v > 0.05) { cls = 'lb-fit lb-fit-warn'; label = t('overfit.moderate'); }
   return (
     <span>
       {v.toFixed(4)} <span className={cls}>{label}</span>
@@ -54,12 +54,14 @@ function OverfitBadge({ value }) {
 }
 
 export default function ModelLeaderboard(props) {
+  const { t } = useTranslation('leaderboard');
   const {
     rows, metric, cvFolds, leakageFree, selected, onChoose,
     onAssist, assistBusy, assistAnswers, onApplyAssist,
   } = props;
   const [sortKey, setSortKey] = useState(null);   // null = backend ranking
   const [sortDir, setSortDir] = useState(1);
+  const lbLabel = (c) => (LB_COLUMN_KEYS.has(c) ? t('columns.' + c) : c);
 
   const cols = useMemo(() => {
     if (!rows || !rows.length) return [];
@@ -93,36 +95,35 @@ export default function ModelLeaderboard(props) {
   return (
     <div className="leaderboard">
       <div className="substep-bar">
-        <h5>Comparaison des modèles{metric ? ' — classé par ' + metric : ''}</h5>
-        {onAssist ? <AssistButton topic="leaderboard" label="Explique le classement"
+        <h5>{metric ? t('titleWithMetric', { metric }) : t('title')}</h5>
+        {onAssist ? <AssistButton topic="leaderboard" label={t('assistLabel')}
           onAssist={onAssist} busy={assistBusy} /> : null}
       </div>
       <AssistAnswer topic="leaderboard" answers={assistAnswers} onApply={onApplyAssist} />
       <div className="lb-chips">
         {cvFolds ? (
-          <span className="lb-chip lb-chip-cv" title="Chaque candidat est évalué par validation croisée sur le train uniquement.">
-            {'CV ' + cvFolds + ' plis — jeu de test vierge'}
+          <span className="lb-chip lb-chip-cv" title={t('cvChipTitle')}>
+            {t('cvChipText', { folds: cvFolds })}
           </span>
         ) : null}
         {leakageFree ? (
-          <span className="lb-chip lb-chip-clean" title="Encodeurs, échelles et PCA ajustés sur le train seul (préprocesseur anti-fuite).">
-            prétraitement anti-fuite
+          <span className="lb-chip lb-chip-clean" title={t('leakageChipTitle')}>
+            {t('leakageChipText')}
           </span>
         ) : null}
       </div>
       <p className="cfg-help">
-        Moyenne ± écart-type sur les plis, hyperparamètres par défaut. Cliquez un en-tête pour
-        trier ; choisissez une famille — le fine-tuning affinera ses hyperparamètres ensuite.
+        {t('helpText')}
       </p>
       <div className="coltable-scroll">
         <table className="diag-table leaderboard-table">
           <thead>
             <tr>
-              <th>Modèle</th>
+              <th>{t('modelColumn')}</th>
               {cols.map((c) => (
                 <th key={c} className="lb-sortable" onClick={() => clickSort(c)}
-                  title="Trier par cette colonne">
-                  {(LB_LABELS[c] || c) + arrow(c)}
+                  title={t('sortTitle')}>
+                  {lbLabel(c) + arrow(c)}
                 </th>
               ))}
               <th />
@@ -135,7 +136,7 @@ export default function ModelLeaderboard(props) {
                 <tr key={r.model} className={r.recommended ? 'lb-best' : ''}>
                   <td className="lb-model" title={r.help || ''}>
                     {r.model}
-                    {r.recommended ? <span className="lb-badge">recommandé</span> : null}
+                    {r.recommended ? <span className="lb-badge">{t('recommendedBadge')}</span> : null}
                     {r.help ? <span className="lb-model-help">{r.help}</span> : null}
                   </td>
                   {cols.map((c) => {
@@ -156,9 +157,9 @@ export default function ModelLeaderboard(props) {
                   })}
                   <td>
                     {isSel ? (
-                      <span className="reco-applied">choisi</span>
+                      <span className="reco-applied">{t('chosenLabel')}</span>
                     ) : (
-                      <button type="button" className="coltable-btn" onClick={() => onChoose(r.model)}>Choisir</button>
+                      <button type="button" className="coltable-btn" onClick={() => onChoose(r.model)}>{t('chooseButton')}</button>
                     )}
                   </td>
                 </tr>

@@ -1,0 +1,15 @@
+{
+  "levelNovice": "Novice",
+  "levelExpert": "Expert",
+  "quickDiagnostics": "Explique les diagnostics",
+  "quickDecision": "Que dois-je décider ?",
+  "quickResult": "Interprète le résultat",
+  "title": "Copilote d'analyse",
+  "levelGroupAria": "Niveau d'assistance",
+  "levelTitle": "Explications niveau {{level}}",
+  "selectStage": "Sélectionnez une étape.",
+  "journalTitle": "Journal d'analyse",
+  "memoryTitle": "Mémoire ré-injectée dans les prompts",
+  "thinking": "L'assistant réfléchit…",
+  "empty": "Aucune note pour l'instant. Demande une explication à l'IA (ici ou via les boutons ✦ des sous-étapes) : chaque réponse est mémorisée et nourrit les recommandations suivantes."
+}

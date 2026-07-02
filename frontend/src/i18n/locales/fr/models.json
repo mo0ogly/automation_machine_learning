@@ -1,0 +1,29 @@
+{
+  "problemType": {
+    "regression": "Régression",
+    "classification": "Classification",
+    "clustering": "Clustering",
+    "anomaly": "Détection d'anomalies"
+  },
+  "loadError": "Erreur de chargement",
+  "apiUnreachable": "API injoignable — le backend tourne-t-il sur :8000 ?",
+  "columns": {
+    "dataset": "Jeu de données",
+    "algorithm": "Algorithme",
+    "type": "Type",
+    "size": "Taille",
+    "modified": "Modifié"
+  },
+  "unnamed": "(sans nom)",
+  "bundleTitle": "Bundle Python autonome (modèle + données + code + predict.py)",
+  "bundleLabel": "Bundle .zip",
+  "pklTitle": "Modèle brut (features déjà transformées)",
+  "open": "Ouvrir",
+  "title": "Modèles entraînés",
+  "close": "Fermer",
+  "note": "Tous les modèles construits, toutes sessions confondues. Téléchargez le .pkl prêt à servir, ou ouvrez la session pour l'inspecter et le ré-exécuter.",
+  "loading": "Chargement…",
+  "empty": "Aucun modèle entraîné pour l'instant. Terminez l'étape « Modélisation » d'une session.",
+  "cyberModels": "Modèles cyber",
+  "otherModels": "Autres modèles"
+}

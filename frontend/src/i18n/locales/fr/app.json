@@ -1,0 +1,15 @@
+{
+  "tagline": "données → modèle → prédiction",
+  "nav": {
+    "pipeline": "Pipeline",
+    "exploit": "Exploiter",
+    "reinforcement": "Renforcement"
+  },
+  "models": {
+    "label": "Modèles",
+    "tooltip": "Modèles entraînés"
+  },
+  "editor": {
+    "loading": "Chargement de l'éditeur…"
+  }
+}

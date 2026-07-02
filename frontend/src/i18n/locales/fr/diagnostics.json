@@ -1,0 +1,22 @@
+{
+  "labels": {
+    "overview": "Vue d'ensemble",
+    "overview_after": "Vue d'ensemble (après)",
+    "missing_by_column": "Valeurs manquantes par colonne",
+    "constant_columns": "Colonnes constantes",
+    "outliers_iqr": "Valeurs aberrantes (IQR)",
+    "skewness": "Asymétrie",
+    "cardinality": "Cardinalité catégorielle",
+    "high_correlation_pairs": "Paires très corrélées",
+    "target_correlation": "Corrélation avec la cible",
+    "leakage_candidates": "Suspects de fuite",
+    "target_distribution": "Distribution de la cible",
+    "metrics": "Métriques",
+    "valeurs_categorielles": "Valeurs distinctes (catégorielles)",
+    "lignes_extremes": "Lignes extrêmes (cible élevée)",
+    "analyse_descriptive": "Analyse descriptive (par type)"
+  },
+  "none": "aucun",
+  "empty": "Pas de diagnostics disponibles.",
+  "upstreamRequired": "Étape amont requise."
+}

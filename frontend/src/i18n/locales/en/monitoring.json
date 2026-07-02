@@ -1,0 +1,109 @@
+{
+  "intro": "Upload a new batch of data (same columns as training) to measure drift vs the training set: the real risk for a detector in production is not hardware but <strong>drift</strong> (data and concept).",
+  "uploadBatch": "Upload a batch to monitor (CSV)",
+  "analysing": "Analyzing…",
+  "unavailable": "Monitoring unavailable.",
+  "unavailableShort": "Unavailable.",
+  "notApplicable": "Monitoring not applicable.",
+  "th": {
+    "variable": "Variable",
+    "level": "Level"
+  },
+  "level": {
+    "major": "major",
+    "moderate": "moderate",
+    "none": "stable",
+    "stable": "stable"
+  },
+  "overall": {
+    "major": "MAJOR DRIFT",
+    "moderate": "Moderate drift",
+    "stable": "Stable"
+  },
+  "cause": {
+    "title": "Probable cause",
+    "confidence": "confidence",
+    "actionLabel": "Action:",
+    "others": "{{count}} other possible cause(s)"
+  },
+  "env": {
+    "noFingerprint": "Training fingerprint unavailable (model predates this version).",
+    "differs": "The environment differs from training — rule this out before concluding drift:",
+    "field": "Field",
+    "training": "Training",
+    "now": "Now",
+    "conform": "Conforms to training (same versions and platform).",
+    "opMeta": "Operational metadata provided: {{data}}."
+  },
+  "jitter": {
+    "title": "Stability under perturbation (jitter protocol)",
+    "intro": "The protocol injects increasing Gaussian noise (fractions of each variable's standard deviation) into the reference set, re-scores it, and measures the verdict <strong>flip rate</strong>. A detector that flips at 0.1&nbsp;% noise is unstable in a critical environment — regardless of the hardware running it.",
+    "measuring": "Measuring…",
+    "measure": "Measure stability (jitter)",
+    "unavailable": "Jitter protocol unavailable.",
+    "refRows": "{{rows}} reference rows · {{repeats}} repeats per amplitude",
+    "breakingPoint": "Breaking point: verdicts flip beyond the tolerance ({{tol}}) starting at {{eps}} of noise (std).",
+    "noBreak": "No breaking point: verdicts hold up to {{limit}}",
+    "noiseStdSuffix": "{{eps}} of noise (std).",
+    "maxAmplitude": "the maximum amplitude tested.",
+    "notApplicable": "Protocol not applicable.",
+    "plotAlt": "jitter stability",
+    "th": {
+      "noise": "Noise (% std)",
+      "flip": "Average flip rate",
+      "minmax": "Min–max"
+    }
+  },
+  "jitterVerdict": {
+    "stable": "Stable",
+    "sensible": "Noise-sensitive",
+    "instable": "UNSTABLE"
+  },
+  "plotAlt": "figure",
+  "heroSub": "{{batch}} rows vs {{ref}} reference",
+  "tile": {
+    "tracked": "tracked variables",
+    "majorDrift": "major drifts",
+    "moderateDrift": "moderate drifts",
+    "batchRows": "batch rows"
+  },
+  "schema": {
+    "changed": "Schema differs from training.",
+    "missing": "{{count}} missing column(s) (imputed): {{list}}.",
+    "extra": "{{count}} extra column(s) (ignored): {{list}}.",
+    "artefact": "The drift figures below are partly artifacts of this reconciliation."
+  },
+  "section": {
+    "dataDrift": "Data drift (PSI + Kolmogorov-Smirnov)",
+    "conceptDrift": "Concept drift (prediction distribution)",
+    "reproducibility": "Inference reproducibility",
+    "recalibration": "Threshold recalibration",
+    "environment": "Execution environment"
+  },
+  "dataDrift": {
+    "summary": "{{major}} variable(s) with major drift, {{moderate}} moderate out of {{features}}.",
+    "ksUnavailable": "Kolmogorov-Smirnov test unavailable for this batch."
+  },
+  "concept": {
+    "categorical": "Total variation distance = <strong>{{tv}}</strong> (level {{level}}). A jump in the positive-class rate means the detector's baseline shifted.",
+    "regression": "Prediction PSI = <strong>{{psi}}</strong> · mean {{ref}} → {{cur}}."
+  },
+  "repro": {
+    "determinism": "Determinism",
+    "fail": "FAILED",
+    "consistency": "Eval consistency",
+    "divergence": "divergence",
+    "note": "This is the measurable version of \"jitter\": a gap here means silent pipeline corruption."
+  },
+  "recal": {
+    "threshold": "threshold",
+    "recall": "recall",
+    "precision": "precision",
+    "note": "Cost-minimal threshold recommended on this batch. Compare with the deployed threshold: if it moved, recalibrate.",
+    "unlabelled": "Batch not labelled."
+  },
+  "meta": {
+    "summary": "Execution context (optional)",
+    "note": "Operational metadata for the batch, in JSON — used to distinguish an environment change from a model behavior change. E.g.:"
+  }
+}

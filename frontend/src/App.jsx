@@ -1,5 +1,7 @@
 import { useState, Suspense, lazy } from 'react'
+import { useTranslation } from 'react-i18next'
 import './App.css'
+import LanguageSwitcher from './components/LanguageSwitcher'
 import Dashboard from './components/Dashboard'
 import ReinforcementView from './components/ReinforcementView'
 import ExploitView from './components/ExploitView'
@@ -53,6 +55,7 @@ function LogoMark() {
 }
 
 function App() {
+  const { t } = useTranslation('app')
   const [view, setView] = useState('dashboard')
   // Global config menu (top-right): the AI backends panel is reachable from any
   // view. aiRefresh bumps so the Pipeline view re-reads the active backend after
@@ -91,20 +94,21 @@ function App() {
           <LogoMark />
           <div className="logo-text">
             <h1>automation_<span>machine_learning</span></h1>
-            <span className="logo-tagline">données → modèle → prédiction</span>
+            <span className="logo-tagline">{t('tagline')}</span>
           </div>
         </div>
         <div className="header-right">
           <nav className="header-nav">
             <button type="button" className={view === 'dashboard' ? 'active' : ''}
-              onClick={() => setView('dashboard')}>Pipeline</button>
+              onClick={() => setView('dashboard')}>{t('nav.pipeline')}</button>
             <button type="button" className={view === 'exploit' ? 'active' : ''}
-              onClick={() => setView('exploit')}>Exploiter</button>
+              onClick={() => setView('exploit')}>{t('nav.exploit')}</button>
             <button type="button" className={view === 'rl' ? 'active' : ''}
-              onClick={() => setView('rl')}>Renforcement</button>
+              onClick={() => setView('rl')}>{t('nav.reinforcement')}</button>
           </nav>
           <button type="button" className="cfg-menu-btn" onClick={() => setModelsOpen(true)}
-            title="Modèles entraînés">Modèles</button>
+            title={t('models.tooltip')}>{t('models.label')}</button>
+          <LanguageSwitcher />
           <ConfigMenu onOpenAi={() => setAiPanelOpen(true)}
             onOpenPrompts={() => setPromptsOpen(true)} />
         </div>
@@ -120,7 +124,7 @@ function App() {
           onChanged={() => setAiRefresh((n) => n + 1)} />
       ) : null}
       {promptsOpen ? (
-        <Suspense fallback={<div className="locate-note">Chargement de l'éditeur…</div>}>
+        <Suspense fallback={<div className="locate-note">{t('editor.loading')}</div>}>
           <PromptsPanel apiBase={API_URL} onClose={() => setPromptsOpen(false)}
             onLocate={locatePrompt} />
         </Suspense>

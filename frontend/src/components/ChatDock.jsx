@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import InferenceSettings from './InferenceSettings';
 import './ai-cockpit.css';
 
@@ -14,7 +15,7 @@ function Spark() {
   );
 }
 
-function Bubble({ msg }) {
+function Bubble({ msg, t }) {
   const isUser = msg.role === 'user';
   return (
     <div className={'chat-msg ' + (isUser ? 'chat-msg-user' : 'chat-msg-ai')}>
@@ -22,7 +23,7 @@ function Bubble({ msg }) {
         <div className="chat-msg-meta">
           <span className={'chat-src ' + (msg.source === 'llm' ? 'src-llm'
             : msg.source === 'error' ? 'src-error' : 'src-heur')}>
-            {msg.source === 'llm' ? 'IA' : (msg.source === 'error' ? 'erreur' : 'système')}
+            {msg.source === 'llm' ? t('sourceAi') : (msg.source === 'error' ? t('sourceError') : t('sourceSystem'))}
           </span>
           {msg.model ? <span className="muted chat-model">{msg.model}</span> : null}
         </div>
@@ -33,12 +34,14 @@ function Bubble({ msg }) {
 }
 
 export default function ChatDock({ apiBase, sessionId, title }) {
+  const { t } = useTranslation('chat');
   const [thread, setThread] = useState([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [params, setParams] = useState({});
   const [showSettings, setShowSettings] = useState(false);
+  const [recalled, setRecalled] = useState([]);   // earlier exchanges surfaced by memory
   const listRef = useRef(null);
   // Always holds the session the component is currently bound to, so async
   // handlers can drop stale responses when the user switches session mid-flight.
@@ -50,6 +53,7 @@ export default function ChatDock({ apiBase, sessionId, title }) {
     // from the previous session never bleeds into the new one.
     setErr(null);
     setDraft('');
+    setRecalled([]);
     if (!sessionId) { setThread([]); return; }
     const mySid = sessionId;
     fetch(apiBase + '/api/session/' + sessionId + '/chat')
@@ -77,22 +81,26 @@ export default function ChatDock({ apiBase, sessionId, title }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d) => { if (sidRef.current === mySid) setThread(d.thread || []); })
+      .then((d) => {
+        if (sidRef.current !== mySid) return;
+        setThread(d.thread || []);
+        setRecalled(Array.isArray(d.recalled) ? d.recalled : []);
+      })
       .catch((c) => {
         if (sidRef.current !== mySid) return;   // user moved on: drop this result
         // Roll back the optimistic echo and restore the draft so nothing is lost.
         setThread((t) => t.filter((m) => m.id !== 'pending-user'));
         setDraft((d) => d || message);
-        setErr(c === 400 ? 'Message vide.' : 'Le copilote est injoignable.');
+        setErr(c === 400 ? t('errEmptyMessage') : t('errUnreachable'));
       })
       .finally(() => { if (sidRef.current === mySid) setBusy(false); });
   };
 
   const clear = () => {
     if (!sessionId || !thread.length || busy) return;
-    if (!window.confirm('Effacer toute la conversation ?')) return;
+    if (!window.confirm(t('confirmClear'))) return;
     fetch(apiBase + '/api/session/' + sessionId + '/chat', { method: 'DELETE' })
-      .then((r) => { if (r.ok) setThread([]); }).catch(() => {});
+      .then((r) => { if (r.ok) { setThread([]); setRecalled([]); } }).catch(() => {});
   };
 
   const onKey = (e) => {
@@ -102,11 +110,8 @@ export default function ChatDock({ apiBase, sessionId, title }) {
   if (!sessionId) {
     return (
       <div className="chatdock" data-prompt-loc="chat">
-        <div className="chatdock-head"><span className="chatdock-title"><Spark /> {title || 'Cockpit IA'}</span></div>
-        <p className="muted chatdock-empty">
-          Aucune session active. Charge un jeu de données dans l'onglet Pipeline pour dialoguer
-          avec le copilote à propos de tes données et de ton modèle.
-        </p>
+        <div className="chatdock-head"><span className="chatdock-title"><Spark /> {title || t('defaultTitle')}</span></div>
+        <p className="muted chatdock-empty">{t('noSession')}</p>
       </div>
     );
   }
@@ -114,44 +119,52 @@ export default function ChatDock({ apiBase, sessionId, title }) {
   return (
     <div className="chatdock" data-prompt-loc="chat">
       <div className="chatdock-head">
-        <span className="chatdock-title"><Spark /> {title || 'Cockpit IA'}</span>
+        <span className="chatdock-title"><Spark /> {title || t('defaultTitle')}</span>
         <span className="chatdock-actions">
           <button type="button" className={'chatdock-cog' + (showSettings ? ' on' : '')}
-            onClick={() => setShowSettings((s) => !s)} title="Réglages d'inférence (température, tokens…)">
-            Réglages
+            onClick={() => setShowSettings((s) => !s)} title={t('settingsTooltip')}>
+            {t('settings')}
           </button>
           <button type="button" className="chatdock-clear" onClick={clear}
-            disabled={busy || !thread.length} title="Effacer la conversation">Effacer</button>
+            disabled={busy || !thread.length} title={t('clearTooltip')}>{t('clear')}</button>
         </span>
       </div>
 
       {showSettings ? (
         <div className="chatdock-settings">
           <InferenceSettings apiBase={apiBase} value={params} onChange={setParams}
-            title="Paramètres de cette conversation (surchargent le backend actif)" />
+            title={t('conversationSettingsTitle')} />
         </div>
       ) : null}
 
       <div className="chatdock-list" ref={listRef}>
         {thread.length === 0 && !busy ? (
-          <p className="muted chatdock-empty">
-            Pose une question sur ton jeu de données, une étape du pipeline ou ton modèle. Le
-            copilote tient compte du contexte et de tout l'historique de la conversation.
-          </p>
+          <p className="muted chatdock-empty">{t('emptyThread')}</p>
         ) : null}
-        {thread.map((m) => <Bubble key={m.id} msg={m} />)}
-        {busy ? <div className="chat-thinking"><span className="spinner" /> Le copilote réfléchit…</div> : null}
+        {thread.map((m) => <Bubble key={m.id} msg={m} t={t} />)}
+        {busy ? <div className="chat-thinking"><span className="spinner" /> {t('thinking')}</div> : null}
       </div>
+
+      {recalled.length ? (
+        <details className="chat-recall">
+          <summary>{t('recallSummary', { count: recalled.length })}</summary>
+          <ul>
+            {recalled.map((e, i) => (
+              <li key={i}><span className="chat-recall-q">{e.user}</span></li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {err ? <div className="banner banner-block chatdock-err">{err}</div> : null}
 
       <div className="chatdock-compose">
         <textarea
-          className="chatdock-input" rows={2} value={draft} placeholder="Écris ta question… (Ctrl+Entrée pour envoyer)"
+          className="chatdock-input" rows={2} value={draft} placeholder={t('composePlaceholder')}
           onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} disabled={busy}
         />
         <button type="button" className="btn btn-ai chatdock-send" onClick={send}
-          disabled={busy || !draft.trim()}>{busy ? '…' : 'Envoyer'}</button>
+          disabled={busy || !draft.trim()}>{busy ? '…' : t('send')}</button>
       </div>
     </div>
   );

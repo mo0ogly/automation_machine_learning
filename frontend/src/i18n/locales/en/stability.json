@@ -1,0 +1,40 @@
+{
+  "panel": {
+    "title": "Advanced stability analyses",
+    "intro": "Five deterministic protocols beyond the jitter curve: numerical precision, threshold margins, retraining churn, conformal coverage, certified radius. Each runs on the reference set, with no upload or retraining of the deployed model."
+  },
+  "card": {
+    "running": "Analyzing…",
+    "run": "Run",
+    "unavailable": "Analysis unavailable.",
+    "notApplicable": "Analysis not applicable."
+  },
+  "verdict": {
+    "stable": "Stable",
+    "sensible": "Sensitive",
+    "instable": "UNSTABLE",
+    "info": "Diagnostic"
+  },
+  "analysis": {
+    "numerical": {
+      "title": "Numerical jitter (float32 vs float64, threads)",
+      "desc": "The only measurable software form of \"hardware jitter\": re-score in float32 vs float64 and under a single BLAS thread, count the verdicts that flip."
+    },
+    "margin": {
+      "title": "Margin analysis (population at risk)",
+      "desc": "Distance of each verdict from the decision threshold: which share of the population any perturbation would flip first. Deterministic, no sampling."
+    },
+    "churn": {
+      "title": "Retraining churn (structural instability)",
+      "desc": "Retrain the same model with different seeds and measure verdict disagreement: instability of the model itself, not of inference."
+    },
+    "conformal": {
+      "title": "Conformal prediction (guaranteed coverage)",
+      "desc": "Prediction sets/intervals with finite-sample coverage guarantee (under exchangeability): isolates statistically ambiguous verdicts to route to an analyst."
+    },
+    "smoothing": {
+      "title": "Certified robustness (randomized smoothing)",
+      "desc": "Cohen et al. certificate (ICML 2019): L2 radius within which the smoothed classifier's verdict cannot change, with a Clopper-Pearson confidence bound."
+    }
+  }
+}

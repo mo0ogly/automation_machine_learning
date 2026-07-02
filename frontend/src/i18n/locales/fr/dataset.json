@@ -1,0 +1,11 @@
+{
+  "unreachable": "Fiche injoignable.",
+  "defaultTitle": "Fiche du jeu de données",
+  "close": "Fermer",
+  "rowsCols": "{{rows}} lignes · {{cols}} colonnes",
+  "synthetic": "synthétique",
+  "realData": "données réelles",
+  "target": "<strong>Cible :</strong> {{target}}",
+  "source": "<strong>Source :</strong> {{source}}",
+  "loading": "Chargement…"
+}

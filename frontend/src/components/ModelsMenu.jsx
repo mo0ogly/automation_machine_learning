@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isCyber } from './cyber';
 
 // Trained-models browser (top-right header). A model lives inside the session
@@ -6,11 +7,6 @@ import { isCyber } from './cyber';
 // that carries a fitted model: download its .pkl, or open the session to
 // inspect / re-run it. Data comes from /api/sessions (summary.model) — no extra
 // endpoint. Reuses the .ai-modal / .ai-table styling for coherence.
-
-const PTYPE_LABELS = {
-  regression: 'Régression', classification: 'Classification',
-  clustering: 'Clustering', anomaly: "Détection d'anomalies",
-};
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -22,21 +18,27 @@ function fmtDate(iso) {
 }
 
 export default function ModelsMenu({ apiBase, onClose }) {
+  const { t } = useTranslation('models');
   const [models, setModels] = useState(null);
   const [error, setError] = useState(null);
+
+  const PTYPE_LABELS = {
+    regression: t('problemType.regression'), classification: t('problemType.classification'),
+    clustering: t('problemType.clustering'), anomaly: t('problemType.anomaly'),
+  };
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
       const r = await fetch(apiBase + '/api/sessions');
       const d = await r.json();
-      if (!r.ok) { setError(d.detail || 'Erreur de chargement'); return; }
+      if (!r.ok) { setError(d.detail || t('loadError')); return; }
       // Keep only sessions that carry a trained model.
       setModels((d.sessions || []).filter((s) => s.summary && s.summary.model));
     } catch (e) {
-      setError('API injoignable — le backend tourne-t-il sur :8000 ?');
+      setError(t('apiUnreachable'));
     }
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
@@ -61,7 +63,8 @@ export default function ModelsMenu({ apiBase, onClose }) {
     <table className="ai-table">
       <thead>
         <tr>
-          <th>Jeu de données</th><th>Algorithme</th><th>Type</th><th>Taille</th><th>Modifié</th><th />
+          <th>{t('columns.dataset')}</th><th>{t('columns.algorithm')}</th><th>{t('columns.type')}</th>
+          <th>{t('columns.size')}</th><th>{t('columns.modified')}</th><th />
         </tr>
       </thead>
       <tbody>
@@ -70,7 +73,7 @@ export default function ModelsMenu({ apiBase, onClose }) {
           return (
             <tr key={s.id} className={cyberFlag ? 'cyber-row' : ''}>
               <td>
-                <strong>{s.filename || '(sans nom)'}</strong>
+                <strong>{s.filename || t('unnamed')}</strong>
                 {cyberFlag ? <span className="badge-cyber">CYBER</span> : null}
               </td>
               <td><span className="ai-key-ok">{sm.model}</span></td>
@@ -80,10 +83,10 @@ export default function ModelsMenu({ apiBase, onClose }) {
               <td>
                 <span className="ai-test-row">
                   <a className="ai-btn ai-btn-primary" href={apiBase + '/api/session/' + s.id + '/export-bundle'}
-                    target="_blank" rel="noreferrer" title="Bundle Python autonome (modèle + données + code + predict.py)">Bundle .zip</a>
+                    target="_blank" rel="noreferrer" title={t('bundleTitle')}>{t('bundleLabel')}</a>
                   <a className="ai-btn" href={apiBase + '/api/session/' + s.id + '/download-model'}
-                    target="_blank" rel="noreferrer" title="Modèle brut (features déjà transformées)">.pkl</a>
-                  <button type="button" className="ai-btn" onClick={() => openSession(s.id)}>Ouvrir</button>
+                    target="_blank" rel="noreferrer" title={t('pklTitle')}>.pkl</a>
+                  <button type="button" className="ai-btn" onClick={() => openSession(s.id)}>{t('open')}</button>
                 </span>
               </td>
             </tr>
@@ -97,20 +100,19 @@ export default function ModelsMenu({ apiBase, onClose }) {
     <div className="ai-modal-overlay" onClick={onClose}>
       <div className="ai-modal glass-panel" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal-head">
-          <h2>Modèles entraînés</h2>
-          <button type="button" className="ai-modal-close" onClick={onClose} title="Fermer">×</button>
+          <h2>{t('title')}</h2>
+          <button type="button" className="ai-modal-close" onClick={onClose} title={t('close')}>×</button>
         </div>
         <p className="ai-modal-note">
-          Tous les modèles construits, toutes sessions confondues. Téléchargez le .pkl prêt à servir,
-          ou ouvrez la session pour l'inspecter et le ré-exécuter.
+          {t('note')}
         </p>
         {error ? <div className="banner banner-block mb-2">{error}</div> : null}
 
         {models === null ? (
-          <p className="ai-empty">Chargement…</p>
+          <p className="ai-empty">{t('loading')}</p>
         ) : models.length === 0 ? (
           <p className="ai-empty">
-            Aucun modèle entraîné pour l'instant. Terminez l'étape « Modélisation » d'une session.
+            {t('empty')}
           </p>
         ) : (
           <>
@@ -118,14 +120,14 @@ export default function ModelsMenu({ apiBase, onClose }) {
               <div className="cyber-block">
                 <h3 className="cyber-head">
                   <span className="badge-cyber">CYBER</span>
-                  Modèles cyber <span className="muted">({cyber.length})</span>
+                  {t('cyberModels')} <span className="muted">({cyber.length})</span>
                 </h3>
                 {renderTable(cyber, true)}
               </div>
             ) : null}
             {others.length ? (
               <>
-                <h3 className="other-head">Autres modèles <span className="muted">({others.length})</span></h3>
+                <h3 className="other-head">{t('otherModels')} <span className="muted">({others.length})</span></h3>
                 {renderTable(others, false)}
               </>
             ) : null}

@@ -1,14 +1,16 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 // The per-stage agent's refinement proposal (the "affinage").
 // The expert can apply each suggestion individually (partial) or all at once
 // (total); either way the config controls below stay manually editable.
 export default function AgentRecommendation({ reco, loading, onApply, onApplyKey, currentConfig = {} }) {
+  const { t } = useTranslation('agentRec');
   if (loading) {
     return (
       <div className="reco-card reco-loading">
         <div className="spinner" />
-        <p className="muted">L'agent lit les diagnostics et prépare un affinage...</p>
+        <p className="muted">{t('loading')}</p>
       </div>
     );
   }
@@ -23,17 +25,17 @@ export default function AgentRecommendation({ reco, loading, onApply, onApplyKey
 
   // Lists (e.g. dropped_features) read better as a count than a raw join.
   const fmtVal = (v) => (Array.isArray(v)
-    ? (v.length ? v.length + ' variable(s) à retirer' : 'aucune à retirer')
+    ? (v.length ? t('varsToRemove', { count: v.length }) : t('noneToRemove'))
     : String(v));
 
   return (
     <div className="reco-card">
       <div className="reco-head">
         <span className={isLLM ? 'reco-badge reco-llm' : 'reco-badge reco-heur'}>
-          {isLLM ? 'Agent Groq (LLM)' : 'Repli heuristique'}
+          {isLLM ? t('sourceLlm') : t('sourceHeuristic')}
         </span>
         {reco.model ? <span className="reco-model">{reco.model}</span> : null}
-        <span className="reco-conf">Confiance {conf}%</span>
+        <span className="reco-conf">{t('confidence', { conf })}</span>
       </div>
 
       {reco.summary ? <p className="reco-summary">{reco.summary}</p> : null}
@@ -45,11 +47,11 @@ export default function AgentRecommendation({ reco, loading, onApply, onApplyKey
       ) : null}
 
       {reco.reason ? <p className="reco-reason">{reco.reason}</p> : null}
-      {reco.risk ? <p className="reco-risk">Risque : {reco.risk}</p> : null}
+      {reco.risk ? <p className="reco-risk">{t('risk', { risk: reco.risk })}</p> : null}
 
       {hasSuggestion ? (
         <>
-          <p className="reco-hint">Applique chaque réglage individuellement, ou tout d'un coup. Tu peux ensuite ajuster manuellement ci-dessous.</p>
+          <p className="reco-hint">{t('hint')}</p>
           <div className="reco-suggestions">
             {entries.map(([k, v]) => {
               const applied = String(currentConfig[k]) === String(v);
@@ -57,20 +59,20 @@ export default function AgentRecommendation({ reco, loading, onApply, onApplyKey
                 <div key={k} className={applied ? 'reco-sug reco-sug-applied' : 'reco-sug'}>
                   <span className="reco-chip" title={Array.isArray(v) ? v.join(', ') : undefined}>{k} = {fmtVal(v)}</span>
                   {applied ? (
-                    <span className="reco-applied">appliqué</span>
+                    <span className="reco-applied">{t('applied')}</span>
                   ) : (
-                    <button className="reco-key-btn" onClick={() => onApplyKey(k, v)}>Appliquer</button>
+                    <button className="reco-key-btn" onClick={() => onApplyKey(k, v)}>{t('apply')}</button>
                   )}
                 </div>
               );
             })}
           </div>
           <button className="btn btn-primary reco-apply" onClick={onApply} disabled={allApplied}>
-            {allApplied ? 'Tout appliqué' : "Appliquer tout l'affinage"}
+            {allApplied ? t('allApplied') : t('applyAll')}
           </button>
         </>
       ) : (
-        <p className="muted">Aucun changement de configuration proposé.</p>
+        <p className="muted">{t('noChange')}</p>
       )}
     </div>
   );

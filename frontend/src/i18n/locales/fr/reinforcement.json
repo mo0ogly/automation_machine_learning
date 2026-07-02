@@ -1,0 +1,180 @@
+{
+  "paradigm": {
+    "aria": "Choix du mode d'apprentissage par renforcement",
+    "demo": "Démo GridWorld",
+    "demoHint": "Q-learning tabulaire sur un labyrinthe — pédagogique",
+    "deep": "Deep RL",
+    "deepHint": "Gymnasium + Stable-Baselines3 — cas réalistes"
+  },
+  "deep": {
+    "kicker": "Renforcement à l'échelle réelle",
+    "title": "Deep Reinforcement Learning",
+    "intro": "Ici l'agent n'apprend plus une table mais un réseau de neurones, capable de gérer des états continus. On choisit un environnement Gymnasium standard, un algorithme (PPO, DQN ou A2C), puis on lance un entraînement réel sur CPU.",
+    "step1": "Choisir l'environnement",
+    "step1Hint": "Chaque environnement est un problème de contrôle standard, avec des états continus.",
+    "step2": "Choisir l'algorithme",
+    "step2Hint": "PPO et A2C gèrent les deux types d'action ; DQN ne gère que les actions discrètes.",
+    "step3": "Régler et entraîner",
+    "step3Hint": "Chaque curseur a son bouton IA pour comprendre — et appliquer — un bon réglage.",
+    "step4": "Analyser l'apprentissage",
+    "step4Hint": "Courbe d'apprentissage et récompense par épisode d'évaluation.",
+    "actionKind": {
+      "discrete": "actions discrètes",
+      "continuous": "actions continues"
+    },
+    "obsDim": "{{n}} dimensions d'état",
+    "nActions": "{{n}} actions",
+    "threshold": "Seuil de réussite : {{value}}",
+    "noThreshold": "Pas de seuil officiel",
+    "algoFamily": "Famille",
+    "algoIncompatible": "{{algo}} ne gère pas les {{kind}}",
+    "train": "Entraîner l'agent",
+    "training": "Entraînement en cours…",
+    "cancel": "Annuler",
+    "reset": "Réinitialiser",
+    "progress": "Entraînement… {{pct}} %",
+    "empty": "Choisissez un environnement (étape 1), un algorithme (étape 2), réglez puis lancez l'entraînement pour voir si l'agent apprend.",
+    "error": "Échec de l'entraînement — le backend est-il démarré ?",
+    "cancelled": "Entraînement annulé — les résultats affichés sont partiels.",
+    "metricsTitle": "Résultats",
+    "verdict": {
+      "solvedTitle": "Environnement résolu",
+      "solvedText": "La politique dépasse le seuil de réussite : l'agent maîtrise la tâche.",
+      "unsolvedTitle": "Pas encore résolu",
+      "unsolvedText": "La récompense reste sous le seuil — essayez plus de pas d'entraînement, ou ajustez le taux d'apprentissage.",
+      "doneTitle": "Entraînement terminé",
+      "doneText": "Cet environnement n'a pas de seuil officiel : jugez la qualité à la courbe et à la récompense moyenne."
+    },
+    "fields": {
+      "total_timesteps": { "label": "Pas d'entraînement", "hint": "Nombre total d'interactions agent-environnement. Plus = meilleure politique mais entraînement plus long." },
+      "learning_rate": { "label": "Taux d'apprentissage", "hint": "Pas de descente de gradient du réseau. Haut = apprend vite mais instable ; bas = lent mais stable." },
+      "gamma": { "label": "Facteur d'actualisation (gamma)", "hint": "Poids des récompenses futures : proche de 1 = vision long terme ; plus bas = privilégie le gain immédiat." },
+      "ent_coef": { "label": "Coefficient d'entropie", "hint": "Encourage l'exploration en pénalisant les politiques trop sûres d'elles. 0 = aucune incitation." },
+      "exploration_fraction": { "label": "Fraction d'exploration", "hint": "Part de l'entraînement où l'exploration décroît (epsilon-greedy Deep). L'équivalent de l'exploration du Q-learning tabulaire." }
+    },
+    "groups": {
+      "cyber_defense": "Cyber défense",
+      "classic_control": "Contrôle classique (références)"
+    },
+    "download": "Télécharger l'agent (.zip)",
+    "ai": "IA",
+    "presetsTitle": "Modèles de base",
+    "presetsHint": "Configurations prêtes à entraîner, orientées cyber défense. Un clic les charge — puis on entraîne et on télécharge l'agent.",
+    "presets": {
+      "soc_triage_dqn": { "name": "Triage SOC (DQN)", "desc": "Trier un flux d'alertes sous budget analyste : bloquer les vraies attaques, épargner le trafic légitime. Value-based." },
+      "soc_triage_ppo": { "name": "Triage SOC (PPO)", "desc": "Même problème de triage d'alertes, résolu par une méthode acteur-critique (PPO)." },
+      "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Référence pédagogique rapide : équilibrer un pendule inversé." },
+      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Référence à action continue : redresser un pendule par un couple dosé." }
+    },
+    "envs": {
+      "AlertTriage-v0": { "label": "Triage d'alertes SOC", "desc": "Trier un flux d'alertes de sécurité sous budget de réponse : chaque alerte (score de menace, criticité de l'actif, réputation source, budget restant) appelle une décision — ignorer, surveiller ou bloquer. Bloquer une vraie attaque paie ; bloquer du trafic légitime coûte ; manquer une attaque coûte cher." },
+      "CartPole-v1": { "label": "CartPole", "desc": "Maintenir un pendule inversé en équilibre en déplaçant un chariot à gauche ou à droite." },
+      "Acrobot-v1": { "label": "Acrobot", "desc": "Balancer un double pendule sous-actionné pour hisser son extrémité au-dessus d'une ligne." },
+      "MountainCar-v0": { "label": "MountainCar", "desc": "Prendre de l'élan pour faire gravir une colline à une voiture sous-motorisée." },
+      "Pendulum-v1": { "label": "Pendulum", "desc": "Appliquer un couple continu pour redresser et stabiliser un pendule à la verticale." },
+      "MountainCarContinuous-v0": { "label": "MountainCar (continu)", "desc": "Version à action continue de MountainCar : doser précisément la poussée." }
+    },
+    "algos": {
+      "PPO": { "desc": "Robuste et polyvalent, le choix par défaut. Gère actions discrètes et continues." },
+      "DQN": { "desc": "Le pendant Deep du Q-learning tabulaire. Actions discrètes uniquement." },
+      "A2C": { "desc": "Cousin plus simple et plus rapide de PPO. Gère les deux types d'action." }
+    }
+  },
+  "intro": {
+    "kicker": "Troisième paradigme",
+    "title": "Apprentissage par renforcement",
+    "body": "Pas de jeu de données figé : un <0>agent</0> apprend par essais-erreurs en interagissant avec un <1>environnement</1> — ici un labyrinthe<2> GridWorld</2>. À chaque pas il choisit une action, reçoit une<3> récompense</3>, et ajuste sa stratégie (<4>Q-learning</4>) pour maximiser la récompense cumulée. Il part de la case <5>S</5> et doit rejoindre un but par le chemin le plus court, en évitant les pièges."
+  },
+  "diagram": {
+    "ariaLabel": "Boucle agent-environnement : l'agent agit, l'environnement répond par un état et une récompense",
+    "agent": "Agent",
+    "environment": "Environnement",
+    "action": "action aₜ",
+    "reward": "récompense rₜ₊₁ · état sₜ₊₁"
+  },
+  "presets": {
+    "ariaLabel": "Scénarios prédéfinis",
+    "discovery": { "name": "Découverte", "desc": "Petit monde vide : la convergence idéale." },
+    "maze": { "name": "Labyrinthe", "desc": "Des murs à contourner pour trouver la sortie." },
+    "minefield": { "name": "Champ de mines", "desc": "Des pièges qui punissent l’imprudence." },
+    "bigWorld": { "name": "Grand monde", "desc": "10×10, plusieurs buts : le vrai défi." }
+  },
+  "board": {
+    "ariaLabel": "Éditeur d'environnement",
+    "stepTitle": "Concevoir l’environnement",
+    "stepDesc": "Choisissez un outil puis cliquez sur la grille pour construire le monde.",
+    "toolGroupAriaLabel": "Outil de placement",
+    "tools": { "obstacle": "Obstacle", "trap": "Piège", "erase": "Gomme" },
+    "clear": "Vider",
+    "gridAriaLabel": "Labyrinthe {{size}} par {{size}}",
+    "cellAriaLabel": "Case {{row}},{{col}} : {{title}}",
+    "legendAriaLabel": "Légende",
+    "legend": {
+      "start": "départ",
+      "goal": "but",
+      "trap": "piège",
+      "obstacle": "obstacle",
+      "free": "libre",
+      "perStep": "/ pas"
+    },
+    "cellTitle": {
+      "start": "Départ de l’agent",
+      "goal": "But (récompense {{reward}})",
+      "goalAuto": "But placé automatiquement",
+      "obstacle": "Obstacle (infranchissable)",
+      "trap": "Piège (pénalité {{reward}}, fin d’épisode)",
+      "trapAuto": "Piège placé automatiquement",
+      "free": "Case libre"
+    },
+    "replay": "Rejouer la trajectoire",
+    "replaying": "Rejeu en cours…",
+    "replayStatus": "Trajectoire gloutonne : {{steps}} pas — {{outcome}}",
+    "autoNoteGoals": "+{{n}} but(s) ",
+    "autoNoteAnd": "et ",
+    "autoNoteTraps": "+{{n}} piège(s) ",
+    "autoNoteSuffix": "placé(s) automatiquement à l’entraînement — visibles sur la grille après coup."
+  },
+  "fields": {
+    "size": { "label": "Taille de la grille", "hint": "Côté du labyrinthe N×N — plus grand = plus d’états à explorer." },
+    "n_goals": { "label": "Nombre de buts", "hint": "Cases-objectif (les buts au-delà du coin bas-droit sont placés au hasard)." },
+    "n_traps": { "label": "Pièges aléatoires", "hint": "Pièges ajoutés au hasard, en plus de ceux placés à la main." },
+    "episodes": { "label": "Nombre d'épisodes", "hint": "Parties d’entraînement : plus il y en a, mieux la table Q converge." },
+    "alpha": { "label": "Taux d'apprentissage (α)", "hint": "Vitesse de mise à jour de Q : haut = rapide mais instable." },
+    "gamma": { "label": "Facteur d'actualisation (γ)", "hint": "Poids du futur : proche de 1 = stratégie long terme." },
+    "epsilon": { "label": "Exploration initiale (ε)", "hint": "Part d’actions aléatoires au départ, qui décroît au fil des épisodes." }
+  },
+  "panel": {
+    "ariaLabel": "Hyperparamètres",
+    "stepTitle": "Régler l’algorithme",
+    "stepDesc": "Chaque curseur a son bouton IA pour comprendre — et appliquer — un bon réglage.",
+    "groupEnv": "Environnement",
+    "groupAlgo": "Q-learning",
+    "aiButtonLabel": "IA",
+    "train": "Entraîner l'agent",
+    "training": "Entraînement en cours…",
+    "reset": "Réinitialiser"
+  },
+  "results": {
+    "ariaLabel": "Résultats de l'entraînement",
+    "stepTitle": "Analyser l’apprentissage",
+    "stepDesc": "Courbe de récompense, politique apprise et fonction valeur.",
+    "staleMessage": "Configuration modifiée depuis cet entraînement — ces résultats décrivent l’exécution précédente. Relancez l’entraînement pour les mettre à jour.",
+    "emptyHint": "Construisez le monde (étape 1), réglez l’algorithme (étape 2), puis lancez l’entraînement pour voir si l’agent apprend à rejoindre le but.",
+    "zoomTitle": "Agrandir"
+  },
+  "verdict": {
+    "success": { "title": "L’agent a appris", "text": "Il atteint un but dans {{rate}}% des derniers épisodes : la politique a convergé." },
+    "partial": { "title": "Apprentissage partiel", "text": "La politique progresse mais reste fragile — essayez plus d’épisodes, ou un α plus faible pour stabiliser." },
+    "fail": { "title": "L’agent n’a pas convergé", "text": "Trop peu d’épisodes, un monde trop hostile ou une exploration mal réglée : ajustez et relancez." }
+  },
+  "errors": {
+    "trainFailed": "Échec de l'entraînement",
+    "trainFailedNoBackend": "Échec de l'entraînement — le backend est-il démarré ?"
+  },
+  "outcome": {
+    "goal": "but atteint.",
+    "trap": "tombé dans un piège.",
+    "stuck": "bloqué (la politique pousse contre un mur).",
+    "loop": "boucle sans fin — la politique n’a pas convergé ici."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "unreachable": "Dataset card unreachable.",
+  "defaultTitle": "Dataset card",
+  "close": "Close",
+  "rowsCols": "{{rows}} rows · {{cols}} columns",
+  "synthetic": "synthetic",
+  "realData": "real data",
+  "target": "<strong>Target:</strong> {{target}}",
+  "source": "<strong>Source:</strong> {{source}}",
+  "loading": "Loading…"
+}

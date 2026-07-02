@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import DiagnosticsView from './DiagnosticsView';
 import ConfigControls from './ConfigControls';
 import AgentRecommendation from './AgentRecommendation';
@@ -20,11 +21,11 @@ function AIIcon() {
 }
 
 const TABS = [
-  { id: 'observe', label: 'Observation' },
-  { id: 'graphs', label: 'Graphiques' },
-  { id: 'agent', label: 'Aide IA' },
-  { id: 'config', label: 'Réglages' },
-  { id: 'result', label: 'Résultat' },
+  { id: 'observe', tKey: 'tabs.observe' },
+  { id: 'graphs', tKey: 'tabs.graphs' },
+  { id: 'agent', tKey: 'tabs.agent' },
+  { id: 'config', tKey: 'tabs.config' },
+  { id: 'result', tKey: 'tabs.result' },
 ];
 
 // AssistAnswer is imported from ./AssistAnswer (shared with the badge helpers).
@@ -43,6 +44,7 @@ function PlotImg({ src, alt, className }) {
 }
 
 function Plots({ plots, onZoom, onAssist, assistBusy, assistAnswers, onApplyAssist }) {
+  const { t } = useTranslation('stage');
   if (!plots || !plots.length) return null;
   const srcOf = (p) => (typeof p === 'string' ? p : p.img);
   const capOf = (p) => (typeof p === 'string' ? '' : (p.caption || ''));
@@ -54,16 +56,16 @@ function Plots({ plots, onZoom, onAssist, assistBusy, assistAnswers, onApplyAssi
         const topic = 'graphe: ' + caption;
         return (
           <figure key={i} className="plot-fig">
-            <button type="button" className="plot-thumb" title="Agrandir"
+            <button type="button" className="plot-thumb" title={t('plots.enlarge')}
               onClick={() => onZoom && onZoom({ src, caption })}>
-              <PlotImg src={src} alt={caption || 'figure ' + i} className="plot-img" />
+              <PlotImg src={src} alt={caption || t('plots.figureAlt', { n: i })} className="plot-img" />
               <span className="plot-zoom-hint" aria-hidden="true">⤢</span>
             </button>
             {caption ? (
               <figcaption className="plot-cap">
                 <span className="plot-cap-txt" title={caption}>{caption}</span>
                 {onAssist ? (
-                  <AssistButton topic={topic} label={caption} text="IA"
+                  <AssistButton topic={topic} label={caption} text={t('ai')}
                     onAssist={onAssist} busy={assistBusy} />
                 ) : null}
               </figcaption>
@@ -93,12 +95,13 @@ function ReportCards({ report }) {
 // Pedagogical callout: the "logique de construction du dataset" per stage,
 // colour-coded by learning track (supervised vs unsupervised).
 function Explanation({ explanation, supervised }) {
+  useTranslation('stage');
   if (!explanation || !explanation.why) return null;
   return (
     <div className={supervised ? 'explain explain-sup' : 'explain explain-unsup'}>
       <span className="explain-track">{explanation.track_label}</span>
-      <p><strong>Pourquoi —</strong> {explanation.why}</p>
-      <p><strong>Logique du dataset —</strong> {explanation.dataset_logic}</p>
+      <p><Trans i18nKey="stage:explanation.why" components={{ strong: <strong /> }} values={{ why: explanation.why }} /></p>
+      <p><Trans i18nKey="stage:explanation.datasetLogic" components={{ strong: <strong /> }} values={{ logic: explanation.dataset_logic }} /></p>
       <p className="explain-note">{explanation.supervision}</p>
     </div>
   );
@@ -106,14 +109,15 @@ function Explanation({ explanation, supervised }) {
 
 // AI interpretation / conclusion of a stage's results (natural language).
 function InterpretationView({ data }) {
+  const { t } = useTranslation('stage');
   if (!data) return null;
   const isLLM = data.source === 'llm';
   return (
     <div className="interpret-card">
       <div className="reco-head">
-        <span className={isLLM ? 'reco-badge reco-llm' : 'reco-badge reco-heur'}>Interprétation IA</span>
+        <span className={isLLM ? 'reco-badge reco-llm' : 'reco-badge reco-heur'}>{t('interpretation.badge')}</span>
         {data.model ? <span className="reco-model">{data.model}</span> : null}
-        {data.confidence ? <span className="reco-conf">Confiance {Math.round(data.confidence * 100)}%</span> : null}
+        {data.confidence ? <span className="reco-conf">{t('interpretation.confidence', { pct: Math.round(data.confidence * 100) })}</span> : null}
       </div>
       {data.verdict ? <p className="interpret-verdict">{data.verdict}</p> : null}
       <ul className="reco-rationale">
@@ -125,12 +129,13 @@ function InterpretationView({ data }) {
 
 // Ordinal normalization applied during cleaning (qual_map).
 function NormalizationView({ rows }) {
+  const { t } = useTranslation('stage');
   if (!rows || !rows.length) return null;
   return (
     <div className="norm-ordinale">
-      <h5>Normalisation ordinale appliquée ({rows.length})</h5>
+      <h5>{t('normalization.title', { n: rows.length })}</h5>
       <table className="diag-table">
-        <thead><tr><th>Colonne</th><th>Échelle</th></tr></thead>
+        <thead><tr><th>{t('normalization.column')}</th><th>{t('normalization.scale')}</th></tr></thead>
         <tbody>
           {rows.map((n) => (
             <tr key={n.colonne}><td>{n.colonne}</td><td className="norm-scale">{n.echelle}</td></tr>
@@ -144,6 +149,7 @@ function NormalizationView({ rows }) {
 // Business reading of the clusters (unsupervised track) — real average values per
 // cluster + majority categoricals + business label.
 function ClusterSummary({ rows, onApplyLabels, busy }) {
+  const { t } = useTranslation('stage');
   const [names, setNames] = useState({});
   if (!rows || !rows.length) return null;
   const numKeys = Object.keys(rows[0].moyennes || {});
@@ -158,12 +164,12 @@ function ClusterSummary({ rows, onApplyLabels, busy }) {
   };
   return (
     <div className="cluster-summary">
-      <h5>Interprétation métier des clusters (moyennes réelles)</h5>
+      <h5>{t('cluster.title')}</h5>
       <div className="coltable-scroll">
         <table className="diag-table">
           <thead>
             <tr>
-              <th>Cluster</th><th>Label métier</th><th>Taille</th>
+              <th>{t('cluster.cluster')}</th><th>{t('cluster.businessLabel')}</th><th>{t('cluster.size')}</th>
               {numKeys.map((k) => <th key={k}>{k}</th>)}
               {catKeys.map((k) => <th key={k}>{k}</th>)}
             </tr>
@@ -173,7 +179,7 @@ function ClusterSummary({ rows, onApplyLabels, busy }) {
               <tr key={r.cluster}>
                 <td>{r.cluster}</td>
                 <td>{editable ? (
-                  <input className="cluster-name-input" value={nameOf(r)} aria-label={'Nom du cluster ' + r.cluster}
+                  <input className="cluster-name-input" value={nameOf(r)} aria-label={t('cluster.nameAriaLabel', { cluster: r.cluster })}
                     onChange={(e) => setNames((p) => ({ ...p, [r.cluster]: e.target.value }))} />
                 ) : <strong>{r.label_metier}</strong>}</td>
                 <td>{r.taille}</td>
@@ -186,7 +192,7 @@ function ClusterSummary({ rows, onApplyLabels, busy }) {
       </div>
       {editable ? (
         <button type="button" className="btn btn-primary cluster-apply" onClick={apply} disabled={busy || !dirty}>
-          Appliquer les noms
+          {t('cluster.applyNames')}
         </button>
       ) : null}
     </div>
@@ -195,12 +201,13 @@ function ClusterSummary({ rows, onApplyLabels, busy }) {
 
 // Per-class precision / recall / F1 (classification_report).
 function ClassReport({ rows }) {
+  const { t } = useTranslation('stage');
   if (!rows || !rows.length) return null;
   return (
     <div className="cluster-summary">
-      <h5>Rapport par classe (précision / rappel / F1)</h5>
+      <h5>{t('classReport.title')}</h5>
       <table className="diag-table">
-        <thead><tr><th>Classe</th><th>Précision</th><th>Rappel</th><th>F1</th><th>Support</th></tr></thead>
+        <thead><tr><th>{t('classReport.class')}</th><th>{t('classReport.precision')}</th><th>{t('classReport.recall')}</th><th>{t('classReport.f1')}</th><th>{t('classReport.support')}</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.classe}>
@@ -216,11 +223,12 @@ function ClassReport({ rows }) {
 
 // Most abnormal rows (unsupervised anomaly detection) — raw values + anomaly score.
 function AnomalySummary({ rows }) {
+  const { t } = useTranslation('stage');
   if (!rows || !rows.length) return null;
   const cols = Object.keys(rows[0]).filter((k) => k !== 'score');
   return (
     <div className="cluster-summary">
-      <h5>Top anomalies (lignes les plus atypiques, valeurs réelles)</h5>
+      <h5>{t('anomaly.title')}</h5>
       <div className="coltable-scroll">
         <table className="diag-table">
           <thead>
@@ -242,13 +250,14 @@ function AnomalySummary({ rows }) {
 
 // Overfitting control: train vs test gap + cross-validation.
 function OverfitControl({ data }) {
+  const { t } = useTranslation('stage');
   if (!data) return null;
   const verdict = data.verdict;
   const entries = Object.entries(data).filter(([k]) => k !== 'verdict');
   const bad = verdict && verdict.indexOf('surapprentissage') === 0;
   return (
     <div className="overfit-control">
-      <h5>Contrôle du surapprentissage (train / test / validation croisée)</h5>
+      <h5>{t('overfit.title')}</h5>
       <table className="diag-table">
         <tbody>
           {entries.map(([k, v]) => (
@@ -263,6 +272,7 @@ function OverfitControl({ data }) {
 
 // Deploy controls shown once the model has been evaluated.
 function DeploySection({ apiBase, sessionId }) {
+  const { t } = useTranslation('stage');
   const [features, setFeatures] = useState('{}');
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState(null);
@@ -274,28 +284,29 @@ function DeploySection({ apiBase, sessionId }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: features,
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Erreur API'); return; }
+      if (!res.ok) { setError(data.detail || t('deploy.apiError')); return; }
       setPrediction(data.prediction);
     } catch (e) {
-      setError('JSON invalide ou API injoignable');
+      setError(t('deploy.jsonError'));
     }
   };
 
   return (
     <div className="deploy">
-      <h4>Déploiement</h4>
+      <h4>{t('deploy.title')}</h4>
       <a className="btn btn-secondary" href={apiBase + '/api/session/' + sessionId + '/download-model'}
-         target="_blank" rel="noreferrer">Télécharger le modèle (.pkl)</a>
-      <p className="muted deploy-hint">Test d'inférence — objet JSON des variables finales (vide = vecteur nul) :</p>
+         target="_blank" rel="noreferrer">{t('deploy.download')}</a>
+      <p className="muted deploy-hint">{t('deploy.hint')}</p>
       <textarea className="deploy-input" rows="3" value={features} onChange={(e) => setFeatures(e.target.value)} />
-      <button className="btn btn-primary" onClick={test}>Tester la prédiction</button>
-      {prediction !== null ? <div className="deploy-result">Résultat : <strong>{String(prediction)}</strong></div> : null}
+      <button className="btn btn-primary" onClick={test}>{t('deploy.test')}</button>
+      {prediction !== null ? <div className="deploy-result">{t('deploy.result')} <strong>{String(prediction)}</strong></div> : null}
       {error ? <div className="warn-text">{error}</div> : null}
     </div>
   );
 }
 
 export default function StagePanel(props) {
+  const { t } = useTranslation('stage');
   const {
     stage, config, onConfigChange, reco, recoLoading, onAsk, onApply, onApplyKey,
     onRun, onNext, busy, apiBase, sessionId, isLast,
@@ -316,7 +327,7 @@ export default function StagePanel(props) {
     prevResult.current = hasResult;
   }, [hasResult]);
 
-  if (!stage) return <div className="stage-panel"><p className="muted">Sélectionnez une étape.</p></div>;
+  if (!stage) return <div className="stage-panel"><p className="muted">{t('selectStage')}</p></div>;
 
   const meta = stage.meta;
   const ran = stage.status && stage.status.ran;
@@ -339,20 +350,20 @@ export default function StagePanel(props) {
 
       <Explanation explanation={stage.explanation} supervised={stage.supervised} />
 
-      {stale ? <div className="banner banner-stale">Une étape amont a changé — rejouez cette étape pour propager.</div> : null}
+      {stale ? <div className="banner banner-stale">{t('banners.stale')}</div> : null}
       {blocked ? <div className="banner banner-block">{stage.input_error}</div> : null}
 
       {!blocked ? (
         <>
           <div className="tabs" role="tablist">
-            {TABS.map((t) => {
-              const disabled = t.id === 'result' && !hasResult;
+            {TABS.map((item) => {
+              const disabled = item.id === 'result' && !hasResult;
               return (
-                <button key={t.id} type="button" className={tab === t.id ? 'tab tab-on' : 'tab'}
-                  disabled={disabled} onClick={() => setTab(t.id)}>
-                  {t.id === 'agent' ? <AIIcon /> : null}{t.label}
-                  {t.id === 'result' && hasResult ? <span className="tab-dot" /> : null}
-                  {t.id === 'graphs' && plotCount ? <span className="tab-count">{plotCount}</span> : null}
+                <button key={item.id} type="button" className={tab === item.id ? 'tab tab-on' : 'tab'}
+                  disabled={disabled} onClick={() => setTab(item.id)}>
+                  {item.id === 'agent' ? <AIIcon /> : null}{t(item.tKey)}
+                  {item.id === 'result' && hasResult ? <span className="tab-dot" /> : null}
+                  {item.id === 'graphs' && plotCount ? <span className="tab-count">{plotCount}</span> : null}
                 </button>
               );
             })}
@@ -362,8 +373,8 @@ export default function StagePanel(props) {
             {tab === 'observe' ? (
               <>
                 <div className="substep-bar">
-                  <span className="substep-hint">Lecture des diagnostics</span>
-                  <AssistButton topic="diagnostics" label="Explique ces diagnostics"
+                  <span className="substep-hint">{t('hints.readDiagnostics')}</span>
+                  <AssistButton topic="diagnostics" label={t('assist.explainDiagnostics')}
                     onAssist={onAssist} busy={assistBusy} />
                 </div>
                 <AssistAnswer topic="diagnostics" answers={assistAnswers} onApply={onApplyAssist} />
@@ -389,8 +400,8 @@ export default function StagePanel(props) {
                   {diagPlots.length ? (
                     <>
                       <div className="substep-bar">
-                        <span className="substep-hint">Graphiques — diagnostics</span>
-                        <AssistButton topic="diagnostics" label="Explique ces graphiques"
+                        <span className="substep-hint">{t('hints.plotsDiagnostics')}</span>
+                        <AssistButton topic="diagnostics" label={t('assist.explainPlots')}
                           onAssist={onAssist} busy={assistBusy} />
                       </div>
                       <Plots plots={diagPlots} onZoom={setZoom} onAssist={onAssist}
@@ -400,21 +411,21 @@ export default function StagePanel(props) {
                   {resultPlots.length ? (
                     <>
                       <div className="substep-bar">
-                        <span className="substep-hint">Graphiques — résultat de l'étape</span>
+                        <span className="substep-hint">{t('hints.plotsResult')}</span>
                       </div>
                       <Plots plots={resultPlots} onZoom={setZoom} onAssist={onAssist}
                         assistBusy={assistBusy} assistAnswers={assistAnswers} onApplyAssist={onApplyAssist} />
                     </>
                   ) : null}
                 </>
-              ) : <p className="muted">Aucun graphique pour cette étape.</p>
+              ) : <p className="muted">{t('hints.noPlots')}</p>
             ) : null}
 
             {tab === 'agent' ? (
               <>
                 <button className="btn btn-ai" onClick={onAsk} disabled={recoLoading || busy}
                   data-prompt-loc="recommend">
-                  <AIIcon />{recoLoading ? 'Analyse…' : "Demander un affinage à l'IA"}
+                  <AIIcon />{recoLoading ? t('busy.analyzing') : t('actions.askRefine')}
                 </button>
                 <AgentRecommendation reco={reco} loading={recoLoading} onApply={onApply}
                   onApplyKey={onApplyKey} currentConfig={config} />
@@ -424,8 +435,8 @@ export default function StagePanel(props) {
             {tab === 'config' ? (
               <>
                 <div className="substep-bar">
-                  <span className="substep-hint">Réglages — vous décidez</span>
-                  <AssistButton topic="decision" label="Que dois-je décider ?"
+                  <span className="substep-hint">{t('hints.settings')}</span>
+                  <AssistButton topic="decision" label={t('assist.whatToDecide')}
                     onAssist={onAssist} busy={assistBusy} />
                 </div>
                 <AssistAnswer topic="decision" answers={assistAnswers} onApply={onApplyAssist} />
@@ -438,16 +449,16 @@ export default function StagePanel(props) {
               hasResult ? (
                 <>
                   <div className="substep-bar">
-                    <span className="substep-hint">Résultat de l'étape</span>
-                    <AssistButton topic="result" label="Explique ce résultat"
+                    <span className="substep-hint">{t('hints.stageResult')}</span>
+                    <AssistButton topic="result" label={t('assist.explainResult')}
                       onAssist={onAssist} busy={assistBusy} />
                   </div>
                   <AssistAnswer topic="result" answers={assistAnswers} onApply={onApplyAssist} />
                   {stage.result.diagnostics && stage.result.diagnostics.leakage_free ? (
                     <div className="lb-chips">
                       <span className="lb-chip lb-chip-clean"
-                        title="Encodeurs, échelles et PCA ajustés sur le train seul : ces scores sont mesurés sans fuite de prétraitement.">
-                        prétraitement anti-fuite
+                        title={t('leakageFree.title')}>
+                        {t('leakageFree.label')}
                       </span>
                     </div>
                   ) : null}
@@ -468,8 +479,8 @@ export default function StagePanel(props) {
                   {stage.result.diagnostics && stage.result.diagnostics.controle_surapprentissage ? (
                     <>
                       <div className="substep-bar">
-                        <span className="substep-hint">Contrôle du surapprentissage</span>
-                        <AssistButton topic="controle_surapprentissage" label="Explique le surapprentissage"
+                        <span className="substep-hint">{t('hints.overfitControl')}</span>
+                        <AssistButton topic="controle_surapprentissage" label={t('assist.explainOverfit')}
                           onAssist={onAssist} busy={assistBusy} />
                       </div>
                       <AssistAnswer topic="controle_surapprentissage" answers={assistAnswers} onApply={onApplyAssist} />
@@ -480,8 +491,8 @@ export default function StagePanel(props) {
                     && stage.result.diagnostics.operational ? (
                     <>
                       <div className="substep-bar">
-                        <span className="substep-hint">Vue opérationnelle SOC / threat intel</span>
-                        <AssistButton topic="operational" label="Explique le point de fonctionnement"
+                        <span className="substep-hint">{t('hints.operationalView')}</span>
+                        <AssistButton topic="operational" label={t('assist.explainOperatingPoint')}
                           onAssist={onAssist} busy={assistBusy} />
                       </div>
                       <AssistAnswer topic="operational" answers={assistAnswers} onApply={onApplyAssist} />
@@ -492,8 +503,8 @@ export default function StagePanel(props) {
                   {meta.stage_id === 'evaluate' ? (
                     <>
                       <div className="substep-bar">
-                        <span className="substep-hint">Surveillance de dérive & stabilité (post-déploiement)</span>
-                        <AssistButton topic="monitoring" label="Explique la surveillance de dérive"
+                        <span className="substep-hint">{t('hints.monitoring')}</span>
+                        <AssistButton topic="monitoring" label={t('assist.explainMonitoring')}
                           onAssist={onAssist} busy={assistBusy} />
                       </div>
                       <AssistAnswer topic="monitoring" answers={assistAnswers} onApply={onApplyAssist} />
@@ -508,27 +519,27 @@ export default function StagePanel(props) {
                   ) : null}
                   {stage.result.plots && stage.result.plots.length ? (
                     <p className="muted plots-pointer">
-                      {stage.result.plots.length} graphique(s) — voir l'onglet « Graphiques ».
+                      {t('hints.plotsPointer', { n: stage.result.plots.length })}
                     </p>
                   ) : null}
                   <button className="btn btn-ai" onClick={onInterpret} disabled={interpretLoading}
                     data-prompt-loc="interpret">
-                    <AIIcon />{interpretLoading ? 'Analyse…' : "Demander une interprétation à l'IA"}
+                    <AIIcon />{interpretLoading ? t('busy.analyzing') : t('actions.askInterpretation')}
                   </button>
                   <InterpretationView data={interpretation} />
                   {meta.stage_id === 'evaluate' ? <DeploySection apiBase={apiBase} sessionId={sessionId} /> : null}
                 </>
-              ) : <p className="muted">Exécutez l'étape pour voir le résultat.</p>
+              ) : <p className="muted">{t('hints.runToSeeResult')}</p>
             ) : null}
           </div>
 
           <div className="stage-actions">
             <button className="btn btn-primary btn-run" onClick={onRun} disabled={busy}>
-              {busy ? 'Exécution…' : ran ? 'Rejouer cette étape' : 'Exécuter cette étape'}
+              {busy ? t('busy.running') : ran ? t('actions.replay') : t('actions.run')}
             </button>
             {ran && !isLast ? (
               <button className="btn btn-secondary" onClick={onNext} disabled={busy}>
-                Valider et passer à l'étape suivante ›
+                {t('actions.validateNext')}
               </button>
             ) : null}
           </div>

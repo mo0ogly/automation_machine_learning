@@ -1,0 +1,59 @@
+{
+  "problemTypes": {
+    "regression": "Regression",
+    "classification": "Classification",
+    "clustering": "Clustering",
+    "anomaly": "Anomaly detection"
+  },
+  "errors": {
+    "loadFailed": "Load error",
+    "apiUnreachablePort8000": "API unreachable — is the backend running on :8000?",
+    "sessionNotFound": "Session not found",
+    "apiUnreachableStartBackend": "API unreachable — start the backend (uvicorn) on :8000.",
+    "generic": "Error",
+    "agentUnavailable": "Agent unavailable",
+    "agentUnreachable": "Agent unreachable.",
+    "interpretationUnavailable": "Interpretation unavailable",
+    "interpretationUnreachable": "Interpretation unreachable.",
+    "assistUnavailable": "Assistant unavailable",
+    "assistUnreachable": "Assistant unreachable.",
+    "runFailed": "Run failed",
+    "runFailedDot": "Run failed.",
+    "renameFailed": "Rename failed",
+    "renameClustersFailed": "Cluster rename failed."
+  },
+  "journal": {
+    "actionApplied": "Action applied",
+    "appliedPrefix": "Applied: "
+  },
+  "landing": {
+    "title": "Build a model, step by step",
+    "pipelineDescription": "Agentic pipeline: Cleaning › Transformation › Integration › Split › Model › Fine-tuning › Evaluation › Explainability. At each step the agent proposes a refinement; the expert validates or adjusts.",
+    "importCsv": "Import a CSV",
+    "chooseCsvFile": "Choose a CSV file",
+    "orDemoDataset": "Or a demo dataset",
+    "cyberDatasets": "Cyber datasets",
+    "otherDatasets": "Other datasets",
+    "recentSessions": "Recent sessions",
+    "manageSessions": "Manage all sessions…",
+    "reopenSession": "Reopen this session",
+    "unnamed": "(unnamed)",
+    "noModel": "no model",
+    "agentActive": "AI agent active",
+    "noAgentConfigured": "No AI backend configured — heuristic recommendations",
+    "datasetCardTitle": "View dataset card"
+  },
+  "lab": {
+    "overview": "{{rows}} rows · {{cols}} columns",
+    "supervised": "Supervised",
+    "unsupervised": "Unsupervised",
+    "whySupervised": "Why supervised?",
+    "whyUnsupervised": "Why unsupervised?",
+    "explainType": "Explain the « {{type}} » type",
+    "target": "target",
+    "targetRole": "Role of the « {{target}} » target",
+    "mySessions": "My sessions",
+    "newAnalysis": "New analysis",
+    "copilotTitle": "AI cockpit — copilot"
+  }
+}

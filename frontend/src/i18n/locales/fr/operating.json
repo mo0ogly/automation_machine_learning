@@ -1,0 +1,80 @@
+{
+  "title": "Point de fonctionnement opérationnel",
+  "titleSoc": "Point de fonctionnement opérationnel (SOC / threat intel)",
+  "notApplicable": "Analyse opérationnelle non applicable à ce modèle.",
+  "focusLabel": "Classe à escalader (une-contre-le-reste) :",
+  "context": {
+    "escalate": "Escalade « {{cls}} » vs le reste.",
+    "positiveClass": "Classe positive : {{cls}}."
+  },
+  "slider": {
+    "label": "Seuil de décision :",
+    "allAlert": "tout est alerte",
+    "noAlert": "rien n'est alerte"
+  },
+  "cost": {
+    "fn": "Coût attaque manquée (FN)",
+    "fp": "Coût fausse alerte (FP)"
+  },
+  "confusion": {
+    "tp": "Détection correcte",
+    "fn": "Attaque manquée",
+    "fp": "Fausse alerte",
+    "tn": "Trafic normal"
+  },
+  "metric": {
+    "recall": "Rappel (détection)",
+    "precision": "Précision",
+    "specificity": "Spécificité",
+    "fpr": "Taux de fausses alertes",
+    "fbeta": "F2 (rappel prioritaire)",
+    "alerts": "Alertes",
+    "cost": "Coût attendu"
+  },
+  "reco": {
+    "label": "Points recommandés :",
+    "minCost": "Coût minimal",
+    "maxFbeta": "F2 max",
+    "youden": "Youden J",
+    "fprBudget": "Budget FPR 1%",
+    "applyThreshold": "Appliquer le seuil {{value}}"
+  },
+  "calibration": {
+    "title": "Calibration des probabilités",
+    "note": "Un score de 0.8 devrait correspondre à ~80% de vrais positifs (ECE proche de 0 = fiable pour trier par score)."
+  },
+  "robust": {
+    "title": "Métriques robustes au déséquilibre",
+    "balancedAccuracy": "Balanced accuracy",
+    "cohenKappa": "Cohen's kappa"
+  },
+  "alertBudget": {
+    "title": "Budget d'alertes (file triée par score)",
+    "th": {
+      "k": "k alertes revues",
+      "precisionAtK": "Précision@k",
+      "detectionAtK": "Détection@k",
+      "truePositives": "Vrais positifs"
+    }
+  },
+  "playbook": {
+    "title": "Fiche SOC / threat intel — déploiement"
+  },
+  "anomalyBudget": {
+    "title": "Budget d'alertes selon le seuil d'anomalie",
+    "th": {
+      "quantile": "Quantile",
+      "scoreThreshold": "Seuil de score",
+      "alerts": "Alertes",
+      "alertsPer1000": "Alertes / 1000"
+    }
+  },
+  "tolerance": {
+    "title": "Bandes de tolérance (fiabilité opérationnelle)",
+    "mae": "Erreur absolue moyenne (MAE) : <strong>{{mae}}</strong>.",
+    "th": {
+      "tolerance": "Tolérance (±)",
+      "withinBand": "Part des prédictions dans la bande"
+    }
+  }
+}

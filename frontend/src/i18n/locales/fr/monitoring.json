@@ -1,0 +1,109 @@
+{
+  "intro": "Chargez un nouveau lot de données (mêmes colonnes que l'entraînement) pour mesurer la dérive vs le jeu d'entraînement : le vrai risque d'un détecteur en production n'est pas matériel mais la <strong>dérive</strong> (données et concept).",
+  "uploadBatch": "Charger un lot à surveiller (CSV)",
+  "analysing": "Analyse…",
+  "unavailable": "Surveillance indisponible.",
+  "unavailableShort": "Indisponible.",
+  "notApplicable": "Surveillance non applicable.",
+  "th": {
+    "variable": "Variable",
+    "level": "Niveau"
+  },
+  "level": {
+    "major": "majeure",
+    "moderate": "modérée",
+    "none": "stable",
+    "stable": "stable"
+  },
+  "overall": {
+    "major": "DÉRIVE MAJEURE",
+    "moderate": "Dérive modérée",
+    "stable": "Stable"
+  },
+  "cause": {
+    "title": "Cause probable",
+    "confidence": "confiance",
+    "actionLabel": "Action :",
+    "others": "{{count}} autre(s) cause(s) possible(s)"
+  },
+  "env": {
+    "noFingerprint": "Empreinte d'entraînement indisponible (modèle antérieur à cette version).",
+    "differs": "L'environnement diffère de celui de l'entraînement — à écarter avant de conclure à une dérive :",
+    "field": "Champ",
+    "training": "Entraînement",
+    "now": "Maintenant",
+    "conform": "Conforme à l'entraînement (versions et plateforme identiques).",
+    "opMeta": "Métadonnées opérationnelles fournies : {{data}}."
+  },
+  "jitter": {
+    "title": "Stabilité sous perturbation (protocole jitter)",
+    "intro": "Le protocole injecte un bruit gaussien croissant (fractions de l'écart-type de chaque variable) dans le jeu de référence, re-score, et mesure le <strong>taux de bascule</strong> des verdicts. Un détecteur qui bascule à 0,1&nbsp;% de bruit est instable en environnement critique — quel que soit le matériel qui l'exécute.",
+    "measuring": "Mesure en cours…",
+    "measure": "Mesurer la stabilité (jitter)",
+    "unavailable": "Protocole jitter indisponible.",
+    "refRows": "{{rows}} lignes de référence · {{repeats}} répétitions par amplitude",
+    "breakingPoint": "Point de rupture : les verdicts basculent au-delà de la tolérance ({{tol}}) dès un bruit de {{eps}} de l'écart-type.",
+    "noBreak": "Aucune rupture : les verdicts tiennent jusqu'à {{limit}}",
+    "noiseStdSuffix": "{{eps}} de l'écart-type de bruit.",
+    "maxAmplitude": "l'amplitude maximale testée.",
+    "notApplicable": "Protocole non applicable.",
+    "plotAlt": "stabilité jitter",
+    "th": {
+      "noise": "Bruit (% écart-type)",
+      "flip": "Bascule moyenne",
+      "minmax": "Min–max"
+    }
+  },
+  "jitterVerdict": {
+    "stable": "Stable",
+    "sensible": "Sensible au bruit",
+    "instable": "INSTABLE"
+  },
+  "plotAlt": "figure",
+  "heroSub": "{{batch}} lignes vs {{ref}} de référence",
+  "tile": {
+    "tracked": "variables suivies",
+    "majorDrift": "dérives majeures",
+    "moderateDrift": "dérives modérées",
+    "batchRows": "lignes du lot"
+  },
+  "schema": {
+    "changed": "Schéma différent de l'entraînement.",
+    "missing": "{{count}} colonne(s) manquante(s) (imputées) : {{list}}.",
+    "extra": "{{count}} colonne(s) en trop (ignorées) : {{list}}.",
+    "artefact": "Les chiffres de dérive ci-dessous sont en partie des artefacts de cette réconciliation."
+  },
+  "section": {
+    "dataDrift": "Dérive des données (PSI + Kolmogorov-Smirnov)",
+    "conceptDrift": "Dérive de concept (distribution des prédictions)",
+    "reproducibility": "Reproductibilité de l'inférence",
+    "recalibration": "Re-calibration du seuil",
+    "environment": "Environnement d'exécution"
+  },
+  "dataDrift": {
+    "summary": "{{major}} variable(s) en dérive majeure, {{moderate}} modérée(s) sur {{features}}.",
+    "ksUnavailable": "Test de Kolmogorov-Smirnov indisponible pour ce lot."
+  },
+  "concept": {
+    "categorical": "Distance de variation totale = <strong>{{tv}}</strong> (niveau {{level}}). Un saut du taux de la classe positive = le « normal » du détecteur a bougé.",
+    "regression": "PSI des prédictions = <strong>{{psi}}</strong> · moyenne {{ref}} → {{cur}}."
+  },
+  "repro": {
+    "determinism": "Déterminisme",
+    "fail": "ÉCHEC",
+    "consistency": "Cohérence éval",
+    "divergence": "divergence",
+    "note": "C'est la version mesurable du « jitter » : un écart ici = corruption silencieuse du pipeline."
+  },
+  "recal": {
+    "threshold": "seuil",
+    "recall": "rappel",
+    "precision": "précision",
+    "note": "Seuil coût-minimal recommandé sur ce lot. Comparez au seuil déployé : s'il a bougé, re-calibrez.",
+    "unlabelled": "Lot non labellisé."
+  },
+  "meta": {
+    "summary": "Contexte d'exécution (optionnel)",
+    "note": "Métadonnées opérationnelles du lot en JSON — utilisées pour distinguer un changement d'environnement d'un changement de comportement du modèle. Ex. :"
+  }
+}

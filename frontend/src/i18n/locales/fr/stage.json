@@ -1,0 +1,99 @@
+{
+  "tabs": {
+    "observe": "Observation",
+    "graphs": "Graphiques",
+    "agent": "Aide IA",
+    "config": "Réglages",
+    "result": "Résultat"
+  },
+  "plots": {
+    "enlarge": "Agrandir",
+    "figureAlt": "figure {{n}}"
+  },
+  "ai": "IA",
+  "selectStage": "Sélectionnez une étape.",
+  "banners": {
+    "stale": "Une étape amont a changé — rejouez cette étape pour propager."
+  },
+  "hints": {
+    "readDiagnostics": "Lecture des diagnostics",
+    "plotsDiagnostics": "Graphiques — diagnostics",
+    "plotsResult": "Graphiques — résultat de l'étape",
+    "noPlots": "Aucun graphique pour cette étape.",
+    "settings": "Réglages — vous décidez",
+    "stageResult": "Résultat de l'étape",
+    "overfitControl": "Contrôle du surapprentissage",
+    "operationalView": "Vue opérationnelle SOC / threat intel",
+    "monitoring": "Surveillance de dérive & stabilité (post-déploiement)",
+    "plotsPointer": "{{n}} graphique(s) — voir l'onglet « Graphiques ».",
+    "runToSeeResult": "Exécutez l'étape pour voir le résultat."
+  },
+  "assist": {
+    "explainDiagnostics": "Explique ces diagnostics",
+    "explainPlots": "Explique ces graphiques",
+    "whatToDecide": "Que dois-je décider ?",
+    "explainResult": "Explique ce résultat",
+    "explainOverfit": "Explique le surapprentissage",
+    "explainOperatingPoint": "Explique le point de fonctionnement",
+    "explainMonitoring": "Explique la surveillance de dérive"
+  },
+  "actions": {
+    "askRefine": "Demander un affinage à l'IA",
+    "askInterpretation": "Demander une interprétation à l'IA",
+    "run": "Exécuter cette étape",
+    "replay": "Rejouer cette étape",
+    "validateNext": "Valider et passer à l'étape suivante ›"
+  },
+  "busy": {
+    "analyzing": "Analyse…",
+    "running": "Exécution…"
+  },
+  "leakageFree": {
+    "title": "Encodeurs, échelles et PCA ajustés sur le train seul : ces scores sont mesurés sans fuite de prétraitement.",
+    "label": "prétraitement anti-fuite"
+  },
+  "explanation": {
+    "why": "<strong>Pourquoi —</strong> {{why}}",
+    "datasetLogic": "<strong>Logique du dataset —</strong> {{logic}}"
+  },
+  "interpretation": {
+    "badge": "Interprétation IA",
+    "confidence": "Confiance {{pct}}%"
+  },
+  "normalization": {
+    "title": "Normalisation ordinale appliquée ({{n}})",
+    "column": "Colonne",
+    "scale": "Échelle"
+  },
+  "cluster": {
+    "title": "Interprétation métier des clusters (moyennes réelles)",
+    "cluster": "Cluster",
+    "businessLabel": "Label métier",
+    "size": "Taille",
+    "nameAriaLabel": "Nom du cluster {{cluster}}",
+    "applyNames": "Appliquer les noms"
+  },
+  "classReport": {
+    "title": "Rapport par classe (précision / rappel / F1)",
+    "class": "Classe",
+    "precision": "Précision",
+    "recall": "Rappel",
+    "f1": "F1",
+    "support": "Support"
+  },
+  "anomaly": {
+    "title": "Top anomalies (lignes les plus atypiques, valeurs réelles)"
+  },
+  "overfit": {
+    "title": "Contrôle du surapprentissage (train / test / validation croisée)"
+  },
+  "deploy": {
+    "title": "Déploiement",
+    "download": "Télécharger le modèle (.pkl)",
+    "hint": "Test d'inférence — objet JSON des variables finales (vide = vecteur nul) :",
+    "test": "Tester la prédiction",
+    "result": "Résultat :",
+    "apiError": "Erreur API",
+    "jsonError": "JSON invalide ou API injoignable"
+  }
+}

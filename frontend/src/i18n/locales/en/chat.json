@@ -1,0 +1,21 @@
+{
+  "sourceAi": "AI",
+  "sourceError": "error",
+  "sourceSystem": "system",
+  "errEmptyMessage": "Empty message.",
+  "errUnreachable": "The copilot is unreachable.",
+  "confirmClear": "Clear the whole conversation?",
+  "defaultTitle": "AI cockpit",
+  "noSession": "No active session. Load a dataset in the Pipeline tab to chat with the copilot about your data and model.",
+  "settingsTooltip": "Inference settings (temperature, tokens…)",
+  "settings": "Settings",
+  "clearTooltip": "Clear the conversation",
+  "clear": "Clear",
+  "conversationSettingsTitle": "Settings for this conversation (override the active backend)",
+  "emptyThread": "Ask a question about your dataset, a pipeline step, or your model. The copilot factors in the context and the full conversation history.",
+  "thinking": "The copilot is thinking…",
+  "recallSummary_one": "Memory: {{count}} older exchange recalled",
+  "recallSummary_other": "Memory: {{count}} older exchanges recalled",
+  "composePlaceholder": "Write your question… (Ctrl+Enter to send)",
+  "send": "Send"
+}

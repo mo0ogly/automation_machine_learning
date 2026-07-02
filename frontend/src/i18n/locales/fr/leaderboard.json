@@ -1,0 +1,33 @@
+{
+  "title": "Comparaison des modèles",
+  "titleWithMetric": "Comparaison des modèles — classé par {{metric}}",
+  "assistLabel": "Explique le classement",
+  "cvChipTitle": "Chaque candidat est évalué par validation croisée sur le train uniquement.",
+  "cvChipText": "CV {{folds}} plis — jeu de test vierge",
+  "leakageChipTitle": "Encodeurs, échelles et PCA ajustés sur le train seul (préprocesseur anti-fuite).",
+  "leakageChipText": "prétraitement anti-fuite",
+  "helpText": "Moyenne ± écart-type sur les plis, hyperparamètres par défaut. Cliquez un en-tête pour trier ; choisissez une famille — le fine-tuning affinera ses hyperparamètres ensuite.",
+  "modelColumn": "Modèle",
+  "sortTitle": "Trier par cette colonne",
+  "recommendedBadge": "recommandé",
+  "chosenLabel": "choisi",
+  "chooseButton": "Choisir",
+  "columns": {
+    "rmse_cv": "RMSE (CV)",
+    "r2_cv": "R² (CV)",
+    "r2_train": "R² (train)",
+    "accuracy_cv": "Accuracy (CV)",
+    "f1_cv": "F1 (CV)",
+    "accuracy_train": "Accuracy (train)",
+    "overfit": "Surapprentissage",
+    "rmse_test": "RMSE (test)",
+    "r2_test": "R² (test)",
+    "accuracy_test": "Accuracy (test)",
+    "f1_test": "F1 (test)"
+  },
+  "overfit": {
+    "healthy": "sain",
+    "high": "élevé",
+    "moderate": "modéré"
+  }
+}

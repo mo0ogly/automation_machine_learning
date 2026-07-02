@@ -1,0 +1,36 @@
+{
+  "problemType": {
+    "regression": "Régression",
+    "classification": "Classification",
+    "clustering": "Clustering",
+    "anomaly": "Détection d'anomalies"
+  },
+  "loadError": "Erreur de chargement",
+  "apiUnreachable": "API injoignable — le backend tourne-t-il sur :8000 ?",
+  "apiUnreachableShort": "API injoignable.",
+  "sessionNotFound": "Session introuvable",
+  "renameFailed": "Échec du renommage",
+  "deleteFailed": "Échec de la suppression",
+  "title": "Mes sessions",
+  "close": "Fermer",
+  "note": "Rouvrez, renommez ou supprimez une analyse. Les sessions et leurs modèles sont conservés entre les redémarrages.",
+  "loading": "Chargement…",
+  "empty": "Aucune session enregistrée pour l'instant.",
+  "columns": {
+    "name": "Nom",
+    "type": "Type",
+    "model": "Modèle",
+    "size": "Taille",
+    "modified": "Modifiée"
+  },
+  "validate": "Valider",
+  "cancel": "Annuler",
+  "unnamed": "(sans nom)",
+  "activeSuffix": " · active",
+  "confirmDelete": "Supprimer ?",
+  "yes": "Oui",
+  "no": "Non",
+  "open": "Ouvrir",
+  "rename": "Renommer",
+  "delete": "Supprimer"
+}

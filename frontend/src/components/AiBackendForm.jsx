@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Guided "add a backend" form: provider + model + optional base URL + API key,
 // all in one submission (create -> store key -> activate). The id is auto-derived
@@ -11,13 +12,15 @@ const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-')
   .replace(/^-+|-+$/g, '').slice(0, 40);
 
 function TestResult({ state }) {
+  const { t } = useTranslation('aiBackendForm');
   if (!state) return null;
-  if (state.phase === 'testing') return <span className="ai-test-pending">test…</span>;
-  if (state.phase === 'ok') return <span className="ai-test-ok">OK {state.ms} ms — « {state.text} »</span>;
-  return <span className="ai-test-err">échec {state.ms} ms : {state.error}</span>;
+  if (state.phase === 'testing') return <span className="ai-test-pending">{t('testPending')}</span>;
+  if (state.phase === 'ok') return <span className="ai-test-ok">{t('testOk', { ms: state.ms, text: state.text })}</span>;
+  return <span className="ai-test-err">{t('testErr', { ms: state.ms, error: state.error })}</span>;
 }
 
 export default function AiBackendForm({ apiBase, providers, onCreated }) {
+  const { t } = useTranslation('aiBackendForm');
   const [form, setForm] = useState({ id: '', provider: 'groq', model: '', base_url: '', key: '' });
   const [idTouched, setIdTouched] = useState(false);
   const [testState, setTestState] = useState(null);
@@ -61,7 +64,7 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
   };
 
   const testConnection = async () => {
-    if (!form.model.trim()) { setTestState({ phase: 'error', ms: 0, error: 'Modèle requis.' }); return; }
+    if (!form.model.trim()) { setTestState({ phase: 'error', ms: 0, error: t('modelRequired') }); return; }
     setTestState({ phase: 'testing' });
     try {
       const res = await fetch(apiBase + '/api/ai/test-config', {
@@ -69,17 +72,17 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
       });
       const d = await res.json();
       setTestState(d.ok ? { phase: 'ok', ms: d.latency_ms, text: d.text }
-        : { phase: 'error', ms: d.latency_ms || 0, error: d.error || d.detail || 'échec' });
+        : { phase: 'error', ms: d.latency_ms || 0, error: d.error || d.detail || t('failed') });
     } catch (e) {
-      setTestState({ phase: 'error', ms: 0, error: 'injoignable' });
+      setTestState({ phase: 'error', ms: 0, error: t('unreachable') });
     }
   };
 
   const submit = async (e) => {
     e.preventDefault();
     const id = (idTouched ? form.id : autoId(form.provider, form.model)).trim();
-    if (!id) { setErr('Identifiant requis.'); return; }
-    if (!form.model.trim()) { setErr('Modèle requis.'); return; }
+    if (!id) { setErr(t('idRequired')); return; }
+    if (!form.model.trim()) { setErr(t('modelRequired')); return; }
     setBusy(true);
     setErr(null);
     try {
@@ -90,7 +93,7 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(create),
       });
       const data = await res.json();
-      if (!res.ok) { setErr(data.detail || 'Création refusée.'); setBusy(false); return; }
+      if (!res.ok) { setErr(data.detail || t('createRefused')); setBusy(false); return; }
       if (key) {
         await fetch(apiBase + '/api/ai/backends/' + id + '/secret', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }),
@@ -105,19 +108,19 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
       setTestState(null);
       if (onCreated) await onCreated();
     } catch (e2) {
-      setErr('Création échouée.');
+      setErr(t('createFailed'));
     } finally {
       setBusy(false);
     }
   };
 
   const keyHint = selProv && selProv.env_key
-    ? ('Clé via ' + selProv.env_key + (selProv.env_present ? ' (présente — champ optionnel)' : ' (absente — saisis-la ci-dessous)'))
-    : 'Pas de clé requise (serveur local)';
+    ? (selProv.env_present ? t('keyHintPresent', { env: selProv.env_key }) : t('keyHintAbsent', { env: selProv.env_key }))
+    : t('keyHintNone');
 
   return (
     <form className="ai-form" onSubmit={submit}>
-      <h3>Ajouter un backend</h3>
+      <h3>{t('title')}</h3>
       {err ? <div className="banner banner-block">{err}</div> : null}
       {providers.length ? (
         <div className="ai-catalog-chips">
@@ -125,49 +128,49 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
             <button type="button" key={p.id}
               className={'ai-chip' + (p.id === form.provider ? ' active' : '') + (p.env_present ? ' has-key' : '')}
               onClick={() => pickProvider(p.id)}
-              title={p.env_present ? ('Clé via ' + (p.env_key || 'env') + ' présente') : 'Clé à fournir'}>
+              title={p.env_present ? t('chipKeyPresent', { env: p.env_key || 'env' }) : t('chipKeyNeeded')}>
               {p.label}{p.env_present ? ' ✓' : ''}
             </button>
           ))}
         </div>
       ) : null}
       <div className="ai-form-grid">
-        <label>Provider
+        <label>{t('providerLabel')}
           <select value={form.provider} onChange={(e) => pickProvider(e.target.value)}>
             {providers.map((p) => (
               <option key={p.id} value={p.id}>{p.label}{p.env_present ? ' ✓' : ''}</option>
             ))}
           </select>
         </label>
-        <label>Modèle
+        <label>{t('modelLabel')}
           {provModels.length > 0 ? (
             <select value={modelIsCustom ? CUSTOM_MODEL : form.model}
               onChange={(e) => setModel(e.target.value === CUSTOM_MODEL ? '' : e.target.value)}>
               {provModels.map((m) => <option key={m} value={m}>{m}</option>)}
-              <option value={CUSTOM_MODEL}>— custom… —</option>
+              <option value={CUSTOM_MODEL}>{t('customOption')}</option>
             </select>
           ) : (
-            <input type="text" placeholder="id du modèle" value={form.model}
+            <input type="text" placeholder={t('modelIdPlaceholder')} value={form.model}
               onChange={(e) => setModel(e.target.value)} />
           )}
         </label>
         {modelIsCustom ? (
-          <label>Modèle (custom)
+          <label>{t('modelCustom')}
             <input type="text" value={form.model} onChange={(e) => setModel(e.target.value)} />
           </label>
         ) : null}
         {baseUrlMode !== null ? (
-          <label>Base URL{baseUrlMode === 'optional' ? ' (option.)' : ''}
-            <input type="text" placeholder="http://localhost:11434/v1" value={form.base_url}
+          <label>{t('baseUrlLabel')}{baseUrlMode === 'optional' ? t('optionalSuffix') : ''}
+            <input type="text" placeholder={t('baseUrlPlaceholder')} value={form.base_url}
               onChange={(e) => setForm((p) => ({ ...p, base_url: e.target.value }))}
               required={baseUrlMode === 'required'} />
           </label>
         ) : null}
-        <label>Clé API{selProv && selProv.env_present ? ' (option.)' : ''}
-          <input type="password" placeholder="collée ici, jamais relue" value={form.key}
+        <label>{t('apiKeyLabel')}{selProv && selProv.env_present ? t('optionalSuffix') : ''}
+          <input type="password" placeholder={t('keyPlaceholder')} value={form.key}
             onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
         </label>
-        <label>Id (auto)
+        <label>{t('idAutoLabel')}
           <input type="text" value={idTouched ? form.id : autoId(form.provider, form.model)}
             onChange={(e) => { setIdTouched(true); setForm((p) => ({ ...p, id: e.target.value })); }} />
         </label>
@@ -175,9 +178,9 @@ export default function AiBackendForm({ apiBase, providers, onCreated }) {
       <div className="ai-key-hint">{keyHint}</div>
       <div className="ai-form-actions">
         <button type="button" className="ai-btn" disabled={testState && testState.phase === 'testing'}
-          onClick={testConnection}>Tester la connexion</button>
+          onClick={testConnection}>{t('testConnection')}</button>
         <button type="submit" className="ai-btn ai-btn-primary" disabled={busy}>
-          {busy ? 'Création…' : 'Créer et activer'}
+          {busy ? t('creating') : t('createActivate')}
         </button>
         <TestResult state={testState} />
       </div>

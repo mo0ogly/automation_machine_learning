@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import '../monacoSetup';  // local (offline) Monaco + workers — loads with this lazy chunk
 import Editor from '@monaco-editor/react';
 
@@ -17,6 +18,7 @@ function toDraft(entry) {
 }
 
 export default function PromptsPanel({ apiBase, onClose, onLocate }) {
+  const { t } = useTranslation('prompts');
   const [prompts, setPrompts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -44,7 +46,7 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
       const list = d.prompts || [];
       setPrompts(list);
       setSelectedId((cur) => cur || (list[0] && list[0].id) || null);
-    } catch (e) { setErr('Catalogue de prompts injoignable.'); }
+    } catch (e) { setErr(t('errCatalogUnreachable')); }
   }, [apiBase]);
 
   useEffect(() => { load(); }, [load]);
@@ -56,38 +58,38 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
     let value = draft;
     if (selected.kind === 'json') {
       try { value = JSON.parse(draft); }
-      catch (e) { setErr('JSON invalide : ' + e.message); return; }
+      catch (e) { setErr(t('errInvalidJson', { message: e.message })); return; }
     } else if (!draft.trim()) {
-      setErr('Le prompt ne peut pas être vide.'); return;
+      setErr(t('errEmptyPrompt')); return;
     }
     setSaving(true); setErr(null); setNotice(null);
     try {
       const res = await fetch(apiBase + '/api/prompts/' + selected.id,
         { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value }) });
       const data = await res.json();
-      if (!res.ok) { setErr(data.detail || 'Enregistrement refusé.'); }
+      if (!res.ok) { setErr(data.detail || t('errSaveRefused')); }
       else {
         setPrompts((prev) => prev.map((p) => (p.id === data.id ? data : p)));
-        setNotice('Enregistré — appliqué au prochain appel de l\'agent.');
+        setNotice(t('savedNotice'));
       }
-    } catch (e) { setErr('Enregistrement échoué.'); }
+    } catch (e) { setErr(t('errSaveFailed')); }
     setSaving(false);
   };
 
   const reset = async () => {
     if (!selected || !selected.overridden) return;
-    if (!window.confirm('Réinitialiser « ' + selected.label + ' » au prompt par défaut ?')) return;
+    if (!window.confirm(t('confirmReset', { label: selected.label }))) return;
     setSaving(true); setErr(null); setNotice(null);
     try {
       const res = await fetch(apiBase + '/api/prompts/' + selected.id, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) { setErr(data.detail || 'Réinitialisation refusée.'); }
+      if (!res.ok) { setErr(data.detail || t('errResetRefused')); }
       else {
         setPrompts((prev) => prev.map((p) => (p.id === data.id ? data : p)));
         setDraft(toDraft(data));
-        setNotice('Réinitialisé au prompt par défaut.');
+        setNotice(t('resetNotice'));
       }
-    } catch (e) { setErr('Réinitialisation échouée.'); }
+    } catch (e) { setErr(t('errResetFailed')); }
     setSaving(false);
   };
 
@@ -99,34 +101,30 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
     <div className="ai-modal-overlay" onClick={onClose}>
       <div className="ai-modal glass-panel prompts-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal-head">
-          <h2>Prompts IA</h2>
-          <button type="button" className="ai-modal-close" onClick={onClose} aria-label="Fermer">×</button>
+          <h2>{t('title')}</h2>
+          <button type="button" className="ai-modal-close" onClick={onClose} aria-label={t('close')}>×</button>
         </div>
-        <p className="ai-modal-note">
-          Le texte exact envoyé à l'IA. Édite-le ici : l'override est persisté côté serveur et pris en
-          compte au prochain appel de l'agent (sans redémarrage). « Localiser » montre où ce prompt agit
-          dans l'interface.
-        </p>
+        <p className="ai-modal-note">{t('note')}</p>
         {err ? <div className="banner banner-block">{err}</div> : null}
 
         <div className="prompts-body">
           <aside className="prompts-list">
-            <div className="prompts-group">Instructions système</div>
+            <div className="prompts-group">{t('systemInstructions')}</div>
             {systemPrompts.map((p) => (
               <button key={p.id} type="button"
                 className={'prompts-item' + (p.id === selectedId ? ' active' : '')}
                 onClick={() => select(p.id)}>
                 <span>{p.label}</span>
-                {p.overridden ? <span className="prompts-badge">modifié</span> : null}
+                {p.overridden ? <span className="prompts-badge">{t('modified')}</span> : null}
               </button>
             ))}
-            <div className="prompts-group">Exemples few-shot</div>
+            <div className="prompts-group">{t('fewshotExamples')}</div>
             {fewshots.map((p) => (
               <button key={p.id} type="button"
                 className={'prompts-item' + (p.id === selectedId ? ' active' : '')}
                 onClick={() => select(p.id)}>
                 <span>{p.label}</span>
-                {p.overridden ? <span className="prompts-badge">modifié</span> : null}
+                {p.overridden ? <span className="prompts-badge">{t('modified')}</span> : null}
               </button>
             ))}
           </aside>
@@ -141,7 +139,7 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
                   </div>
                   {loc ? (
                     <button type="button" className="ai-btn" title={loc.trigger}
-                      onClick={() => onLocate(loc)}>Localiser dans l'UI</button>
+                      onClick={() => onLocate(loc)}>{t('locateInUi')}</button>
                   ) : null}
                 </div>
                 {loc ? (
@@ -169,19 +167,19 @@ export default function PromptsPanel({ apiBase, onClose, onLocate }) {
                 <div className="prompts-foot">
                   <div className="prompts-status">
                     {notice ? <span className="ai-test-ok">{notice}</span>
-                      : dirty ? <span className="prompts-dirty">modifications non enregistrées</span>
-                      : selected.overridden ? <span className="prompts-dirty">override actif</span>
-                      : <span className="ai-test-pending">prompt par défaut</span>}
+                      : dirty ? <span className="prompts-dirty">{t('unsavedChanges')}</span>
+                      : selected.overridden ? <span className="prompts-dirty">{t('overrideActive')}</span>
+                      : <span className="ai-test-pending">{t('defaultPrompt')}</span>}
                   </div>
                   <div className="prompts-actions">
                     <button type="button" className="ai-btn" disabled={!selected.overridden || saving}
-                      onClick={reset}>Réinitialiser</button>
+                      onClick={reset}>{t('reset')}</button>
                     <button type="button" className="ai-btn ai-btn-primary" disabled={!dirty || saving}
-                      onClick={save}>{saving ? '…' : 'Enregistrer'}</button>
+                      onClick={save}>{saving ? '…' : t('save')}</button>
                   </div>
                 </div>
               </>
-            ) : <p className="ai-empty">Aucun prompt.</p>}
+            ) : <p className="ai-empty">{t('noPrompt')}</p>}
           </section>
         </div>
       </div>

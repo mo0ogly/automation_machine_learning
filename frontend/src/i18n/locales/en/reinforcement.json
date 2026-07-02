@@ -1,0 +1,180 @@
+{
+  "paradigm": {
+    "aria": "Reinforcement learning mode",
+    "demo": "GridWorld demo",
+    "demoHint": "Tabular Q-learning on a maze — educational",
+    "deep": "Deep RL",
+    "deepHint": "Gymnasium + Stable-Baselines3 — realistic problems"
+  },
+  "deep": {
+    "kicker": "Reinforcement learning at real scale",
+    "title": "Deep Reinforcement Learning",
+    "intro": "Here the agent no longer learns a table but a neural network, able to handle continuous states. Pick a standard Gymnasium environment, an algorithm (PPO, DQN or A2C), then launch a real training run on CPU.",
+    "step1": "Choose the environment",
+    "step1Hint": "Each environment is a standard control problem with continuous states.",
+    "step2": "Choose the algorithm",
+    "step2Hint": "PPO and A2C handle both action types; DQN handles discrete actions only.",
+    "step3": "Tune and train",
+    "step3Hint": "Every slider has an AI button to understand — and apply — a good setting.",
+    "step4": "Analyse the learning",
+    "step4Hint": "Learning curve and reward per evaluation episode.",
+    "actionKind": {
+      "discrete": "discrete actions",
+      "continuous": "continuous actions"
+    },
+    "obsDim": "{{n}} state dimensions",
+    "nActions": "{{n}} actions",
+    "threshold": "Solved threshold: {{value}}",
+    "noThreshold": "No official threshold",
+    "algoFamily": "Family",
+    "algoIncompatible": "{{algo}} does not support {{kind}}",
+    "train": "Train the agent",
+    "training": "Training…",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "progress": "Training… {{pct}}%",
+    "empty": "Choose an environment (step 1), an algorithm (step 2), tune it and launch training to see whether the agent learns.",
+    "error": "Training failed — is the backend running?",
+    "cancelled": "Training cancelled — the shown results are partial.",
+    "metricsTitle": "Results",
+    "verdict": {
+      "solvedTitle": "Environment solved",
+      "solvedText": "The policy beats the solved threshold: the agent has mastered the task.",
+      "unsolvedTitle": "Not solved yet",
+      "unsolvedText": "Reward stays below the threshold — try more training steps, or adjust the learning rate.",
+      "doneTitle": "Training complete",
+      "doneText": "This environment has no official threshold: judge quality from the curve and the mean reward."
+    },
+    "fields": {
+      "total_timesteps": { "label": "Training steps", "hint": "Total agent-environment interactions. More = better policy but longer training." },
+      "learning_rate": { "label": "Learning rate", "hint": "Gradient-descent step of the network. High = learns fast but unstable; low = slow but stable." },
+      "gamma": { "label": "Discount factor (gamma)", "hint": "Weight of future rewards: close to 1 = long-term view; lower = favours immediate gain." },
+      "ent_coef": { "label": "Entropy coefficient", "hint": "Encourages exploration by penalising over-confident policies. 0 = no incentive." },
+      "exploration_fraction": { "label": "Exploration fraction", "hint": "Share of training over which exploration decays (Deep epsilon-greedy). The counterpart of tabular Q-learning exploration." }
+    },
+    "groups": {
+      "cyber_defense": "Cyber defense",
+      "classic_control": "Classic control (references)"
+    },
+    "download": "Download the agent (.zip)",
+    "ai": "AI",
+    "presetsTitle": "Base models",
+    "presetsHint": "Ready-to-train configurations, cyber-defense oriented. One click loads one — then train and download the agent.",
+    "presets": {
+      "soc_triage_dqn": { "name": "SOC triage (DQN)", "desc": "Triage an alert stream under an analyst budget: block real attacks, spare legitimate traffic. Value-based." },
+      "soc_triage_ppo": { "name": "SOC triage (PPO)", "desc": "Same alert-triage problem, solved with an actor-critic method (PPO)." },
+      "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Fast teaching reference: balance an inverted pole." },
+      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Continuous-action reference: swing up a pendulum with modulated torque." }
+    },
+    "envs": {
+      "AlertTriage-v0": { "label": "SOC alert triage", "desc": "Triage a stream of security alerts under a response budget: each alert (threat score, asset criticality, source reputation, remaining budget) calls for a decision — dismiss, monitor or block. Blocking a real attack pays off; blocking legitimate traffic costs; missing an attack is expensive." },
+      "CartPole-v1": { "label": "CartPole", "desc": "Keep an inverted pole balanced by moving a cart left or right." },
+      "Acrobot-v1": { "label": "Acrobot", "desc": "Swing an underactuated double pendulum to raise its tip above a line." },
+      "MountainCar-v0": { "label": "MountainCar", "desc": "Build momentum to drive an underpowered car up a hill." },
+      "Pendulum-v1": { "label": "Pendulum", "desc": "Apply continuous torque to swing up and stabilise a pendulum upright." },
+      "MountainCarContinuous-v0": { "label": "MountainCar (continuous)", "desc": "Continuous-action version of MountainCar: precisely modulate the push." }
+    },
+    "algos": {
+      "PPO": { "desc": "Robust and versatile, the default choice. Handles discrete and continuous actions." },
+      "DQN": { "desc": "The Deep counterpart of tabular Q-learning. Discrete actions only." },
+      "A2C": { "desc": "Simpler, faster cousin of PPO. Handles both action types." }
+    }
+  },
+  "intro": {
+    "kicker": "Third paradigm",
+    "title": "Reinforcement learning",
+    "body": "No fixed dataset here: an <0>agent</0> learns by trial and error while interacting with an <1>environment</1> — a <2> GridWorld</2> maze in this case. At each step it picks an action, receives a<3> reward</3>, and adjusts its strategy (<4>Q-learning</4>) to maximize cumulative reward. It starts from cell <5>S</5> and must reach a goal by the shortest path, avoiding traps."
+  },
+  "diagram": {
+    "ariaLabel": "Agent-environment loop: the agent acts, the environment answers with a state and a reward",
+    "agent": "Agent",
+    "environment": "Environment",
+    "action": "action aₜ",
+    "reward": "reward rₜ₊₁ · state sₜ₊₁"
+  },
+  "presets": {
+    "ariaLabel": "Preset scenarios",
+    "discovery": { "name": "Discovery", "desc": "Small empty world: the ideal convergence." },
+    "maze": { "name": "Maze", "desc": "Walls to navigate around to find the exit." },
+    "minefield": { "name": "Minefield", "desc": "Traps that punish carelessness." },
+    "bigWorld": { "name": "Big world", "desc": "10x10, several goals: the real challenge." }
+  },
+  "board": {
+    "ariaLabel": "Environment editor",
+    "stepTitle": "Design the environment",
+    "stepDesc": "Pick a tool then click the grid to build the world.",
+    "toolGroupAriaLabel": "Placement tool",
+    "tools": { "obstacle": "Obstacle", "trap": "Trap", "erase": "Eraser" },
+    "clear": "Clear",
+    "gridAriaLabel": "{{size}} by {{size}} maze",
+    "cellAriaLabel": "Cell {{row}},{{col}}: {{title}}",
+    "legendAriaLabel": "Legend",
+    "legend": {
+      "start": "start",
+      "goal": "goal",
+      "trap": "trap",
+      "obstacle": "obstacle",
+      "free": "free",
+      "perStep": "/ step"
+    },
+    "cellTitle": {
+      "start": "Agent start",
+      "goal": "Goal (reward {{reward}})",
+      "goalAuto": "Goal placed automatically",
+      "obstacle": "Obstacle (impassable)",
+      "trap": "Trap (penalty {{reward}}, ends episode)",
+      "trapAuto": "Trap placed automatically",
+      "free": "Free cell"
+    },
+    "replay": "Replay the trajectory",
+    "replaying": "Replaying…",
+    "replayStatus": "Greedy trajectory: {{steps}} steps — {{outcome}}",
+    "autoNoteGoals": "+{{n}} goal(s) ",
+    "autoNoteAnd": "and ",
+    "autoNoteTraps": "+{{n}} trap(s) ",
+    "autoNoteSuffix": "placed automatically during training — visible on the grid afterwards."
+  },
+  "fields": {
+    "size": { "label": "Grid size", "hint": "Side of the N×N maze — bigger = more states to explore." },
+    "n_goals": { "label": "Number of goals", "hint": "Goal cells (goals beyond the bottom-right corner are placed at random)." },
+    "n_traps": { "label": "Random traps", "hint": "Traps added at random, on top of hand-placed ones." },
+    "episodes": { "label": "Number of episodes", "hint": "Training games: the more there are, the better the Q table converges." },
+    "alpha": { "label": "Learning rate (α)", "hint": "Speed of the Q update: high = fast but unstable." },
+    "gamma": { "label": "Discount factor (γ)", "hint": "Weight of the future: close to 1 = long-term strategy." },
+    "epsilon": { "label": "Initial exploration (ε)", "hint": "Share of random actions at the start, which decays over episodes." }
+  },
+  "panel": {
+    "ariaLabel": "Hyperparameters",
+    "stepTitle": "Tune the algorithm",
+    "stepDesc": "Every slider has an AI button to understand — and apply — a good setting.",
+    "groupEnv": "Environment",
+    "groupAlgo": "Q-learning",
+    "aiButtonLabel": "AI",
+    "train": "Train the agent",
+    "training": "Training…",
+    "reset": "Reset"
+  },
+  "results": {
+    "ariaLabel": "Training results",
+    "stepTitle": "Analyse the learning",
+    "stepDesc": "Reward curve, learned policy and value function.",
+    "staleMessage": "Configuration changed since this run — these results describe the previous run. Restart training to refresh them.",
+    "emptyHint": "Build the world (step 1), tune the algorithm (step 2), then launch training to see whether the agent learns to reach the goal.",
+    "zoomTitle": "Enlarge"
+  },
+  "verdict": {
+    "success": { "title": "The agent has learned", "text": "It reaches a goal in {{rate}}% of the last episodes: the policy has converged." },
+    "partial": { "title": "Partial learning", "text": "The policy is progressing but stays fragile — try more episodes, or a lower α to stabilize." },
+    "fail": { "title": "The agent has not converged", "text": "Too few episodes, too hostile a world, or poorly tuned exploration: adjust and rerun." }
+  },
+  "errors": {
+    "trainFailed": "Training failed",
+    "trainFailedNoBackend": "Training failed — is the backend running?"
+  },
+  "outcome": {
+    "goal": "goal reached.",
+    "trap": "fell into a trap.",
+    "stuck": "stuck (the policy pushes into a wall).",
+    "loop": "endless loop — the policy did not converge here."
+  }
+}

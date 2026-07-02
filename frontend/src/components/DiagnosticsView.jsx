@@ -1,22 +1,5 @@
 import React from 'react';
-
-const LABELS = {
-  overview: "Vue d'ensemble",
-  overview_after: "Vue d'ensemble (après)",
-  missing_by_column: 'Valeurs manquantes par colonne',
-  constant_columns: 'Colonnes constantes',
-  outliers_iqr: 'Valeurs aberrantes (IQR)',
-  skewness: 'Asymétrie',
-  cardinality: 'Cardinalité catégorielle',
-  high_correlation_pairs: 'Paires très corrélées',
-  target_correlation: 'Corrélation avec la cible',
-  leakage_candidates: 'Suspects de fuite',
-  target_distribution: 'Distribution de la cible',
-  metrics: 'Métriques',
-  valeurs_categorielles: 'Valeurs distinctes (catégorielles)',
-  lignes_extremes: 'Lignes extrêmes (cible élevée)',
-  analyse_descriptive: 'Analyse descriptive (par type)',
-};
+import { useTranslation } from 'react-i18next';
 
 function isListOfObjects(v) {
   return Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null;
@@ -49,12 +32,13 @@ function KeyVals({ obj }) {
 }
 
 function Block({ name, value }) {
-  const label = LABELS[name] || name;
+  const { t } = useTranslation('diagnostics');
+  const label = t('labels.' + name, name);
   if (value === null || value === undefined) return null;
   if (Array.isArray(value) && value.length === 0) {
     return (
       <div className="diag-block">
-        <h5>{label}</h5><p className="muted">aucun</p>
+        <h5>{label}</h5><p className="muted">{t('none')}</p>
       </div>
     );
   }
@@ -71,11 +55,12 @@ const SKIP = new Set(['leaderboard', 'recommended_model', 'primary_metric']);
 
 // Generic renderer for a stage's structured diagnostics dict.
 export default function DiagnosticsView({ diagnostics }) {
+  const { t } = useTranslation('diagnostics');
   if (!diagnostics || Object.keys(diagnostics).length === 0) {
-    return <p className="muted">Pas de diagnostics disponibles.</p>;
+    return <p className="muted">{t('empty')}</p>;
   }
   if (diagnostics.ready === false) {
-    return <p className="warn-text">{diagnostics.reason || 'Étape amont requise.'}</p>;
+    return <p className="warn-text">{diagnostics.reason || t('upstreamRequired')}</p>;
   }
   return (
     <div className="diag-grid">

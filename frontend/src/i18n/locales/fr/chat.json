@@ -1,0 +1,21 @@
+{
+  "sourceAi": "IA",
+  "sourceError": "erreur",
+  "sourceSystem": "système",
+  "errEmptyMessage": "Message vide.",
+  "errUnreachable": "Le copilote est injoignable.",
+  "confirmClear": "Effacer toute la conversation ?",
+  "defaultTitle": "Cockpit IA",
+  "noSession": "Aucune session active. Charge un jeu de données dans l'onglet Pipeline pour dialoguer avec le copilote à propos de tes données et de ton modèle.",
+  "settingsTooltip": "Réglages d'inférence (température, tokens…)",
+  "settings": "Réglages",
+  "clearTooltip": "Effacer la conversation",
+  "clear": "Effacer",
+  "conversationSettingsTitle": "Paramètres de cette conversation (surchargent le backend actif)",
+  "emptyThread": "Pose une question sur ton jeu de données, une étape du pipeline ou ton modèle. Le copilote tient compte du contexte et de tout l'historique de la conversation.",
+  "thinking": "Le copilote réfléchit…",
+  "recallSummary_one": "Mémoire : {{count}} échange plus ancien rappelé",
+  "recallSummary_other": "Mémoire : {{count}} échanges plus anciens rappelés",
+  "composePlaceholder": "Écris ta question… (Ctrl+Entrée pour envoyer)",
+  "send": "Envoyer"
+}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import ColumnTable from './ColumnTable';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
@@ -71,8 +72,9 @@ function Control({ ctrl, value, onChange }) {
 // agent just proposed, so the expert sees what changed.
 export default function ConfigControls({ schema, config, onChange, highlight = {},
   onAssist, assistBusy, assistAnswers, onApplyAssist }) {
+  const { t } = useTranslation('config');
   if (!schema || !schema.length) {
-    return <p className="muted">Aucun paramètre à régler pour cette étape.</p>;
+    return <p className="muted">{t('noParams')}</p>;
   }
   const tables = schema.filter((c) => c.type === 'column_table');
   const simple = schema.filter((c) => c.type !== 'column_table');
@@ -88,7 +90,7 @@ export default function ConfigControls({ schema, config, onChange, highlight = {
               <Control ctrl={ctrl} value={config[ctrl.name]} onChange={onChange} />
               {onAssist ? (
                 <div className="cfg-assist">
-                  <AssistButton topic={'param:' + ctrl.name} label={ctrl.label} text="IA"
+                  <AssistButton topic={'param:' + ctrl.name} label={ctrl.label} text={t('aiButton')}
                     onAssist={onAssist} busy={assistBusy} />
                 </div>
               ) : null}

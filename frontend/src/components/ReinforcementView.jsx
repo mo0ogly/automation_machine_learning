@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
+import DeepRLView from './DeepRLView';
 import './components.css';
 import './reinforcement.css';
 
@@ -11,39 +13,33 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Q-learning hyperparameters exposed to the expert (bounds mirror the backend),
 // grouped by what they control: the world vs the algorithm.
+// Field bounds only; label + hint are resolved from i18n by `key` in renderField.
 const ENV_FIELDS = [
-  { key: 'size', label: 'Taille de la grille', min: 3, max: 10, step: 1,
-    hint: 'Côté du labyrinthe N×N — plus grand = plus d’états à explorer.' },
-  { key: 'n_goals', label: 'Nombre de buts', min: 1, max: 3, step: 1,
-    hint: 'Cases-objectif (les buts au-delà du coin bas-droit sont placés au hasard).' },
-  { key: 'n_traps', label: 'Pièges aléatoires', min: 0, max: 5, step: 1,
-    hint: 'Pièges ajoutés au hasard, en plus de ceux placés à la main.' },
+  { key: 'size', min: 3, max: 10, step: 1 },
+  { key: 'n_goals', min: 1, max: 3, step: 1 },
+  { key: 'n_traps', min: 0, max: 5, step: 1 },
 ];
 const ALGO_FIELDS = [
-  { key: 'episodes', label: "Nombre d'épisodes", min: 20, max: 2000, step: 20,
-    hint: 'Parties d’entraînement : plus il y en a, mieux la table Q converge.' },
-  { key: 'alpha', label: "Taux d'apprentissage (α)", min: 0.01, max: 1, step: 0.01,
-    hint: 'Vitesse de mise à jour de Q : haut = rapide mais instable.' },
-  { key: 'gamma', label: "Facteur d'actualisation (γ)", min: 0.5, max: 0.999, step: 0.001,
-    hint: 'Poids du futur : proche de 1 = stratégie long terme.' },
-  { key: 'epsilon', label: 'Exploration initiale (ε)', min: 0, max: 1, step: 0.05,
-    hint: 'Part d’actions aléatoires au départ, qui décroît au fil des épisodes.' },
+  { key: 'episodes', min: 20, max: 2000, step: 20 },
+  { key: 'alpha', min: 0.01, max: 1, step: 0.01 },
+  { key: 'gamma', min: 0.5, max: 0.999, step: 0.001 },
+  { key: 'epsilon', min: 0, max: 1, step: 0.05 },
 ];
 const DEFAULTS = {
   size: 5, episodes: 300, alpha: 0.1, gamma: 0.95, epsilon: 1.0,
   n_goals: 1, n_traps: 0, obstacles: [], traps: [],
 };
 
-// One-click pedagogical scenarios, from gentle to hostile.
+// One-click pedagogical scenarios, from gentle to hostile. Name/desc are
+// resolved from i18n by `key` (presets.<key>.name / .desc) at render time.
 const PRESETS = [
-  { name: 'Découverte', desc: 'Petit monde vide : la convergence idéale.',
-    cfg: { ...DEFAULTS } },
-  { name: 'Labyrinthe', desc: 'Des murs à contourner pour trouver la sortie.',
+  { key: 'discovery', cfg: { ...DEFAULTS } },
+  { key: 'maze',
     cfg: { ...DEFAULTS, size: 7, episodes: 600,
       obstacles: [[1, 1], [2, 1], [3, 1], [4, 1], [1, 3], [2, 3], [3, 3], [5, 3], [6, 3], [1, 5], [3, 5], [4, 5], [5, 5]] } },
-  { name: 'Champ de mines', desc: 'Des pièges qui punissent l’imprudence.',
+  { key: 'minefield',
     cfg: { ...DEFAULTS, size: 6, episodes: 800, n_traps: 4 } },
-  { name: 'Grand monde', desc: '10×10, plusieurs buts : le vrai défi.',
+  { key: 'bigWorld',
     cfg: { ...DEFAULTS, size: 10, episodes: 1500, gamma: 0.99, n_goals: 2, n_traps: 2 } },
 ];
 
@@ -81,17 +77,12 @@ function greedyPath(env, policy) {
   }
   return { path, outcome };
 }
-const OUTCOME_TEXT = {
-  goal: 'but atteint.', trap: 'tombé dans un piège.',
-  stuck: 'bloqué (la politique pousse contre un mur).',
-  loop: 'boucle sans fin — la politique n’a pas convergé ici.',
-};
-
 // The agent <-> environment interaction loop, the founding diagram of RL.
 function LoopDiagram() {
+  const { t } = useTranslation('reinforcement');
   return (
     <svg className="rl-diagram" viewBox="0 0 340 110" role="img"
-      aria-label="Boucle agent-environnement : l'agent agit, l'environnement répond par un état et une récompense">
+      aria-label={t('diagram.ariaLabel')}>
       <defs>
         <marker id="rl-arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0 0L8 4L0 8z" fill="var(--accent-primary)" />
@@ -101,21 +92,24 @@ function LoopDiagram() {
         </marker>
       </defs>
       <rect x="8" y="35" width="92" height="40" rx="10" className="rl-diagram-box" />
-      <text x="54" y="60" textAnchor="middle" className="rl-diagram-label">Agent</text>
+      <text x="54" y="60" textAnchor="middle" className="rl-diagram-label">{t('diagram.agent')}</text>
       <rect x="240" y="35" width="92" height="40" rx="10" className="rl-diagram-box rl-diagram-box-env" />
-      <text x="286" y="60" textAnchor="middle" className="rl-diagram-label">Environnement</text>
+      <text x="286" y="60" textAnchor="middle" className="rl-diagram-label">{t('diagram.environment')}</text>
       <path d="M104 42 C 150 12, 190 12, 236 42" fill="none" stroke="var(--accent-primary)"
         strokeWidth="1.6" markerEnd="url(#rl-arr)" />
-      <text x="170" y="16" textAnchor="middle" className="rl-diagram-cap">action aₜ</text>
+      <text x="170" y="16" textAnchor="middle" className="rl-diagram-cap">{t('diagram.action')}</text>
       <path d="M236 70 C 190 100, 150 100, 104 70" fill="none" stroke="var(--status-success)"
         strokeWidth="1.6" markerEnd="url(#rl-arr2)" />
       <text x="170" y="106" textAnchor="middle" className="rl-diagram-cap rl-diagram-cap-r">
-        récompense rₜ₊₁ · état sₜ₊₁</text>
+        {t('diagram.reward')}</text>
     </svg>
   );
 }
 
 export default function ReinforcementView() {
+  const { t } = useTranslation('reinforcement');
+  // Which paradigm is shown: the tabular GridWorld demo, or the Deep RL workbench.
+  const [mode, setMode] = useState('demo');
   const [cfg, setCfg] = useState(DEFAULTS);
   const [tool, setTool] = useState('obstacle');
   const [result, setResult] = useState(null);
@@ -212,11 +206,13 @@ export default function ReinforcementView() {
     start: 'S', goal: 'BUT', 'goal-auto': 'BUT', obstacle: '', trap: 'X', 'trap-auto': 'X', free: '',
   };
   const CELL_TITLE = {
-    start: 'Départ de l’agent', goal: 'But (récompense ' + fmtReward(rewards.goal) + ')',
-    'goal-auto': 'But placé automatiquement', obstacle: 'Obstacle (infranchissable)',
-    trap: 'Piège (pénalité ' + fmtReward(rewards.trap) + ', fin d’épisode)',
-    'trap-auto': 'Piège placé automatiquement',
-    free: 'Case libre',
+    start: t('board.cellTitle.start'),
+    goal: t('board.cellTitle.goal', { reward: fmtReward(rewards.goal) }),
+    'goal-auto': t('board.cellTitle.goalAuto'),
+    obstacle: t('board.cellTitle.obstacle'),
+    trap: t('board.cellTitle.trap', { reward: fmtReward(rewards.trap) }),
+    'trap-auto': t('board.cellTitle.trapAuto'),
+    free: t('board.cellTitle.free'),
   };
 
   const applyPreset = (p) => { setCfg({ ...p.cfg }); setError(null); setFocus([0, 0]); };
@@ -271,13 +267,13 @@ export default function ReinforcementView() {
         body: JSON.stringify(sent),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || "Échec de l'entraînement"); setBusy(false); return; }
+      if (!res.ok) { setError(data.detail || t('errors.trainFailed')); setBusy(false); return; }
       setResult(data);
       setLastCfg(sent);
       setTrail(null);
       setPlaying(false);
     } catch {
-      setError("Échec de l'entraînement — le backend est-il démarré ?");
+      setError(t('errors.trainFailedNoBackend'));
     }
     setBusy(false);
   };
@@ -289,79 +285,98 @@ export default function ReinforcementView() {
     const gain = Number(result.metrics["Gain d'apprentissage"] ?? 0);
     if (Number.isNaN(rate)) return null;
     if (rate >= 80 && gain > 0) return {
-      tone: 'success', title: 'L’agent a appris',
-      text: 'Il atteint un but dans ' + rate + '% des derniers épisodes : la politique a convergé.',
+      tone: 'success', title: t('verdict.success.title'),
+      text: t('verdict.success.text', { rate }),
     };
     if (rate >= 40) return {
-      tone: 'warning', title: 'Apprentissage partiel',
-      text: 'La politique progresse mais reste fragile — essayez plus d’épisodes, ou un α plus faible pour stabiliser.',
+      tone: 'warning', title: t('verdict.partial.title'),
+      text: t('verdict.partial.text'),
     };
     return {
-      tone: 'error', title: 'L’agent n’a pas convergé',
-      text: 'Trop peu d’épisodes, un monde trop hostile ou une exploration mal réglée : ajustez et relancez.',
+      tone: 'error', title: t('verdict.fail.title'),
+      text: t('verdict.fail.text'),
     };
-  }, [result]);
+  }, [result, t]);
 
-  const renderField = (f) => (
-    <div key={f.key} className="rl-field">
-      <span className="rl-field-head">
-        <span>{f.label} : <strong>{cfg[f.key]}</strong></span>
-        <AssistButton topic={f.key} label={f.label} text="IA"
-          onAssist={askExplain} busy={explainBusy} />
-      </span>
-      <input type="range" min={f.min} max={f.max} step={f.step}
-        value={cfg[f.key]} onChange={(e) => setField(f.key, Number(e.target.value))}
-        aria-label={f.label} />
-      <span className="rl-minmax"><em>{f.min}</em><em>{f.max}</em></span>
-      <p className="rl-field-hint">{f.hint}</p>
-      <AssistAnswer topic={f.key} answers={answers} onApply={applyRlSuggestion} />
-    </div>
-  );
+  const renderField = (f) => {
+    const label = t('fields.' + f.key + '.label');
+    const hint = t('fields.' + f.key + '.hint');
+    return (
+      <div key={f.key} className="rl-field">
+        <span className="rl-field-head">
+          <span>{label} : <strong>{cfg[f.key]}</strong></span>
+          <AssistButton topic={f.key} label={label} text={t('panel.aiButtonLabel')}
+            onAssist={askExplain} busy={explainBusy} />
+        </span>
+        <input type="range" min={f.min} max={f.max} step={f.step}
+          value={cfg[f.key]} onChange={(e) => setField(f.key, Number(e.target.value))}
+          aria-label={label} />
+        <span className="rl-minmax"><em>{f.min}</em><em>{f.max}</em></span>
+        <p className="rl-field-hint">{hint}</p>
+        <AssistAnswer topic={f.key} answers={answers} onApply={applyRlSuggestion} />
+      </div>
+    );
+  };
 
   return (
     <div className="lab rl-lab">
+      <div className="rl-paradigm" role="tablist" aria-label={t('paradigm.aria')}>
+        <button type="button" role="tab" aria-selected={mode === 'demo'}
+          className={'rl-paradigm-tab' + (mode === 'demo' ? ' active' : '')}
+          onClick={() => setMode('demo')}>
+          <strong>{t('paradigm.demo')}</strong><small>{t('paradigm.demoHint')}</small>
+        </button>
+        <button type="button" role="tab" aria-selected={mode === 'deep'}
+          className={'rl-paradigm-tab' + (mode === 'deep' ? ' active' : '')}
+          onClick={() => setMode('deep')}>
+          <strong>{t('paradigm.deep')}</strong><small>{t('paradigm.deepHint')}</small>
+        </button>
+      </div>
+      {mode === 'deep' ? <DeepRLView /> : (
+      <>
       <div className="rl-intro glass-panel">
         <div className="rl-intro-text">
-          <span className="rl-kicker">Troisième paradigme</span>
-          <h2>Apprentissage par renforcement</h2>
+          <span className="rl-kicker">{t('intro.kicker')}</span>
+          <h2>{t('intro.title')}</h2>
           <p>
-            Pas de jeu de données figé : un <strong>agent</strong> apprend par essais-erreurs en
-            interagissant avec un <strong>environnement</strong> — ici un labyrinthe
-            <em> GridWorld</em>. À chaque pas il choisit une action, reçoit une
-            <strong> récompense</strong>, et ajuste sa stratégie (<em>Q-learning</em>) pour
-            maximiser la récompense cumulée. Il part de la case <strong>S</strong> et doit
-            rejoindre un but par le chemin le plus court, en évitant les pièges.
+            <Trans i18nKey="reinforcement:intro.body"
+              components={[<strong key="0" />, <strong key="1" />, <em key="2" />,
+                <strong key="3" />, <em key="4" />, <strong key="5" />]} />
           </p>
         </div>
         <LoopDiagram />
       </div>
 
-      <div className="rl-presets" role="group" aria-label="Scénarios prédéfinis">
-        {PRESETS.map((p) => (
-          <button key={p.name} type="button" className="rl-preset glass-panel"
-            onClick={() => applyPreset(p)} title={p.desc}>
-            <span className="rl-preset-body">
-              <strong>{p.name}</strong>
-              <small>{p.desc}</small>
-            </span>
-          </button>
-        ))}
+      <div className="rl-presets" role="group" aria-label={t('presets.ariaLabel')}>
+        {PRESETS.map((p) => {
+          const name = t('presets.' + p.key + '.name');
+          const desc = t('presets.' + p.key + '.desc');
+          return (
+            <button key={p.key} type="button" className="rl-preset glass-panel"
+              onClick={() => applyPreset(p)} title={desc}>
+              <span className="rl-preset-body">
+                <strong>{name}</strong>
+                <small>{desc}</small>
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="rl-workbench">
-        <section className="rl-board-panel glass-panel" aria-label="Éditeur d'environnement">
+        <section className="rl-board-panel glass-panel" aria-label={t('board.ariaLabel')}>
           <header className="rl-step-head">
             <span className="rl-step-no">1</span>
             <div>
-              <h3>Concevoir l’environnement</h3>
-              <p>Choisissez un outil puis cliquez sur la grille pour construire le monde.</p>
+              <h3>{t('board.stepTitle')}</h3>
+              <p>{t('board.stepDesc')}</p>
             </div>
           </header>
           <div className="rl-tools">
-            <div className="rl-tool-group" role="radiogroup" aria-label="Outil de placement">
-              {[['obstacle', 'Obstacle', 'rl-cell-obstacle', ''],
-                ['trap', 'Piège', 'rl-cell-trap', 'X'],
-                ['erase', 'Gomme', 'rl-cell-free', '']].map(([k, lbl, chip, glyph]) => (
+            <div className="rl-tool-group" role="radiogroup" aria-label={t('board.toolGroupAriaLabel')}>
+              {[['obstacle', t('board.tools.obstacle'), 'rl-cell-obstacle', ''],
+                ['trap', t('board.tools.trap'), 'rl-cell-trap', 'X'],
+                ['erase', t('board.tools.erase'), 'rl-cell-free', '']].map(([k, lbl, chip, glyph]) => (
                   <button key={k} type="button" role="radio" aria-checked={tool === k}
                     className={'rl-tool' + (tool === k ? ' active' : '')}
                     onClick={() => setTool(k)}>
@@ -370,10 +385,10 @@ export default function ReinforcementView() {
                 ))}
             </div>
             <button type="button" className="rl-tool rl-tool-clear" onClick={clearBoard}
-              disabled={!cfg.obstacles.length && !cfg.traps.length}>Vider</button>
+              disabled={!cfg.obstacles.length && !cfg.traps.length}>{t('board.clear')}</button>
           </div>
           <div className="rl-grid" role="grid" ref={gridRef} onKeyDown={moveFocus}
-            aria-label={'Labyrinthe ' + cfg.size + ' par ' + cfg.size}
+            aria-label={t('board.gridAriaLabel', { size: cfg.size })}
             style={{ '--rl-n': cfg.size }}>
             {Array.from({ length: cfg.size }, (_, r) => (
               <div key={r} role="row" className="rl-row">
@@ -391,7 +406,7 @@ export default function ReinforcementView() {
                       data-cell={r + '-' + c}
                       tabIndex={focus[0] === r && focus[1] === c ? 0 : -1}
                       onFocus={() => setFocus([r, c])}
-                      aria-label={'Case ' + (r + 1) + ',' + (c + 1) + ' : ' + CELL_TITLE[kind]}
+                      aria-label={t('board.cellAriaLabel', { row: r + 1, col: c + 1, title: CELL_TITLE[kind] })}
                       onClick={() => paintCell(r, c)}>
                       {onAgent && kind === 'free' ? '●' : CELL_GLYPH[kind]}
                     </button>
@@ -402,62 +417,65 @@ export default function ReinforcementView() {
           </div>
           {/* Reward values come from config.rewards (API) after a run, with the
               backend defaults (rl/gridworld.py) as pre-training fallback. */}
-          <ul className="rl-legend-chips" aria-label="Légende">
-            <li><span className="rl-chip rl-cell-start">S</span> départ</li>
-            <li><span className="rl-chip rl-chip-goal rl-cell-goal">BUT</span> but
+          <ul className="rl-legend-chips" aria-label={t('board.legendAriaLabel')}>
+            <li><span className="rl-chip rl-cell-start">S</span> {t('board.legend.start')}</li>
+            <li><span className="rl-chip rl-chip-goal rl-cell-goal">BUT</span> {t('board.legend.goal')}
               ({fmtReward(rewards.goal)})</li>
-            <li><span className="rl-chip rl-cell-trap">X</span> piège
+            <li><span className="rl-chip rl-cell-trap">X</span> {t('board.legend.trap')}
               ({fmtReward(rewards.trap)})</li>
-            <li><span className="rl-chip rl-cell-obstacle" /> obstacle</li>
-            <li><span className="rl-chip rl-cell-free" /> libre
-              ({fmtReward(rewards.step)} / pas)</li>
+            <li><span className="rl-chip rl-cell-obstacle" /> {t('board.legend.obstacle')}</li>
+            <li><span className="rl-chip rl-cell-free" /> {t('board.legend.free')}
+              ({fmtReward(rewards.step)} {t('board.legend.perStep')})</li>
           </ul>
           {result && result.policy && !stale ? (
             <div className="rl-replay">
               <button type="button" className="btn btn-secondary rl-replay-btn"
                 onClick={replay} disabled={playing}>
-                {playing ? 'Rejeu en cours…' : 'Rejouer la trajectoire'}
+                {playing ? t('board.replaying') : t('board.replay')}
               </button>
               {trail ? (
                 <span className="rl-replay-status" role="status">
-                  Trajectoire gloutonne : {trail.path.length - 1} pas — {OUTCOME_TEXT[trail.outcome]}
+                  {t('board.replayStatus', {
+                    steps: trail.path.length - 1,
+                    outcome: t('outcome.' + trail.outcome),
+                  })}
                 </span>
               ) : null}
             </div>
           ) : null}
           {(cfg.n_goals > 1 || cfg.n_traps > 0) ? (
             <p className="rl-auto-note">
-              {cfg.n_goals > 1 ? '+' + (cfg.n_goals - 1) + ' but(s) ' : ''}
-              {cfg.n_goals > 1 && cfg.n_traps > 0 ? 'et ' : ''}
-              {cfg.n_traps > 0 ? '+' + cfg.n_traps + ' piège(s) ' : ''}
-              placé(s) automatiquement à l’entraînement — visibles sur la grille après coup.
+              {cfg.n_goals > 1 ? t('board.autoNoteGoals', { n: cfg.n_goals - 1 }) : ''}
+              {cfg.n_goals > 1 && cfg.n_traps > 0 ? t('board.autoNoteAnd') : ''}
+              {cfg.n_traps > 0 ? t('board.autoNoteTraps', { n: cfg.n_traps }) : ''}
+              {t('board.autoNoteSuffix')}
             </p>
           ) : null}
         </section>
 
-        <section className="rl-panel glass-panel" aria-label="Hyperparamètres">
+        <section className="rl-panel glass-panel" aria-label={t('panel.ariaLabel')}>
           <header className="rl-step-head">
             <span className="rl-step-no">2</span>
             <div>
-              <h3>Régler l’algorithme</h3>
-              <p>Chaque curseur a son bouton IA pour comprendre — et appliquer — un bon réglage.</p>
+              <h3>{t('panel.stepTitle')}</h3>
+              <p>{t('panel.stepDesc')}</p>
             </div>
           </header>
           <div className="rl-group">
-            <h4 className="rl-group-title">Environnement</h4>
+            <h4 className="rl-group-title">{t('panel.groupEnv')}</h4>
             <div className="rl-controls">{ENV_FIELDS.map(renderField)}</div>
           </div>
           <div className="rl-group">
-            <h4 className="rl-group-title">Q-learning</h4>
+            <h4 className="rl-group-title">{t('panel.groupAlgo')}</h4>
             <div className="rl-controls">{ALGO_FIELDS.map(renderField)}</div>
           </div>
           <div className="rl-actions">
             <button className="btn btn-primary" onClick={train} disabled={busy}>
               {busy ? <span className="rl-spinner" aria-hidden="true" /> : null}
-              {busy ? 'Entraînement en cours…' : "Entraîner l'agent"}
+              {busy ? t('panel.training') : t('panel.train')}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => applyPreset(PRESETS[0])}
-              disabled={busy}>Réinitialiser</button>
+              disabled={busy}>{t('panel.reset')}</button>
           </div>
         </section>
       </div>
@@ -465,12 +483,12 @@ export default function ReinforcementView() {
       {error ? <div className="banner banner-block">{error}</div> : null}
 
       <section className={'rl-results glass-panel' + (busy ? ' rl-busy' : '')}
-        aria-label="Résultats de l'entraînement" aria-busy={busy}>
+        aria-label={t('results.ariaLabel')} aria-busy={busy}>
         <header className="rl-step-head">
           <span className="rl-step-no">3</span>
           <div>
-            <h3>Analyser l’apprentissage</h3>
-            <p>Courbe de récompense, politique apprise et fonction valeur.</p>
+            <h3>{t('results.stepTitle')}</h3>
+            <p>{t('results.stepDesc')}</p>
           </div>
         </header>
 
@@ -478,8 +496,7 @@ export default function ReinforcementView() {
           <div className={'rl-result' + (stale ? ' rl-result-stale' : '')}>
             {stale ? (
               <div className="rl-stale" role="status">
-                Configuration modifiée depuis cet entraînement — ces résultats décrivent
-                l’exécution précédente. Relancez l’entraînement pour les mettre à jour.
+                {t('results.staleMessage')}
               </div>
             ) : null}
             {verdict ? (
@@ -499,7 +516,7 @@ export default function ReinforcementView() {
             <div className="plots-grid">
               {result.plots.map((p, i) => (
                 <figure key={i} className="plot-fig">
-                  <button type="button" className="plot-thumb" title="Agrandir"
+                  <button type="button" className="plot-thumb" title={t('results.zoomTitle')}
                     onClick={() => setZoom({ src: p.img, caption: p.caption })}>
                     <img src={p.img} alt={p.caption} className="plot-img" decoding="async" />
                     <span className="plot-zoom-hint" aria-hidden="true">⤢</span>
@@ -512,14 +529,15 @@ export default function ReinforcementView() {
         ) : (
           <div className="rl-empty">
             <p className="rl-hint">
-              Construisez le monde (étape 1), réglez l’algorithme (étape 2), puis lancez
-              l’entraînement pour voir si l’agent apprend à rejoindre le but.
+              {t('results.emptyHint')}
             </p>
           </div>
         )}
       </section>
 
       {zoom ? <PlotModal src={zoom.src} caption={zoom.caption} onClose={() => setZoom(null)} /> : null}
+      </>
+      )}
     </div>
   );
 }

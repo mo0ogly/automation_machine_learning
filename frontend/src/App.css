@@ -197,6 +197,8 @@
   background: #ef4444; margin-left: 0.4rem; vertical-align: middle;
 }
 .cyber-head .badge-cyber { margin-left: 0; }
+/* Cyber-model counter pinned on the header "Modèles" button. */
+.cfg-menu-btn .nav-badge { margin-left: 0.4rem; padding: 0.02rem 0.34rem; font-size: 0.62rem; }
 .cyber-row strong { color: #fca5a5; }
 .cyber-subhead { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0.1rem 0 0.5rem; }

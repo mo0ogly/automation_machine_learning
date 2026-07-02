@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { useTranslation } from 'react-i18next'
 import './App.css'
 import LanguageSwitcher from './components/LanguageSwitcher'
@@ -8,6 +8,7 @@ import ExploitView from './components/ExploitView'
 import ConfigMenu from './components/ConfigMenu'
 import AiBackendsPanel from './components/AiBackendsPanel'
 import ModelsMenu from './components/ModelsMenu'
+import { isCyber } from './components/cyber'
 
 // Prompts panel pulls in Monaco (bundled offline). Code-split so the editor only
 // loads when the panel is opened, keeping the initial app bundle light.
@@ -65,6 +66,23 @@ function App() {
   const [modelsOpen, setModelsOpen] = useState(false)
   const [aiRefresh, setAiRefresh] = useState(0)
   const [locateNote, setLocateNote] = useState(null)
+  // Count of trained cyber models, surfaced as a badge on the "Modèles" button.
+  // Refetched when the panel closes (the set may have changed inside it).
+  const [cyberCount, setCyberCount] = useState(0)
+
+  useEffect(() => {
+    let alive = true;
+    fetch(API_URL + '/api/sessions')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const n = (d.sessions || []).filter(
+          (s) => s.summary && s.summary.model && isCyber(s.filename)).length;
+        setCyberCount(n);
+      })
+      .catch(() => { /* backend offline: leave the badge hidden */ });
+    return () => { alive = false; };
+  }, [modelsOpen]);
 
   // "Localiser": switch to the prompt's view, close the panel, then scroll to and
   // pulse the triggering element ([data-prompt-loc]). If it isn't rendered yet
@@ -107,7 +125,13 @@ function App() {
               onClick={() => setView('rl')}>{t('nav.reinforcement')}</button>
           </nav>
           <button type="button" className="cfg-menu-btn" onClick={() => setModelsOpen(true)}
-            title={t('models.tooltip')}>{t('models.label')}</button>
+            title={t('models.tooltip')}>
+            {t('models.label')}
+            {cyberCount > 0 ? (
+              <span className="badge-cyber nav-badge" title={cyberCount + ' modèles cyber'}>
+                {cyberCount}</span>
+            ) : null}
+          </button>
           <LanguageSwitcher />
           <ConfigMenu onOpenAi={() => setAiPanelOpen(true)}
             onOpenPrompts={() => setPromptsOpen(true)} />

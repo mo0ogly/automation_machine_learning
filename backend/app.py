@@ -461,9 +461,11 @@ def session_autorun(session_id: str):
             _run_stage(session, sid, {})
             ran.append(sid)
         except HTTPException as e:
+            SESSIONS.save(session)  # persist the partial progress before bailing out
             return to_native({"ran": ran, "stopped_at": sid, "reason": e.detail,
                               "status": session.stage_status()})
     final = session.get_run("evaluate")
+    SESSIONS.save(session)  # runs recorded -> persist (summary.model / stages_done)
     return to_native({"ran": ran, "skipped": ["tune", "explain"], "status": session.stage_status(),
                       "metrics": (final.result.get("metrics") if final else None)})
 

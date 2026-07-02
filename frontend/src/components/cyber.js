@@ -3,8 +3,9 @@
 // keyword in the dataset name — adjust the list here and every view follows.
 
 export const CYBER_KEYWORDS = [
-  'cyber', 'prompt', 'injection', 'fraud', 'malware', 'phishing',
+  'cyber', 'prompt', 'injection', 'fraud', 'malware', 'phishing', 'spam',
   'intrusion', 'threat', 'attack', 'exploit', 'vuln', 'anomal', 'transaction',
+  'cve', 'kev',
 ];
 
 export function isCyber(name) {

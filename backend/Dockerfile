@@ -16,7 +16,8 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     MPLBACKEND=Agg \
-    ML_SESSION_DB=/data/sessions.db
+    ML_SESSION_DB=/data/sessions.db \
+    HF_HOME=/app/.hf-cache
 
 WORKDIR /app
 
@@ -39,6 +40,12 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3.
 # Dependency manifest first for better layer caching (deps change rarely).
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install -r backend/requirements.txt
+
+# Pre-bake the sentence-transformers model into HF_HOME so conv_memory's semantic
+# recall loads it offline at runtime (it forces HF_HUB_OFFLINE). Without this the
+# fresh container has an empty cache and would fall back to TF-IDF. The chown
+# below (with /app) hands the cache to the non-root runtime user.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Application code + demo datasets (the root .dockerignore strips secrets,
 # the venv, caches and the internal notebooks/PDFs under data/).

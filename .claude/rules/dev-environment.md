@@ -1,5 +1,21 @@
 # Règle — Environnement de dev (machine_learning)
 
+## PROCESS MANAGEMENT — `mlauto` UNIQUEMENT (RÈGLE ABSOLUE)
+
+**L'app tourne sous Docker. Tout cycle de vie des services passe par `mlauto` — JAMAIS de `docker` / `uvicorn` / `npm` bruts, JAMAIS tuer le process sur 8000.**
+
+| Besoin | Commande (Linux/Git Bash) | Windows PowerShell |
+|--------|---------------------------|--------------------|
+| Démarrer (build si besoin) | `./mlauto.sh up` | `.\mlauto.ps1 up` |
+| Redémarrer (code seul) | `./mlauto.sh restart` | `.\mlauto.ps1 restart` |
+| Rebuild (requirements/package.json/Dockerfile changés) | `./mlauto.sh rebuild` | `.\mlauto.ps1 rebuild` |
+| Logs / état / santé | `./mlauto.sh logs [svc]` · `status` · `health` | idem `.ps1` |
+| Tests backend en conteneur | `./mlauto.sh test` | `.\mlauto.ps1 test` |
+| Arrêt | `./mlauto.sh down` | `.\mlauto.ps1 down` |
+
+- `mlauto.sh` et `mlauto.ps1` sont **en parité** (mêmes verbes) — utiliser celui de la plateforme.
+- Interdits : `docker compose up/restart` en direct, `uvicorn app:app`, `npm run dev`, `kill`/`Stop-Process` sur le serveur. Détails + incident fondateur : section « RUNTIME = DOCKER » plus bas.
+
 ## PORTS FIXES — RÈGLE ABSOLUE
 
 **JAMAIS changer les numéros de port du frontend ni du backend.**

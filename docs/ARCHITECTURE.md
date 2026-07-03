@@ -74,7 +74,7 @@ Les `control` sont rendus tels quels par le frontend. `column_table` = table de 
 
 | # | Étape | Rôle | Supervisé | Non supervisé (clustering) |
 |---|-------|------|-----------|----------------------------|
-| 1 | `clean` | Choix des colonnes (table de décision), normalisation ordinale, imputation, aberrants IQR, exclusion univariée, doublons. EDA détaillée (valeurs catégorielles, lignes extrêmes). | idem | idem |
+| 1 | `clean` | Choix des colonnes (table de décision), normalisation ordinale, **imputation médiane/moyenne/zéro/KNN/itérative**, **aberrants IQR ou z-score** (borner/supprimer), exclusion univariée, doublons, **diagnostic data-quality par colonne**. EDA détaillée (valeurs catégorielles, lignes extrêmes). | idem | idem |
 | 2 | `transform` | Features dérivées, asymétrie, encodage **ordinal ordonné** / One-Hot nominales, scaling. **EDA univariée + bivariée par type**. | idem | bivariée vs cible désactivée (pas de cible) |
 | 3 | `integrate` | Matrice finale : **table de décision des variables** (redondance signalée), **sélection univariée** (SelectKBest F-test / info mutuelle, ajustée train-only dans `preprocessing.py`) et PCA optionnelles. | corr vs cible | corr inter-variables |
 | 4 | `separate` | Split train/test stratifié + contrôle de fuite ; **préprocesseur anti-fuite** ajusté sur le train seul (`preprocessing.py`), réutilisé par serving/export. | X/y train/test | `X_full` (pas de split) |

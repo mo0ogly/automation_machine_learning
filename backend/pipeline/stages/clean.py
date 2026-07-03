@@ -115,15 +115,22 @@ def config_schema(df, ctx):
         toggle("normalize_ordinals", "Normaliser les notes de qualité (ordinales)", True,
                "Mappe les notes ordonnées sur une échelle : absent=0, Po=1, Fa=2, TA=3, Gd=4, Ex=5."),
         select("impute_num", "Imputation numérique",
-               [("median", "Médiane"), ("mean", "Moyenne"), ("zero", "Zéro"), ("drop_rows", "Supprimer les lignes")],
-               "median", "Remplissage des trous numériques."),
+               [("median", "Médiane"), ("mean", "Moyenne"), ("zero", "Zéro"),
+                ("knn", "KNN (voisins les plus proches)"),
+                ("iterative", "Itérative (modélisée sur les autres variables)"),
+                ("drop_rows", "Supprimer les lignes")],
+               "median", "Remplissage des trous numériques. KNN/Itérative estiment la valeur "
+               "manquante à partir des AUTRES variables (mieux quand elles sont corrélées) ; "
+               "médiane/moyenne sont plus simples et rapides."),
         select("impute_cat", "Imputation catégorielle",
                [("constant", 'Constante ("None" = absence)'), ("most_frequent", "Modalité la plus fréquente"),
                 ("drop_rows", "Supprimer les lignes")],
                "constant", "Remplissage des trous catégoriels (« None » = absence)."),
         select("outlier_method", "Valeurs aberrantes",
-               [("none", "Ne rien faire"), ("iqr_clip", "Borner (IQR)"), ("iqr_remove", "Supprimer (IQR)")],
-               "none", "Traitement des valeurs hors bornes de Tukey."),
+               [("none", "Ne rien faire"), ("iqr_clip", "Borner (IQR)"), ("iqr_remove", "Supprimer (IQR)"),
+                ("zscore_clip", "Borner (z-score)"), ("zscore_remove", "Supprimer (z-score)")],
+               "none", "Traitement des valeurs extrêmes. IQR (bornes de Tukey) est robuste ; "
+               "z-score cible les points à plus de k écarts-types de la moyenne."),
         rng("outlier_k", "Facteur IQR (k)", 1.0, 3.0, 0.5, 1.5, "Bornes Q1−k·IQR à Q3+k·IQR."),
         select("exclude_column", "Exclusion univariée — colonne", col_options, "",
                "Exclure des lignes selon une variable (ex. GrLivArea > 4000)."),
@@ -182,6 +189,7 @@ def diagnose(df, ctx):
             "overview": dg.overview(df, ctx.target_col),
             "typologie": typ.summary_rows(typ.classify(df, ctx.target_col)),
             "missing_by_column": miss,
+            "qualite_par_colonne": data_quality_by_column(df, ctx),
             "outliers_iqr": dg.outliers_iqr(df, ctx.target_col),
             "valeurs_categorielles": _categorical_values(df),
             "lignes_extremes": _extreme_rows(df, ctx.target_col),
@@ -231,6 +239,16 @@ def run(df, config, ctx, make_plots=True):
         before = len(df)
         df = df.dropna(subset=num_cols)
         log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN numériques).")
+    elif cfg["impute_num"] in ("knn", "iterative") and num_cols:
+        # Model-based imputation: estimate a missing cell from the OTHER numeric
+        # features (KNN neighbours / iterative regression). Better than a per-column
+        # constant when features are correlated. Fit on the full frame, like the
+        # simple imputers above (see the leakage note in transform.py / separate.py).
+        n_na = int(df[num_cols].isnull().sum().sum())
+        if n_na:
+            df[num_cols] = _model_impute(df[num_cols], cfg["impute_num"])
+            imputed_num = n_na
+            log.append(f"{n_na} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
     else:
         for c in num_cols:
             n_na = int(df[c].isnull().sum())
@@ -264,33 +282,35 @@ def run(df, config, ctx, make_plots=True):
         if imputed_cat:
             log.append(f"{imputed_cat} valeur(s) catégorielle(s) imputée(s) ({cfg['impute_cat']}).")
 
-    # 5. Outliers (numeric features only).
+    # 5. Outliers (numeric features only). IQR (Tukey bounds) or z-score (k·σ),
+    #    each in a clip (bound the value) or remove (drop the row) variant.
     outliers_handled = 0
-    if cfg["outlier_method"] != "none":
+    method = cfg["outlier_method"]
+    if method != "none":
         k = float(cfg["outlier_k"])
-        if cfg["outlier_method"] == "iqr_clip":
+        clip = method.endswith("_clip")
+        bounds = _iqr_bounds if method.startswith("iqr") else _zscore_bounds
+        label = "IQR" if method.startswith("iqr") else "z-score"
+        if clip:
             for c in num_cols:
                 s = df[c]
-                q1, q3 = s.quantile(0.25), s.quantile(0.75)
-                iqr = q3 - q1
-                if iqr == 0:
+                low, high = bounds(s, k)
+                if low is None:
                     continue
-                low, high = q1 - k * iqr, q3 + k * iqr
                 outliers_handled += int(((s < low) | (s > high)).sum())
                 df[c] = s.clip(low, high)
-            log.append(f"{outliers_handled} valeur(s) bornée(s) (IQR k={k}).")
+            log.append(f"{outliers_handled} valeur(s) bornée(s) ({label} k={k}).")
         else:
             mask = pd.Series(True, index=df.index)
             for c in num_cols:
                 s = df[c]
-                q1, q3 = s.quantile(0.25), s.quantile(0.75)
-                iqr = q3 - q1
-                if iqr == 0:
+                low, high = bounds(s, k)
+                if low is None:
                     continue
-                mask &= s.between(q1 - k * iqr, q3 + k * iqr)
+                mask &= s.between(low, high)
             outliers_handled = int((~mask).sum())
             df = df[mask]
-            log.append(f"{outliers_handled} ligne(s) aberrante(s) supprimée(s) (IQR k={k}).")
+            log.append(f"{outliers_handled} ligne(s) aberrante(s) supprimée(s) ({label} k={k}).")
 
     # 5b. Univariate row exclusion (expert-driven, e.g. GrLivArea > 4000).
     excl_col = cfg.get("exclude_column") or ""
@@ -349,6 +369,79 @@ def run(df, config, ctx, make_plots=True):
         "plots": plots,
     }
     return df, result
+
+
+# ── imputation / outlier helpers ───────────────────────────────────────────
+def _model_impute(X, method):
+    """KNN / iterative imputation of a numeric block, with a median fallback."""
+    from sklearn.impute import KNNImputer
+    if method == "iterative":
+        from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+        from sklearn.impute import IterativeImputer
+        imputer = IterativeImputer(random_state=42, max_iter=10, sample_posterior=False)
+    else:
+        imputer = KNNImputer(n_neighbors=5)
+    try:
+        arr = imputer.fit_transform(X)
+        return pd.DataFrame(arr, columns=X.columns, index=X.index)
+    except Exception:
+        return X.fillna(X.median(numeric_only=True))
+
+
+def _iqr_bounds(s, k):
+    """Tukey IQR bounds ``(Q1−k·IQR, Q3+k·IQR)``; ``(None, None)`` if degenerate."""
+    sv = pd.to_numeric(s, errors="coerce")
+    q1, q3 = sv.quantile(0.25), sv.quantile(0.75)
+    iqr = q3 - q1
+    if not np.isfinite(iqr) or iqr == 0:
+        return None, None
+    return q1 - k * iqr, q3 + k * iqr
+
+
+def _zscore_bounds(s, k):
+    """Mean ± k·σ bounds; ``(None, None)`` if the std is zero / undefined."""
+    sv = pd.to_numeric(s, errors="coerce")
+    mu, sd = sv.mean(), sv.std()
+    if not np.isfinite(sd) or sd == 0:
+        return None, None
+    return mu - k * sd, mu + k * sd
+
+
+def data_quality_by_column(df, ctx, max_card=0.9):
+    """Per-column health row: missing %, distinct count, outlier count, and any
+    quality flags — sorted worst-first so the (capped) view shows the problems."""
+    target = ctx.target_col
+    n = len(df) or 1
+    rows = []
+    for c in df.columns:
+        s = df[c]
+        miss = round(100.0 * int(s.isnull().sum()) / n, 1)
+        nun = int(s.nunique(dropna=True))
+        numeric = pd.api.types.is_numeric_dtype(s)
+        out_ct = 0
+        if numeric:
+            low, high = _iqr_bounds(s, 1.5)
+            if low is not None:
+                sv = pd.to_numeric(s, errors="coerce")
+                out_ct = int(((sv < low) | (sv > high)).sum())
+        flags = []
+        if miss >= 50:
+            flags.append("manquant élevé")
+        elif miss > 0:
+            flags.append(f"{miss}% manquant")
+        if nun <= 1:
+            flags.append("constante")
+        if not numeric and nun / n > max_card and nun > 20:
+            flags.append("cardinalité (id ?)")
+        if out_ct:
+            flags.append(f"{out_ct} aberrant(s)")
+        severity = (1 if any(f in ("manquant élevé", "constante", "cardinalité (id ?)") for f in flags) else 0,
+                    miss, out_ct)
+        rows.append({"colonne": str(c), "type": ("cible" if c == target else ("num" if numeric else "cat")),
+                     "manquant_%": miss, "distinct": nun, "aberrants": out_ct,
+                     "alertes": ", ".join(flags) or "—", "_sev": severity})
+    rows.sort(key=lambda r: r.pop("_sev"), reverse=True)
+    return rows
 
 
 # ── local plot helpers ───────────────────────────────────────────────────

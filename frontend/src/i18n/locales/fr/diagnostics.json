@@ -14,7 +14,8 @@
     "metrics": "Métriques",
     "valeurs_categorielles": "Valeurs distinctes (catégorielles)",
     "lignes_extremes": "Lignes extrêmes (cible élevée)",
-    "analyse_descriptive": "Analyse descriptive (par type)"
+    "analyse_descriptive": "Analyse descriptive (par type)",
+    "qualite_par_colonne": "Qualité des données par colonne"
   },
   "none": "aucun",
   "empty": "Pas de diagnostics disponibles.",

@@ -14,7 +14,8 @@
     "metrics": "Metrics",
     "valeurs_categorielles": "Distinct values (categorical)",
     "lignes_extremes": "Extreme rows (high target)",
-    "analyse_descriptive": "Descriptive analysis (by type)"
+    "analyse_descriptive": "Descriptive analysis (by type)",
+    "qualite_par_colonne": "Data quality by column"
   },
   "none": "none",
   "empty": "No diagnostics available.",

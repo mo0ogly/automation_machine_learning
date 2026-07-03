@@ -85,6 +85,11 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Typologie en 4 voies** : quantitative continue / discrète / catégorielle **nominale** / **ordinale**.
 - **Encodage ordinal ordonné** : les notes de qualité (`Po<Fa<TA<Gd<Ex`) gardent leur ordre
   sémantique (table de correspondance dédiée), pas l'ordre alphabétique ; les nominales en One-Hot.
+- **Nettoyage** : **imputation** modélisée (KNN / itérative, qui estime une valeur manquante à
+  partir des autres variables) en plus de médiane/moyenne/zéro ; traitement des **aberrants**
+  par IQR (Tukey) ou z-score, en variante borner ou supprimer ; et un **diagnostic data-quality
+  par colonne** (manquant %, distinct, aberrants, alertes : constante / cardinalité-id /
+  manquant élevé), trié du pire au meilleur.
 - **Exclusion d'aberrants** pilotée par l'analyse univariée, configurable par l'expert.
 - **Prétraitement anti-fuite** : l'étape Séparation découpe D'ABORD, puis ajuste chaque
   transformateur dépendant des données (redressement d'asymétrie, catégories One-Hot,

@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/frustration-detector.cjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/frustration-detector.cjs\""
           }
         ]
       }
@@ -41,11 +41,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/process_guard.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/process_guard.sh\""
           },
           {
             "type": "command",
-            "command": "node .claude/hooks/secret-scanner.cjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/secret-scanner.cjs\""
           }
         ]
       },
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/file_size_check.cjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/file_size_check.cjs\""
           }
         ]
       }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/auto_wiki_rebuild.cjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/auto_wiki_rebuild.cjs\""
           }
         ]
       }
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session_primer.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_primer.sh\""
           }
         ]
       }

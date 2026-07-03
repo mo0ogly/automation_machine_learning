@@ -48,11 +48,26 @@ def test_cyber_env_registered_and_valid():
     env.close()
 
 
-def test_dqn_is_discrete_only():
+def test_action_space_support():
     assert algos.supports("DQN", envs.DISCRETE) is True
     assert algos.supports("DQN", envs.CONTINUOUS) is False
     assert algos.supports("PPO", envs.CONTINUOUS) is True
     assert algos.supports("A2C", envs.DISCRETE) is True
+    # SAC / TD3 / DDPG / TQC are continuous-control only.
+    for name in ("SAC", "TD3", "DDPG", "TQC"):
+        assert algos.supports(name, envs.CONTINUOUS) is True
+        assert algos.supports(name, envs.DISCRETE) is False
+    # QRDQN discrete-only; TRPO both (sb3-contrib).
+    assert algos.supports("QRDQN", envs.DISCRETE) is True
+    assert algos.supports("QRDQN", envs.CONTINUOUS) is False
+    assert algos.supports("TRPO", envs.DISCRETE) is True
+    assert algos.supports("TRPO", envs.CONTINUOUS) is True
+
+
+def test_buffer_size_clamps_to_int():
+    kw = algos.build_kwargs("SAC", {"buffer_size": 10 ** 9, "tau": 99})
+    assert kw["buffer_size"] == 1000000 and isinstance(kw["buffer_size"], int)
+    assert kw["tau"] == pytest.approx(0.02)  # capped at max
 
 
 def test_build_kwargs_clamps_out_of_range():
@@ -98,6 +113,24 @@ def test_train_end_to_end_cartpole():
     assert len(extras["eval_rewards"]) == 5
     assert isinstance(result["solved"], bool)
     assert result["threshold"] == 475.0
+
+
+def test_train_end_to_end_sac_continuous():
+    """A tiny SAC run on a continuous env (Pendulum) wires up and evaluates."""
+    result, extras = train.train("Pendulum-v1", "SAC",
+                                 {"total_timesteps": 1000, "buffer_size": 10000},
+                                 n_eval_episodes=3)
+    assert result["metrics"]["Algorithme"] == "SAC"
+    assert len(extras["eval_rewards"]) == 3
+
+
+def test_train_end_to_end_qrdqn_contrib():
+    """A tiny QRDQN (sb3-contrib) run on CartPole wires up and evaluates."""
+    pytest.importorskip("sb3_contrib")
+    result, extras = train.train("CartPole-v1", "QRDQN", {"total_timesteps": 2000},
+                                 n_eval_episodes=3)
+    assert result["metrics"]["Algorithme"] == "QRDQN"
+    assert len(extras["eval_rewards"]) == 3
 
 
 def test_job_lifecycle():

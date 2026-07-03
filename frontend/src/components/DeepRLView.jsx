@@ -148,7 +148,10 @@ export default function DeepRLView() {
     setExplainBusy(true);
     try {
       const body = { param, level: 'novice', config: cfg };
-      if (param.indexOf('graphe:') === 0 && result) {
+      if (result && param === 'resultats') {           // explain the whole results table
+        body.caption = t('deep.metricsTitle');
+        body.metrics = result.metrics;
+      } else if (param.indexOf('graphe:') === 0 && result) {
         body.caption = param.replace(/^graphe:\s*/, '');
         body.metrics = result.metrics;
       }
@@ -259,7 +262,10 @@ export default function DeepRLView() {
                   className={'rl-algo' + (a.id === algoName ? ' active' : '') + (ok ? '' : ' disabled')}
                   title={ok ? a.family : t('deep.algoIncompatible', { algo: a.id, kind: env ? t('deep.actionKind.' + env.action_kind) : '' })}
                   onClick={() => ok && setAlgoName(a.id)}>
-                  <strong>{a.id}</strong>
+                  <span className="rl-algo-name">
+                    <strong>{a.id}</strong>
+                    {a.contrib ? <span className="rl-tag rl-tag-contrib">{t('deep.contribBadge')}</span> : null}
+                  </span>
                   <small>{t('deep.algos.' + a.id + '.desc')}</small>
                 </button>
               );
@@ -300,9 +306,15 @@ export default function DeepRLView() {
         <header className="rl-step-head">
           <span className="rl-step-no">4</span>
           <div><h3>{t('deep.step4')}</h3><p>{t('deep.step4Hint')}</p></div>
-          {result && result.can_download ? (
-            <a className="btn btn-secondary rl-download" download
-              href={API_URL + '/api/rl/deep/job/' + jobId + '/download'}>{t('deep.download')}</a>
+          {result ? (
+            <span className="rl-results-actions">
+              <AssistButton topic="resultats" label={t('deep.explainResults')} text={t('deep.ai')}
+                onAssist={askExplain} busy={explainBusy} />
+              {result.can_download ? (
+                <a className="btn btn-secondary rl-download" download
+                  href={API_URL + '/api/rl/deep/job/' + jobId + '/download'}>{t('deep.download')}</a>
+              ) : null}
+            </span>
           ) : null}
         </header>
         {result ? (
@@ -315,6 +327,7 @@ export default function DeepRLView() {
                 <strong>{verdict.title}</strong><span>{verdict.text}</span>
               </div>
             ) : null}
+            <AssistAnswer topic="resultats" answers={answers} onApply={applySuggestion} />
             <div className="report-cards">
               {Object.entries(result.metrics).map(([k, v]) => (
                 <div key={k} className="report-card">

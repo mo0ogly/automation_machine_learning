@@ -39,6 +39,22 @@ _COMMON_FIELDS = [
              "plus bas = privilégie le gain immédiat."},
 ]
 
+# Extra fields shared by the off-policy continuous-control algorithms (SAC/TD3/DDPG),
+# which learn from a replay buffer with a soft target-network update.
+_OFFPOLICY_CONT_FIELDS = [
+    {"name": "tau", "label": "Mise à jour douce (tau)", "type": "range",
+     "min": 0.001, "max": 0.02, "step": 0.001, "default": 0.005,
+     "help": "Vitesse de rapprochement du réseau cible vers le réseau courant. "
+             "Petit = cible stable mais lente ; grand = plus réactif mais instable."},
+    {"name": "buffer_size", "label": "Taille du tampon de rejeu", "type": "range",
+     "min": 10000, "max": 1000000, "step": 10000, "default": 100000,
+     "help": "Nombre de transitions passées gardées en mémoire pour ré-apprentissage "
+             "(replay buffer). Plus grand = plus de recul mais plus de mémoire."},
+]
+
+# Field names carrying an integer count (rounded when clamped).
+_INT_FIELDS = {"total_timesteps", "buffer_size"}
+
 # Per-algorithm extra field + which action kinds the algorithm accepts.
 _ALGOS = {
     "PPO": {
@@ -73,9 +89,46 @@ _ALGOS = {
                      "epsilon-greedy du Q-learning tabulaire."},
         ],
     },
+    "SAC": {
+        "id": "SAC", "family": "off-policy (acteur-critique, entropie maximale)",
+        "action_kinds": [CONTINUOUS],
+        "fields": _COMMON_FIELDS + _OFFPOLICY_CONT_FIELDS,
+    },
+    "TD3": {
+        "id": "TD3", "family": "off-policy (acteur-critique, double critique)",
+        "action_kinds": [CONTINUOUS],
+        "fields": _COMMON_FIELDS + _OFFPOLICY_CONT_FIELDS,
+    },
+    "DDPG": {
+        "id": "DDPG", "family": "off-policy (acteur-critique déterministe)",
+        "action_kinds": [CONTINUOUS],
+        "fields": _COMMON_FIELDS + _OFFPOLICY_CONT_FIELDS,
+    },
+    # --- sb3-contrib (separate package) ---
+    "QRDQN": {
+        "id": "QRDQN", "family": "off-policy (valeur, distributionnel)", "contrib": True,
+        "action_kinds": [DISCRETE],
+        "fields": _COMMON_FIELDS + [
+            {"name": "exploration_fraction", "label": "Fraction d'exploration", "type": "range",
+             "min": 0.05, "max": 0.5, "step": 0.05, "default": 0.1,
+             "help": "Part de l'entraînement où epsilon décroît (exploration vs "
+                     "exploitation). QRDQN étend DQN en apprenant la distribution des "
+                     "retours plutôt que leur seule moyenne."},
+        ],
+    },
+    "TRPO": {
+        "id": "TRPO", "family": "on-policy (région de confiance)", "contrib": True,
+        "action_kinds": [DISCRETE, CONTINUOUS],
+        "fields": _COMMON_FIELDS,
+    },
+    "TQC": {
+        "id": "TQC", "family": "off-policy (critiques quantiles tronqués)", "contrib": True,
+        "action_kinds": [CONTINUOUS],
+        "fields": _COMMON_FIELDS + _OFFPOLICY_CONT_FIELDS,
+    },
 }
 
-_ORDER = ["PPO", "DQN", "A2C"]
+_ORDER = ["PPO", "DQN", "A2C", "SAC", "TD3", "DDPG", "QRDQN", "TRPO", "TQC"]
 
 
 def list_algos() -> list:
@@ -110,8 +163,8 @@ def _clamp_to_field(field: dict, value):
         v = max(v, float(lo))
     if hi is not None:
         v = min(v, float(hi))
-    # total_timesteps is an integer count; everything else stays float.
-    return int(round(v)) if field["name"] == "total_timesteps" else v
+    # integer counts (steps, buffer size) are rounded; everything else stays float.
+    return int(round(v)) if field["name"] in _INT_FIELDS else v
 
 
 def build_kwargs(name: str, config: dict) -> dict:

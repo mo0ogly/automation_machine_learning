@@ -178,6 +178,10 @@
 .rl-algo.active { border-color: var(--accent-primary); background: rgba(59, 130, 246, 0.10); }
 .rl-algo.disabled { opacity: 0.4; cursor: not-allowed; }
 .rl-algo small { font-size: 0.72rem; color: var(--text-tertiary); line-height: 1.3; }
+.rl-algo-name { display: inline-flex; align-items: center; gap: 0.4rem; }
+.rl-tag-contrib { font-size: 0.6rem; padding: 0.05rem 0.4rem; text-transform: uppercase;
+  letter-spacing: 0.04em; background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
+.rl-results-actions { display: inline-flex; align-items: center; gap: 0.6rem; margin-left: auto; }
 
 /* Training progress bar. */
 .rl-progress { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.8rem; }

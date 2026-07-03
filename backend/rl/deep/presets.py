@@ -36,6 +36,12 @@ _PRESETS = [
         "env_id": "Pendulum-v1", "algo": "PPO",
         "config": {"total_timesteps": 60000, "learning_rate": 0.0003, "gamma": 0.99},
     },
+    {
+        "id": "pendulum_sac", "group": "classic_control", "recommended": False,
+        "env_id": "Pendulum-v1", "algo": "SAC",
+        "config": {"total_timesteps": 20000, "learning_rate": 0.001,
+                   "gamma": 0.99, "tau": 0.005, "buffer_size": 100000},
+    },
 ]
 
 

@@ -50,7 +50,9 @@
       "learning_rate": { "label": "Taux d'apprentissage", "hint": "Pas de descente de gradient du réseau. Haut = apprend vite mais instable ; bas = lent mais stable." },
       "gamma": { "label": "Facteur d'actualisation (gamma)", "hint": "Poids des récompenses futures : proche de 1 = vision long terme ; plus bas = privilégie le gain immédiat." },
       "ent_coef": { "label": "Coefficient d'entropie", "hint": "Encourage l'exploration en pénalisant les politiques trop sûres d'elles. 0 = aucune incitation." },
-      "exploration_fraction": { "label": "Fraction d'exploration", "hint": "Part de l'entraînement où l'exploration décroît (epsilon-greedy Deep). L'équivalent de l'exploration du Q-learning tabulaire." }
+      "exploration_fraction": { "label": "Fraction d'exploration", "hint": "Part de l'entraînement où l'exploration décroît (epsilon-greedy Deep). L'équivalent de l'exploration du Q-learning tabulaire." },
+      "tau": { "label": "Mise à jour douce (tau)", "hint": "Vitesse de rapprochement du réseau cible vers le réseau courant. Petit = cible stable mais lente ; grand = plus réactif mais instable." },
+      "buffer_size": { "label": "Taille du tampon de rejeu", "hint": "Nombre de transitions passées gardées en mémoire pour ré-apprentissage (replay buffer). Plus grand = plus de recul mais plus de mémoire." }
     },
     "groups": {
       "cyber_defense": "Cyber défense",
@@ -64,7 +66,8 @@
       "soc_triage_dqn": { "name": "Triage SOC (DQN)", "desc": "Trier un flux d'alertes sous budget analyste : bloquer les vraies attaques, épargner le trafic légitime. Value-based." },
       "soc_triage_ppo": { "name": "Triage SOC (PPO)", "desc": "Même problème de triage d'alertes, résolu par une méthode acteur-critique (PPO)." },
       "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Référence pédagogique rapide : équilibrer un pendule inversé." },
-      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Référence à action continue : redresser un pendule par un couple dosé." }
+      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Référence à action continue : redresser un pendule par un couple dosé." },
+      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Contrôle continu off-policy prêt à l'emploi : SAC sur Pendulum, efficace en échantillons." }
     },
     "envs": {
       "AlertTriage-v0": { "label": "Triage d'alertes SOC", "desc": "Trier un flux d'alertes de sécurité sous budget de réponse : chaque alerte (score de menace, criticité de l'actif, réputation source, budget restant) appelle une décision — ignorer, surveiller ou bloquer. Bloquer une vraie attaque paie ; bloquer du trafic légitime coûte ; manquer une attaque coûte cher." },
@@ -77,8 +80,16 @@
     "algos": {
       "PPO": { "desc": "Robuste et polyvalent, le choix par défaut. Gère actions discrètes et continues." },
       "DQN": { "desc": "Le pendant Deep du Q-learning tabulaire. Actions discrètes uniquement." },
-      "A2C": { "desc": "Cousin plus simple et plus rapide de PPO. Gère les deux types d'action." }
-    }
+      "A2C": { "desc": "Cousin plus simple et plus rapide de PPO. Gère les deux types d'action." },
+      "SAC": { "desc": "Off-policy à entropie maximale, très efficace en échantillons. Le meilleur défaut en contrôle continu. Actions continues uniquement." },
+      "TD3": { "desc": "Off-policy à double critique, stabilise l'apprentissage déterministe. Actions continues uniquement." },
+      "DDPG": { "desc": "Acteur-critique déterministe off-policy, prédécesseur de TD3. Actions continues uniquement." },
+      "QRDQN": { "desc": "DQN distributionnel : apprend la distribution des retours, pas seulement leur moyenne. Actions discrètes uniquement (sb3-contrib)." },
+      "TRPO": { "desc": "Optimisation en région de confiance : pas de mise à jour bornés pour la stabilité. Actions discrètes et continues (sb3-contrib)." },
+      "TQC": { "desc": "Critiques quantiles tronqués, réduit la surestimation de la valeur. Souvent au-dessus de SAC en continu (sb3-contrib)." }
+    },
+    "contribBadge": "contrib",
+    "explainResults": "Expliquer les résultats"
   },
   "intro": {
     "kicker": "Troisième paradigme",

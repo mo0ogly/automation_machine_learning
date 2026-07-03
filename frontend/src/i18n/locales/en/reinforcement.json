@@ -50,7 +50,9 @@
       "learning_rate": { "label": "Learning rate", "hint": "Gradient-descent step of the network. High = learns fast but unstable; low = slow but stable." },
       "gamma": { "label": "Discount factor (gamma)", "hint": "Weight of future rewards: close to 1 = long-term view; lower = favours immediate gain." },
       "ent_coef": { "label": "Entropy coefficient", "hint": "Encourages exploration by penalising over-confident policies. 0 = no incentive." },
-      "exploration_fraction": { "label": "Exploration fraction", "hint": "Share of training over which exploration decays (Deep epsilon-greedy). The counterpart of tabular Q-learning exploration." }
+      "exploration_fraction": { "label": "Exploration fraction", "hint": "Share of training over which exploration decays (Deep epsilon-greedy). The counterpart of tabular Q-learning exploration." },
+      "tau": { "label": "Soft update (tau)", "hint": "How fast the target network moves toward the current one. Small = stable but slow target; large = more reactive but unstable." },
+      "buffer_size": { "label": "Replay buffer size", "hint": "Number of past transitions kept in memory for re-learning (replay buffer). Larger = more history but more memory." }
     },
     "groups": {
       "cyber_defense": "Cyber defense",
@@ -64,7 +66,8 @@
       "soc_triage_dqn": { "name": "SOC triage (DQN)", "desc": "Triage an alert stream under an analyst budget: block real attacks, spare legitimate traffic. Value-based." },
       "soc_triage_ppo": { "name": "SOC triage (PPO)", "desc": "Same alert-triage problem, solved with an actor-critic method (PPO)." },
       "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Fast teaching reference: balance an inverted pole." },
-      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Continuous-action reference: swing up a pendulum with modulated torque." }
+      "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Continuous-action reference: swing up a pendulum with modulated torque." },
+      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Ready-made off-policy continuous control: SAC on Pendulum, sample-efficient." }
     },
     "envs": {
       "AlertTriage-v0": { "label": "SOC alert triage", "desc": "Triage a stream of security alerts under a response budget: each alert (threat score, asset criticality, source reputation, remaining budget) calls for a decision — dismiss, monitor or block. Blocking a real attack pays off; blocking legitimate traffic costs; missing an attack is expensive." },
@@ -77,8 +80,16 @@
     "algos": {
       "PPO": { "desc": "Robust and versatile, the default choice. Handles discrete and continuous actions." },
       "DQN": { "desc": "The Deep counterpart of tabular Q-learning. Discrete actions only." },
-      "A2C": { "desc": "Simpler, faster cousin of PPO. Handles both action types." }
-    }
+      "A2C": { "desc": "Simpler, faster cousin of PPO. Handles both action types." },
+      "SAC": { "desc": "Maximum-entropy off-policy, very sample-efficient. The best default for continuous control. Continuous actions only." },
+      "TD3": { "desc": "Twin-critic off-policy, stabilises deterministic learning. Continuous actions only." },
+      "DDPG": { "desc": "Deterministic off-policy actor-critic, the predecessor of TD3. Continuous actions only." },
+      "QRDQN": { "desc": "Distributional DQN: learns the distribution of returns, not just their mean. Discrete actions only (sb3-contrib)." },
+      "TRPO": { "desc": "Trust-region optimisation: bounded updates for stability. Discrete and continuous actions (sb3-contrib)." },
+      "TQC": { "desc": "Truncated quantile critics, curbs value overestimation. Often beats SAC on continuous control (sb3-contrib)." }
+    },
+    "contribBadge": "contrib",
+    "explainResults": "Explain the results"
   },
   "intro": {
     "kicker": "Third paradigm",

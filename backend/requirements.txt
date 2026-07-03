@@ -20,6 +20,8 @@ shap>=0.44
 # so this file stays PyPI-only and sb3 reuses that torch instead of pulling CUDA.
 gymnasium[classic-control]>=0.29
 stable-baselines3>=2.4
+# Extra algorithms (QR-DQN, TRPO, TQC) — pure-Python add-on, reuses torch above.
+sb3-contrib>=2.4
 
 # LLM agent (Groq via OpenAI-compatible REST) + TLS
 httpx>=0.27

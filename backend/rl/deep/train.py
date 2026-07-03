@@ -59,16 +59,23 @@ def _make_callback(total_timesteps, on_progress, should_cancel):
 
 
 def _build_model(algo_name, env, kwargs):
-    """Instantiate the SB3 model. ``kwargs`` are already validated/clamped."""
-    from stable_baselines3 import PPO, A2C, DQN
-    classes = {"PPO": PPO, "A2C": A2C, "DQN": DQN}
+    """Instantiate the SB3 (or sb3-contrib) model. ``kwargs`` are validated/clamped."""
+    from stable_baselines3 import PPO, A2C, DQN, SAC, TD3, DDPG
+    classes = {"PPO": PPO, "A2C": A2C, "DQN": DQN, "SAC": SAC, "TD3": TD3, "DDPG": DDPG}
+    if algo_name in ("QRDQN", "TRPO", "TQC"):  # sb3-contrib (lazy import)
+        from sb3_contrib import QRDQN, TRPO, TQC
+        classes.update({"QRDQN": QRDQN, "TRPO": TRPO, "TQC": TQC})
     cls = classes[algo_name]
     common = dict(policy="MlpPolicy", env=env, verbose=0, device="cpu", seed=0,
                   learning_rate=kwargs["learning_rate"], gamma=kwargs["gamma"])
     if algo_name in ("PPO", "A2C"):
         common["ent_coef"] = kwargs.get("ent_coef", 0.0)
-    elif algo_name == "DQN":
+    elif algo_name in ("DQN", "QRDQN"):
         common["exploration_fraction"] = kwargs.get("exploration_fraction", 0.1)
+    elif algo_name in ("SAC", "TD3", "DDPG", "TQC"):  # off-policy, replay buffer + soft update
+        common["tau"] = kwargs.get("tau", 0.005)
+        common["buffer_size"] = kwargs.get("buffer_size", 100000)
+    # TRPO uses only the common on-policy hyperparameters exposed above.
     return cls(**common)
 
 

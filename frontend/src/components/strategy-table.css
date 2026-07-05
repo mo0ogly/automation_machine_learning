@@ -1,0 +1,16 @@
+/* Per-column cleaning-strategy table (StrategyTable.jsx). Reuses the coltable-*
+   layout classes from components.css; only the strategy-specific cells live here. */
+.strategy-select {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.3rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  max-width: 150px;
+}
+.strategy-reco {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}

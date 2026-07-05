@@ -17,7 +17,7 @@ import pandas as pd
 from .. import diagnostics as dg
 from .. import typology as typ
 from ..plotting import style_plot, fig_to_base64, message_plot
-from .base import select, toggle, rng, number, column_table, counts
+from .base import select, toggle, rng, number, column_table, strategy_table, counts
 
 STAGE_ID = "clean"
 TITLE = "Nettoyage"
@@ -82,6 +82,17 @@ def column_analysis(df, ctx):
     return rows, recommended_drop
 
 
+# Per-column strategy dropdowns ("" = follow the global setting). drop_rows stays
+# global-only: dropping rows is a frame-level decision, not a per-column one.
+_IMPUTE_NUM_CHOICES = [("", "(global)"), ("median", "Médiane"), ("mean", "Moyenne"),
+                       ("zero", "Zéro"), ("knn", "KNN"), ("iterative", "Itérative")]
+_IMPUTE_CAT_CHOICES = [("", "(global)"), ("constant", 'Constante ("None")'),
+                       ("most_frequent", "Modalité la plus fréquente")]
+_OUTLIER_CHOICES = [("", "(global)"), ("none", "Ne rien faire"),
+                    ("iqr_clip", "Borner (IQR)"), ("iqr_remove", "Supprimer (IQR)"),
+                    ("zscore_clip", "Borner (z-score)"), ("zscore_remove", "Supprimer (z-score)")]
+
+
 def default_config(df, ctx):
     _, rec_drop = column_analysis(df, ctx)
     return {
@@ -89,6 +100,7 @@ def default_config(df, ctx):
         "normalize_ordinals": True,
         "impute_num": "median",
         "impute_cat": "constant",
+        "column_strategies": {"impute": {}, "outliers": {}},
         "outlier_method": "none",
         "outlier_k": 1.5,
         "exclude_column": "",
@@ -112,6 +124,13 @@ def config_schema(df, ctx):
     return [
         column_table("dropped_columns", "Colonnes — vous décidez qui reste", rows, rec_drop,
                      "Cochez « Garder » ou « Retirer » pour chaque colonne. L'avis et la raison sont indicatifs."),
+        strategy_table("column_strategies", "Qualité par colonne — stratégies ciblées",
+                       data_quality_by_column(df, ctx),
+                       _IMPUTE_NUM_CHOICES, _IMPUTE_CAT_CHOICES, _OUTLIER_CHOICES,
+                       {"impute": {}, "outliers": {}},
+                       "Affinez l'imputation et le traitement des aberrants colonne par colonne. "
+                       "« (global) » = suivre les réglages généraux ci-dessous ; la colonne "
+                       "« Reco » propose une stratégie déduite du diagnostic."),
         toggle("normalize_ordinals", "Normaliser les notes de qualité (ordinales)", True,
                "Mappe les notes ordonnées sur une échelle : absent=0, Po=1, Fa=2, TA=3, Gd=4, Ex=5."),
         select("impute_num", "Imputation numérique",
@@ -243,80 +262,99 @@ def run(df, config, ctx, make_plots=True, stats=True):
     # with stats=False and refits them on the TRAIN split via CleanPreprocessor.
     imputed_num = imputed_cat = outliers_handled = 0
     if stats:
-        # 3. Numeric imputation.
-        if cfg["impute_num"] == "drop_rows":
-            before = len(df)
-            df = df.dropna(subset=num_cols)
-            log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN numériques).")
-        elif cfg["impute_num"] in ("knn", "iterative") and num_cols:
-            # Model-based imputation: estimate a missing cell from the OTHER numeric
-            # features (KNN neighbours / iterative regression). Better than a per-column
-            # constant when features are correlated.
-            n_na = int(df[num_cols].isnull().sum().sum())
-            if n_na:
-                df[num_cols] = _model_impute(df[num_cols], cfg["impute_num"])
-                imputed_num = n_na
-                log.append(f"{n_na} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
-        else:
-            for c in num_cols:
-                n_na = int(df[c].isnull().sum())
-                if not n_na:
-                    continue
-                val = df[c].median() if cfg["impute_num"] == "median" else \
-                    df[c].mean() if cfg["impute_num"] == "mean" else 0
-                df[c] = df[c].fillna(val)
-                imputed_num += n_na
-            if imputed_num:
-                log.append(f"{imputed_num} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
+        strat = cfg.get("column_strategies") or {}
+        imp_over = {c: m for c, m in (strat.get("impute") or {}).items() if m}
+        out_over = {c: m for c, m in (strat.get("outliers") or {}).items() if m}
 
-        # 4. Categorical imputation (NA = absence -> "None").
-        if cfg["impute_cat"] == "drop_rows":
+        # 3. Numeric imputation — global mode, overridable per column.
+        def num_mode(c):
+            return imp_over.get(c, cfg["impute_num"])
+        drop_num = [c for c in num_cols if num_mode(c) == "drop_rows"]
+        if drop_num:
             before = len(df)
-            df = df.dropna(subset=cat_cols)
-            log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN catégoriels).")
-        else:
-            for c in cat_cols:
-                n_na = int(df[c].isnull().sum())
-                if not n_na:
-                    continue
-                if cfg["impute_cat"] == "most_frequent":
-                    mode = df[c].mode(dropna=True)
-                    val = mode.iloc[0] if not mode.empty else "None"
-                else:
-                    val = "None"
+            df = df.dropna(subset=drop_num)
+            if before - len(df):
+                log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN numériques).")
+        # Model-based modes (KNN / iterative) estimate a missing cell from the OTHER
+        # numeric features — each needed block is imputed once, then only the
+        # requesting columns are taken from it.
+        blocks = {m: _model_impute(df[num_cols], m) for m in ("knn", "iterative")
+                  if any(num_mode(c) == m and df[c].isnull().any() for c in num_cols)}
+        for c in num_cols:
+            m = num_mode(c)
+            n_na = int(df[c].isnull().sum())
+            if not n_na or m == "drop_rows":
+                continue
+            if m in blocks:
+                df[c] = blocks[m][c]
+            else:
+                val = df[c].median() if m == "median" else df[c].mean() if m == "mean" else 0
                 df[c] = df[c].fillna(val)
-                imputed_cat += n_na
-            if imputed_cat:
-                log.append(f"{imputed_cat} valeur(s) catégorielle(s) imputée(s) ({cfg['impute_cat']}).")
+            imputed_num += n_na
+        if imputed_num:
+            how = cfg["impute_num"] + (", réglages par colonne" if imp_over else "")
+            log.append(f"{imputed_num} valeur(s) numérique(s) imputée(s) ({how}).")
+
+        # 4. Categorical imputation (NA = absence -> "None") — overridable per column.
+        def cat_mode(c):
+            return imp_over.get(c, cfg["impute_cat"])
+        drop_cat = [c for c in cat_cols if cat_mode(c) == "drop_rows"]
+        if drop_cat:
+            before = len(df)
+            df = df.dropna(subset=drop_cat)
+            if before - len(df):
+                log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN catégoriels).")
+        for c in cat_cols:
+            m = cat_mode(c)
+            n_na = int(df[c].isnull().sum())
+            if not n_na or m == "drop_rows":
+                continue
+            if m == "most_frequent":
+                mode = df[c].mode(dropna=True)
+                val = mode.iloc[0] if not mode.empty else "None"
+            else:
+                val = "None"
+            df[c] = df[c].fillna(val)
+            imputed_cat += n_na
+        if imputed_cat:
+            log.append(f"{imputed_cat} valeur(s) catégorielle(s) imputée(s) ({cfg['impute_cat']}).")
 
         # 5. Outliers (numeric features only). IQR (Tukey bounds) or z-score (k·σ),
-        #    each in a clip (bound the value) or remove (drop the row) variant.
-        method = cfg["outlier_method"]
-        if method != "none":
-            k = float(cfg["outlier_k"])
-            clip = method.endswith("_clip")
-            bounds = _iqr_bounds if method.startswith("iqr") else _zscore_bounds
-            label = "IQR" if method.startswith("iqr") else "z-score"
-            if clip:
-                for c in num_cols:
-                    s = df[c]
-                    low, high = bounds(s, k)
-                    if low is None:
-                        continue
-                    outliers_handled += int(((s < low) | (s > high)).sum())
-                    df[c] = s.clip(low, high)
-                log.append(f"{outliers_handled} valeur(s) bornée(s) ({label} k={k}).")
-            else:
-                mask = pd.Series(True, index=df.index)
-                for c in num_cols:
-                    s = df[c]
-                    low, high = bounds(s, k)
-                    if low is None:
-                        continue
-                    mask &= s.between(low, high)
-                outliers_handled = int((~mask).sum())
-                df = df[mask]
-                log.append(f"{outliers_handled} ligne(s) aberrante(s) supprimée(s) ({label} k={k}).")
+        #    clip (bound the value) or remove (drop the row) — global method
+        #    overridable per column (the factor k stays global). Clip first, then
+        #    remove, so mixed configs stay deterministic.
+        def out_mode(c):
+            return out_over.get(c, cfg["outlier_method"])
+        k = float(cfg["outlier_k"])
+        clipped = 0
+        for c in num_cols:
+            m = out_mode(c)
+            if not m.endswith("_clip"):
+                continue
+            s = df[c]
+            low, high = (_iqr_bounds if m.startswith("iqr") else _zscore_bounds)(s, k)
+            if low is None:
+                continue
+            clipped += int(((s < low) | (s > high)).sum())
+            df[c] = s.clip(low, high)
+        if clipped:
+            log.append(f"{clipped} valeur(s) bornée(s) (k={k}).")
+        mask, any_remove = pd.Series(True, index=df.index), False
+        for c in num_cols:
+            m = out_mode(c)
+            if not m.endswith("_remove"):
+                continue
+            low, high = (_iqr_bounds if m.startswith("iqr") else _zscore_bounds)(df[c], k)
+            if low is None:
+                continue
+            any_remove = True
+            mask &= df[c].between(low, high)
+        if any_remove:
+            removed = int((~mask).sum())
+            df = df[mask]
+            outliers_handled = removed
+            log.append(f"{removed} ligne(s) aberrante(s) supprimée(s) (k={k}).")
+        outliers_handled += clipped
 
     # 5b. Univariate row exclusion (expert-driven, e.g. GrLivArea > 4000).
     excl_col = cfg.get("exclude_column") or ""
@@ -436,65 +474,93 @@ class CleanPreprocessor:
         self.impute_cat = str(cfg.get("impute_cat", "constant"))
         self.outlier_method = str(cfg.get("outlier_method", "none"))
         self.outlier_k = float(cfg.get("outlier_k", 1.5))
+        strat = cfg.get("column_strategies") or {}
+        self.impute_over = {c: m for c, m in (strat.get("impute") or {}).items() if m}
+        self.outlier_over = {c: m for c, m in (strat.get("outliers") or {}).items() if m}
         self.target_col = target_col
         self.fitted_ = False
         self.num_cols_, self.cat_cols_ = [], []
-        self.num_fill_ = {}       # col -> train fill value (median / mean / 0)
-        self.num_imputer_ = None  # fitted KNN / Iterative imputer (model-based modes)
-        self.cat_fill_ = {}       # col -> train fill value ("None" / train mode)
-        self.bounds_ = {}         # col -> (low, high) outlier bounds from train
+        self.num_fill_ = {}        # col -> train fill value (median / mean / 0)
+        self.num_imputers_ = {}    # method -> fitted KNN / Iterative block imputer
+        self.cat_fill_ = {}        # col -> train fill value ("None" / train mode)
+        self.bounds_ = {}          # col -> (low, high, "clip"|"remove") from train
+
+    # Per-column resolution: the override wins, else the global setting.
+    def _num_mode(self, c):
+        return self.impute_over.get(c, self.impute_num)
+
+    def _cat_mode(self, c):
+        return self.impute_over.get(c, self.impute_cat)
+
+    def _out_mode(self, c):
+        return self.outlier_over.get(c, self.outlier_method)
 
     def fit(self, df):
         self.num_cols_, self.cat_cols_ = dg.feature_columns(df, self.target_col)
         # Fill values from train (also the fallback when a model imputer fails).
         for c in self.num_cols_:
-            v = 0.0 if self.impute_num == "zero" else \
-                df[c].mean() if self.impute_num == "mean" else df[c].median()
+            m = self._num_mode(c)
+            v = 0.0 if m == "zero" else df[c].mean() if m == "mean" else df[c].median()
             self.num_fill_[c] = 0.0 if pd.isna(v) else float(v)
-        if self.impute_num in ("knn", "iterative") and self.num_cols_:
-            try:
-                from sklearn.impute import KNNImputer
-                if self.impute_num == "iterative":
-                    from sklearn.experimental import enable_iterative_imputer  # noqa: F401
-                    from sklearn.impute import IterativeImputer
-                    imp = IterativeImputer(random_state=42, max_iter=10, sample_posterior=False)
-                else:
-                    imp = KNNImputer(n_neighbors=5)
-                self.num_imputer_ = imp.fit(df[self.num_cols_])
-            except Exception:
-                self.num_imputer_ = None
+        for method in ("knn", "iterative"):
+            if any(self._num_mode(c) == method for c in self.num_cols_):
+                imp = self._fit_block_imputer(method, df[self.num_cols_])
+                if imp is not None:
+                    self.num_imputers_[method] = imp
         for c in self.cat_cols_:
-            if self.impute_cat == "most_frequent":
+            if self._cat_mode(c) == "most_frequent":
                 mode = df[c].mode(dropna=True)
                 self.cat_fill_[c] = str(mode.iloc[0]) if not mode.empty else "None"
             else:
                 self.cat_fill_[c] = "None"
         # Bounds are learned on the IMPUTED train frame, like run() (impute, then
         # outliers), so the two paths see the same quantiles.
-        if self.outlier_method != "none":
+        if any(self._out_mode(c) != "none" for c in self.num_cols_):
             filled = self._impute(df.copy())
-            fn = _iqr_bounds if self.outlier_method.startswith("iqr") else _zscore_bounds
             for c in self.num_cols_:
+                m = self._out_mode(c)
+                if m == "none":
+                    continue
+                fn = _iqr_bounds if m.startswith("iqr") else _zscore_bounds
                 low, high = fn(filled[c], self.outlier_k)
                 if low is not None:
-                    self.bounds_[c] = (float(low), float(high))
+                    self.bounds_[c] = (float(low), float(high),
+                                       "clip" if m.endswith("_clip") else "remove")
         self.fitted_ = True
         return self
+
+    @staticmethod
+    def _fit_block_imputer(method, block):
+        try:
+            from sklearn.impute import KNNImputer
+            if method == "iterative":
+                from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+                from sklearn.impute import IterativeImputer
+                return IterativeImputer(random_state=42, max_iter=10,
+                                        sample_posterior=False).fit(block)
+            return KNNImputer(n_neighbors=5).fit(block)
+        except Exception:
+            return None
 
     def _impute(self, df):
         """Numeric + categorical fills with the train-fitted parameters."""
         num = [c for c in self.num_cols_ if c in df.columns]
-        if self.num_imputer_ is not None and num == self.num_cols_ \
-                and df[num].isnull().to_numpy().any():
-            try:
-                arr = self.num_imputer_.transform(df[num])
-                df[num] = pd.DataFrame(arr, columns=num, index=df.index)
-            except Exception:
-                df[num] = df[num].fillna(self.num_fill_)
-        else:
-            for c in num:
-                if df[c].isnull().any():
-                    df[c] = df[c].fillna(self.num_fill_.get(c, 0.0))
+        blocks = {}
+        if num == self.num_cols_ and df[num].isnull().to_numpy().any():
+            for method, imp in self.num_imputers_.items():
+                try:
+                    arr = imp.transform(df[num])
+                    blocks[method] = pd.DataFrame(arr, columns=num, index=df.index)
+                except Exception:
+                    pass
+        for c in num:
+            if not df[c].isnull().any():
+                continue
+            m = self._num_mode(c)
+            if m in blocks:
+                df[c] = blocks[m][c]
+            else:
+                df[c] = df[c].fillna(self.num_fill_.get(c, 0.0))
         for c in self.cat_cols_:
             if c in df.columns and df[c].isnull().any():
                 df[c] = df[c].fillna(self.cat_fill_.get(c, "None"))
@@ -506,29 +572,36 @@ class CleanPreprocessor:
         if not self.fitted_:
             raise RuntimeError("CleanPreprocessor.transform() appelé avant fit().")
         df = df.copy()
-        if training and self.impute_num == "drop_rows":
-            df = df.dropna(subset=[c for c in self.num_cols_ if c in df.columns])
-        if training and self.impute_cat == "drop_rows":
-            df = df.dropna(subset=[c for c in self.cat_cols_ if c in df.columns])
+        if training:
+            subset = [c for c in self.num_cols_ if self._num_mode(c) == "drop_rows"
+                      and c in df.columns]
+            subset += [c for c in self.cat_cols_ if self._cat_mode(c) == "drop_rows"
+                       and c in df.columns]
+            if subset:
+                df = df.dropna(subset=subset)
         df = self._impute(df)
-        if self.outlier_method.endswith("_clip"):
-            for c, (low, high) in self.bounds_.items():
-                if c in df.columns:
-                    df[c] = df[c].clip(low, high)
-        elif training and self.outlier_method.endswith("_remove"):
-            mask = pd.Series(True, index=df.index)
-            for c, (low, high) in self.bounds_.items():
-                if c in df.columns:
-                    mask &= df[c].between(low, high)
+        mask = None
+        for c, (low, high, action) in self.bounds_.items():
+            if c not in df.columns:
+                continue
+            if action == "clip":
+                df[c] = df[c].clip(low, high)
+            elif training:
+                base = pd.Series(True, index=df.index) if mask is None else mask
+                mask = base & df[c].between(low, high)
+        if mask is not None:
             df = df[mask]
         return df
 
 
 def data_quality_by_column(df, ctx, max_card=0.9):
-    """Per-column health row: missing %, distinct count, outlier count, and any
-    quality flags — sorted worst-first so the (capped) view shows the problems."""
+    """Per-column health row: missing %, distinct count, outlier count, quality
+    flags, and a per-column STRATEGY recommendation (imputation / outliers) —
+    sorted worst-first. The same rows feed the read-only diagnostic, the
+    actionable strategy table (config_schema) and the heuristic recommend."""
     target = ctx.target_col
     n = len(df) or 1
+    n_num = len(dg.feature_columns(df, target)[0])
     rows = []
     for c in df.columns:
         s = df[c]
@@ -552,13 +625,42 @@ def data_quality_by_column(df, ctx, max_card=0.9):
             flags.append("cardinalité (id ?)")
         if out_ct:
             flags.append(f"{out_ct} aberrant(s)")
+        ctype = "cible" if c == target else ("num" if numeric else "cat")
+        rec_imp, rec_out, why = _column_strategy(ctype, miss, out_ct, n, n_num)
         severity = (1 if any(f in ("manquant élevé", "constante", "cardinalité (id ?)") for f in flags) else 0,
                     miss, out_ct)
-        rows.append({"colonne": str(c), "type": ("cible" if c == target else ("num" if numeric else "cat")),
+        rows.append({"colonne": str(c), "type": ctype,
                      "manquant_%": miss, "distinct": nun, "aberrants": out_ct,
-                     "alertes": ", ".join(flags) or "—", "_sev": severity})
+                     "alertes": ", ".join(flags) or "—",
+                     "rec_impute": rec_imp, "rec_outliers": rec_out, "raison": why,
+                     "_sev": severity})
     rows.sort(key=lambda r: r.pop("_sev"), reverse=True)
     return rows
+
+
+def _column_strategy(ctype, miss, out_ct, n, n_num):
+    """Recommend a per-column imputation / outlier strategy from the health
+    metrics; ``None`` means the global setting is fine for this column."""
+    rec_imp = rec_out = None
+    why = []
+    if ctype == "num":
+        if 5 <= miss < 50 and n_num >= 3:
+            rec_imp = "knn"
+            why.append(f"{miss}% manquant : estimer depuis les autres variables (KNN)")
+        elif 0 < miss < 5:
+            rec_imp = "median"
+            why.append(f"{miss}% manquant : médiane (simple, robuste)")
+        if out_ct >= max(3, round(0.01 * n)):
+            rec_out = "iqr_clip"
+            why.append(f"{out_ct} aberrant(s) : borner (IQR) plutôt que supprimer")
+    elif ctype == "cat":
+        if 0 < miss < 5:
+            rec_imp = "most_frequent"
+            why.append(f"{miss}% manquant : modalité la plus fréquente")
+        elif miss >= 5:
+            rec_imp = "constant"
+            why.append(f"{miss}% manquant : « None » (l'absence est une information)")
+    return rec_imp, rec_out, (" ; ".join(why) or "—")
 
 
 # ── local plot helpers ───────────────────────────────────────────────────

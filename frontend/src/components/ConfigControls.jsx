@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ColumnTable from './ColumnTable';
+import StrategyTable from './StrategyTable';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 
@@ -76,12 +77,14 @@ export default function ConfigControls({ schema, config, onChange, highlight = {
   if (!schema || !schema.length) {
     return <p className="muted">{t('noParams')}</p>;
   }
-  const tables = schema.filter((c) => c.type === 'column_table');
-  const simple = schema.filter((c) => c.type !== 'column_table');
+  const tableKinds = ['column_table', 'strategy_table'];
+  const tables = schema.filter((c) => tableKinds.includes(c.type));
+  const simple = schema.filter((c) => !tableKinds.includes(c.type));
   return (
     <div className="cfg-wrap">
-      {tables.map((ctrl) => (
-        <ColumnTable key={ctrl.name} ctrl={ctrl} value={config[ctrl.name]} onChange={onChange} />
+      {tables.map((ctrl) => (ctrl.type === 'strategy_table'
+        ? <StrategyTable key={ctrl.name} ctrl={ctrl} value={config[ctrl.name]} onChange={onChange} />
+        : <ColumnTable key={ctrl.name} ctrl={ctrl} value={config[ctrl.name]} onChange={onChange} />
       ))}
       {simple.length ? (
         <div className="cfg-grid">

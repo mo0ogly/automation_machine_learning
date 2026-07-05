@@ -471,6 +471,15 @@ def _heuristic(stage_id, d, cfg, problem_type) -> dict:
         if len(d.get("outliers_iqr", [])) >= 3:
             suggested.update({"outlier_method": "iqr_clip", "outlier_k": 1.5})
             rationale.append("Plusieurs variables présentent des valeurs aberrantes (IQR) : borner.")
+        # Per-column strategies: relay the recommendations the quality diagnostic
+        # already computed (rec_impute / rec_outliers, see clean._column_strategy).
+        colq = d.get("qualite_par_colonne") or []
+        per_imp = {r["colonne"]: r["rec_impute"] for r in colq if r.get("rec_impute")}
+        per_out = {r["colonne"]: r["rec_outliers"] for r in colq if r.get("rec_outliers")}
+        if per_imp or per_out:
+            suggested["column_strategies"] = {"impute": per_imp, "outliers": per_out}
+            rationale.append(f"Stratégies ciblées : {len(per_imp)} imputation(s) et "
+                             f"{len(per_out)} traitement(s) d'aberrants réglés colonne par colonne.")
         summary = "Imputer les manquants, normaliser les ordinales, et envisager le bornage des aberrants."
 
     elif stage_id == "transform":

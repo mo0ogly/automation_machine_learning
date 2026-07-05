@@ -44,6 +44,20 @@ def number(name, label, default, minimum=None, maximum=None, help=""):
     }
 
 
+def strategy_table(name, label, rows, options_num, options_cat, options_out, default, help=""):
+    """Per-column cleaning-strategy table (imputation + outlier overrides).
+
+    ``rows`` are per-column health dicts (metrics + ``rec_impute`` / ``rec_outliers``
+    / ``raison``). The control's value is ``{"impute": {col: mode}, "outliers":
+    {col: method}}`` — an empty dict means "follow the global setting".
+    """
+    return {"name": name, "label": label, "type": "strategy_table", "columns": rows,
+            "impute_options_num": [{"value": v, "label": lbl} for v, lbl in options_num],
+            "impute_options_cat": [{"value": v, "label": lbl} for v, lbl in options_cat],
+            "outlier_options": [{"value": v, "label": lbl} for v, lbl in options_out],
+            "default": default, "help": help}
+
+
 def column_table(name, label, columns, default, help="", cols=None):
     """A per-column keep/drop table (rendered with checkboxes + per-column advice).
 

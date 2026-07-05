@@ -1,4 +1,15 @@
 {
   "noParams": "No parameters to tune for this stage.",
-  "aiButton": "AI"
+  "aiButton": "AI",
+  "strategyCount": "targeted overrides: {{count}}",
+  "strategyRecoBtn": "Apply recommendations",
+  "strategyGlobalBtn": "All global",
+  "colColumn": "Column",
+  "colType": "Type",
+  "colMissing": "Miss.%",
+  "colOutliers": "Outliers",
+  "colAlerts": "Alerts",
+  "colImpute": "Imputation",
+  "colOutlierAction": "Outlier handling",
+  "colReco": "Rec"
 }

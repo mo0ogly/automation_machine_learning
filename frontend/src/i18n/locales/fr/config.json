@@ -1,4 +1,15 @@
 {
   "noParams": "Aucun paramètre à régler pour cette étape.",
-  "aiButton": "IA"
+  "aiButton": "IA",
+  "strategyCount": "réglages ciblés : {{count}}",
+  "strategyRecoBtn": "Appliquer les recos",
+  "strategyGlobalBtn": "Tout en global",
+  "colColumn": "Colonne",
+  "colType": "Type",
+  "colMissing": "Manq.%",
+  "colOutliers": "Aberrants",
+  "colAlerts": "Alertes",
+  "colImpute": "Imputation",
+  "colOutlierAction": "Traitement aberrants",
+  "colReco": "Reco"
 }

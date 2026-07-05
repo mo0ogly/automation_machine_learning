@@ -86,6 +86,68 @@ def test_imputation_schema_offers_knn_and_iterative():
     assert {"zscore_clip", "zscore_remove", "iqr_clip"} <= {o["value"] for o in oc["options"]}
 
 
+# ── per-column strategies (P1): overrides + recommendations ─────────────────
+def _df_two_gaps(seed=3):
+    rng = np.random.RandomState(seed)
+    df = pd.DataFrame({
+        "a": rng.normal(10, 2, 200), "b": rng.normal(50, 5, 200),
+        "y": (rng.rand(200) < 0.5).astype(int),
+    })
+    df.loc[rng.choice(200, 20, replace=False), "a"] = np.nan
+    df.loc[rng.choice(200, 20, replace=False), "b"] = np.nan
+    return df
+
+
+def test_per_column_impute_override():
+    df = _df_two_gaps()
+    ctx = PipelineContext.from_df(df)
+    med_a, mean_b = df["a"].median(), df["b"].mean()
+    out, _r = C.run(df, {"impute_num": "median", "dropped_columns": [],
+                         "drop_duplicates": False,
+                         "column_strategies": {"impute": {"b": "mean"}}},
+                    ctx, make_plots=False)
+    assert out["a"].isnull().sum() == 0 and out["b"].isnull().sum() == 0
+    # b was filled with its MEAN (override), a with its MEDIAN (global).
+    assert (out["b"] == mean_b).sum() >= 20
+    assert (out["a"] == med_a).sum() >= 20
+
+
+def test_per_column_outlier_override():
+    df = _df_with_issues()
+    ctx = PipelineContext.from_df(df)
+    b_max = float(df["b"].max())
+    out, _r = C.run(df, {"impute_num": "median", "outlier_method": "none",
+                         "dropped_columns": [],
+                         "column_strategies": {"outliers": {"a": "iqr_clip"}}},
+                    ctx, make_plots=False)
+    assert float(out["a"].max()) < 999.0          # a clipped by its override
+    assert float(out["b"].max()) == b_max          # b untouched (global = none)
+
+
+def test_clean_preprocessor_honors_column_overrides():
+    df = _df_two_gaps()
+    tr, te = df.iloc[:150].copy(), df.iloc[150:].copy()
+    cp = C.CleanPreprocessor({"impute_num": "median",
+                              "column_strategies": {"impute": {"b": "mean"}}}, "y").fit(tr)
+    out = cp.transform(te)
+    na_b = te["b"].isna()
+    na_a = te["a"].isna()
+    assert (out.loc[na_b, "b"] == float(tr["b"].mean())).all()    # train MEAN (override)
+    assert (out.loc[na_a, "a"] == float(tr["a"].median())).all()  # train MEDIAN (global)
+
+
+def test_schema_exposes_strategy_table_with_recommendations():
+    df = _df_with_issues()
+    ctx = PipelineContext.from_df(df)
+    ctrl = next(c for c in C.config_schema(df, ctx) if c["type"] == "strategy_table")
+    assert ctrl["name"] == "column_strategies"
+    assert {o["value"] for o in ctrl["impute_options_num"]} >= {"", "median", "knn"}
+    by = {r["colonne"]: r for r in ctrl["columns"]}
+    assert by["a"]["rec_impute"] == "knn"          # 15% missing, 3+ numeric columns
+    assert by["a"]["rec_outliers"] is None or by["a"]["rec_outliers"] == "iqr_clip"
+    assert by["a"]["raison"] != "—"
+
+
 # ── leakage-free path: clean statistics fit on TRAIN only ───────────────────
 def test_run_stats_false_skips_imputation_and_outliers():
     df = _df_with_issues()
@@ -110,7 +172,8 @@ def test_clean_preprocessor_uses_train_statistics_on_test():
     assert out.loc[0, "a"] == tr["a"].median()      # TRAIN median, not the test frame's
     assert out.loc[0, "b"] == tr["b"].median()
     assert out.loc[0, "cat"] == "x"                 # TRAIN mode
-    low, high = cp.bounds_["a"]
+    low, high, action = cp.bounds_["a"]
+    assert action == "clip"
     assert out.loc[1, "a"] == high                  # clipped to TRAIN bounds
     assert (out["y"] == te["y"]).all()              # target untouched
 

@@ -11,11 +11,14 @@ so a raw ``LotArea=8450`` is read as a +8450σ outlier. This layer replays the e
 data-prep the session was trained with (clean → transform → integrate) on the original
 frame AUGMENTED with the queried row(s), then slices the transformed row back out.
 
-Consistency: encoders/scalers are fit on the full frame at training time (see the note
-in separate.py), so re-fitting on ``raw_df + new_rows`` reproduces the same transform.
-Row-dropping steps (dedup, outlier removal, univariate exclusion, missing-target drop)
-are training-time only and are neutralised for serving so the queried row always
-survives; they never change how a single row is transformed.
+Consistency: leakage-free sessions store the TRAIN-fitted clean statistics
+(``CleanPreprocessor``: imputation values, outlier bounds) and feature preprocessor
+(``FeaturePreprocessor``) in the artefacts — serving applies them as-is, with no
+re-fit anywhere. Legacy sessions (older persisted state) re-fit on
+``raw_df + new_rows``, which reproduces their full-frame training transform.
+Row-dropping steps (dedup, outlier removal, univariate exclusion, missing-target
+drop) are training-time only and are neutralised for serving so the queried row
+always survives; they never change how a single row is transformed.
 """
 
 from __future__ import annotations
@@ -204,13 +207,24 @@ def transform_rows(session, rows: list) -> pd.DataFrame:
     if clean_cfg.get("impute_cat") == "drop_rows":
         clean_cfg["impute_cat"] = "constant"
 
-    df1, _ = clean.run(aug, clean_cfg, ctx, make_plots=False)
-
     sep = session.get_run("separate")
     pre = sep.artifacts.get("preprocessor") if sep else None
+    cp = sep.artifacts.get("clean_preprocessor") if sep else None
+    if cp is not None and pre is not None:
+        # Fully leakage-free sessions: structural clean (deterministic — column
+        # drops, ordinal scale), then the TRAIN-fitted clean statistics and
+        # preprocessor. No re-fit anywhere; outlier clipping uses train bounds,
+        # exactly like the matrices the model learned on.
+        df1, _ = clean.run(aug, clean_cfg, ctx, make_plots=False, stats=False)
+        df1 = cp.transform(df1)  # fills + clip; never drops rows in serving
+        tail = df1.tail(n).drop(columns=[target], errors="ignore")
+        return pre.transform(tail).reset_index(drop=True)
+
+    df1, _ = clean.run(aug, clean_cfg, ctx, make_plots=False)
+
     if pre is not None:
-        # Leakage-free sessions: apply the SAME train-fitted preprocessor as training
-        # (no re-fit at all) — byte-faithful to the matrices the model learned on.
+        # Older leakage-free sessions (no stored clean statistics): full-frame
+        # clean re-fit, then the train-fitted preprocessor.
         tail = df1.tail(n).drop(columns=[target], errors="ignore")
         return pre.transform(tail).reset_index(drop=True)
 

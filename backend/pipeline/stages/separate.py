@@ -8,12 +8,14 @@ a red flag) and stores the split arrays as session artefacts consumed by the
 Model and Evaluation stages.
 
 Leakage-free preprocessing: when the session is available (normal app flow),
-the split is decided FIRST on the cleaned frame, then a ``FeaturePreprocessor``
-(transform + integrate semantics) is fit on the TRAIN partition only and applied
-to the test partition. The fitted preprocessor is stored in the artefacts and
-reused verbatim by the serving layer and the model export. Without a session
-(legacy callers), the stage falls back to splitting the already-transformed
-frame, as before.
+the split is decided FIRST on the STRUCTURALLY cleaned frame (column drops,
+ordinal scale, dedup — deterministic, nothing learned), then the statistical
+Clean step (imputation values, outlier bounds — ``CleanPreprocessor``) AND a
+``FeaturePreprocessor`` (transform + integrate semantics) are fit on the TRAIN
+partition only and applied to the test partition. Both fitted objects are
+stored in the artefacts and reused verbatim by the serving layer and the model
+export. Without a session (legacy callers), the stage falls back to splitting
+the already-transformed frame, as before.
 
 For clustering (no target) there is no train/test split — the full feature
 matrix is forwarded, and the stage says so explicitly.
@@ -29,6 +31,7 @@ from .. import diagnostics as dg
 from ..plotting import style_plot, fig_to_base64, message_plot
 from ..context import CLASSIFICATION, REGRESSION
 from ..preprocessing import FeaturePreprocessor
+from . import clean as clean_stage
 from .base import select, toggle, rng, number
 
 STAGE_ID = "separate"
@@ -85,17 +88,25 @@ def diagnose(df, ctx):
 
 
 def _train_only_matrices(session, df, target, cfg, ctx, log):
-    """Split the CLEANED frame first, then fit the preprocessor on train only.
+    """Split FIRST, then fit clean statistics and the preprocessor on train only.
 
-    Returns ``(X_train, X_test, y_train_raw, y_test_raw, feature_names, preprocessor)``
-    or ``None`` when the leakage-free path is unavailable (no session / no clean run).
+    Rebuilds the STRUCTURAL clean output from the raw frame (column drops,
+    ordinal scale, exclusion, dedup — deterministic), splits it, then fits the
+    statistical Clean step (imputation values, outlier bounds) and the
+    ``FeaturePreprocessor`` on the TRAIN partition only. Test rows never
+    influence a fitted parameter and are never dropped.
+
+    Returns ``(X_train, X_test, y_train_raw, y_test_raw, feature_names,
+    preprocessor, clean_preprocessor)`` or ``None`` when the leakage-free path
+    is unavailable (no session / no clean run).
     """
     if session is None:
         return None
     clean_run = session.get_run("clean")
     if clean_run is None or clean_run.stale or clean_run.output_df is None:
         return None
-    base = clean_run.output_df
+    base, _ = clean_stage.run(session.raw_df, clean_run.config or {}, ctx,
+                              make_plots=False, stats=False)
     if target not in base.columns:
         return None
     base = base[base[target].notna()].reset_index(drop=True)
@@ -111,6 +122,20 @@ def _train_only_matrices(session, df, target, cfg, ctx, log):
         shuffle=bool(cfg["shuffle"]), stratify=strat,
     )
     tr_df, te_df = tr_df.reset_index(drop=True), te_df.reset_index(drop=True)
+
+    # Clean statistics (imputation values, outlier bounds) fit on train only.
+    cp = clean_stage.CleanPreprocessor(clean_run.config or {}, target).fit(tr_df)
+    n_tr0 = len(tr_df)
+    tr_df = cp.transform(tr_df, training=True).reset_index(drop=True)
+    te_df = cp.transform(te_df).reset_index(drop=True)
+    if len(tr_df) < 10:
+        return None  # training-row drops left too little data -> legacy fallback
+    log.append("Nettoyage anti-fuite : imputation et bornes d'aberrants ajustées sur le "
+               f"train seul ({len(tr_df)} lignes), appliquées telles quelles au test.")
+    if n_tr0 != len(tr_df):
+        log.append(f"Nettoyage (train) : {n_tr0 - len(tr_df)} ligne(s) écartée(s) "
+                   "(aberrants / NaN) — le jeu de test reste intact.")
+
     pre = FeaturePreprocessor(
         transform_cfg=(session.get_run("transform").config if session.get_run("transform") else {}),
         integrate_cfg=(session.get_run("integrate").config if session.get_run("integrate") else {}),
@@ -124,7 +149,7 @@ def _train_only_matrices(session, df, target, cfg, ctx, log):
                f"seul ({len(tr_df)} lignes), appliqués tels quels au test.")
     if pre.selected_features_ is not None:
         log.append(f"Sélection de variables (train) : {len(pre.feature_names_)} variables retenues.")
-    return X_train, X_test, tr_df[target], te_df[target], list(pre.feature_names_), pre
+    return X_train, X_test, tr_df[target], te_df[target], list(pre.feature_names_), pre, cp
 
 
 def run(df, config, ctx, session=None):
@@ -154,10 +179,10 @@ def run(df, config, ctx, session=None):
 
     # ── Supervised : leakage-free path first (split, THEN fit on train) ─
     rs = int(cfg["random_state"])
-    preprocessor = None
+    preprocessor, clean_preprocessor = None, None
     lf = _train_only_matrices(session, df, target, cfg, ctx, log)
     if lf is not None:
-        X_train, X_test, y_tr_raw, y_te_raw, num_cols, preprocessor = lf
+        X_train, X_test, y_tr_raw, y_te_raw, num_cols, preprocessor, clean_preprocessor = lf
         label_encoder = None
         if ctx.problem_type == CLASSIFICATION and not pd.api.types.is_numeric_dtype(y_tr_raw):
             label_encoder = LabelEncoder().fit(pd.concat([y_tr_raw, y_te_raw]).astype(str))
@@ -210,6 +235,7 @@ def run(df, config, ctx, session=None):
         "feature_names": num_cols, "target_col": target,
         "label_encoder": label_encoder, "problem_type": ctx.problem_type,
         "preprocessor": preprocessor,
+        "clean_preprocessor": clean_preprocessor,
     }
     log.append(f"Séparation X/cible : {len(num_cols)} variables, cible « {target} ».")
     log.append(f"Train/Test : {len(X_train)} / {len(X_test)} (test={cfg['test_size']}).")

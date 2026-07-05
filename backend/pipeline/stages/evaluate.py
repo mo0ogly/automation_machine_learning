@@ -128,9 +128,11 @@ def run(session, config):
     session.ctx.notes.append(f"eval:{metrics}")
     diagnostics = {"metrics": metrics, "n_test": int(len(y_test)),
                    "algorithm": mrun.artifacts.get("algorithm"),
-                   # True when the split-first / train-only preprocessor built the matrices:
-                   # the scores below are then free of preprocessing leakage.
-                   "leakage_free": art.get("preprocessor") is not None,
+                   # True when the split-first / train-only path built the matrices —
+                   # clean statistics (imputation, outlier bounds) AND the feature
+                   # preprocessor both fit on train: no preprocessing leakage at all.
+                   "leakage_free": (art.get("preprocessor") is not None
+                                    and art.get("clean_preprocessor") is not None),
                    "operational": op}
     if class_report:
         diagnostics["rapport_par_classe"] = class_report

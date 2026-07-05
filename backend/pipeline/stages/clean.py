@@ -198,7 +198,12 @@ def diagnose(df, ctx):
     }
 
 
-def run(df, config, ctx, make_plots=True):
+def run(df, config, ctx, make_plots=True, stats=True):
+    """Apply the cleaning config. ``stats=False`` runs only the STRUCTURAL part
+    (column drops, ordinal scale, univariate exclusion, dedup — deterministic,
+    nothing learned from the data) and skips the statistical operations
+    (imputation, outlier handling): the leakage-free modelling path refits those
+    on the train split only, via ``CleanPreprocessor`` (see separate.py)."""
     cfg = {**default_config(df, ctx), **(config or {})}
     df_in = df
     df = df.copy()
@@ -233,84 +238,85 @@ def run(df, config, ctx, make_plots=True):
 
     num_cols, cat_cols = dg.feature_columns(df, target)
 
-    # 3. Numeric imputation.
-    imputed_num = 0
-    if cfg["impute_num"] == "drop_rows":
-        before = len(df)
-        df = df.dropna(subset=num_cols)
-        log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN numériques).")
-    elif cfg["impute_num"] in ("knn", "iterative") and num_cols:
-        # Model-based imputation: estimate a missing cell from the OTHER numeric
-        # features (KNN neighbours / iterative regression). Better than a per-column
-        # constant when features are correlated. Fit on the full frame, like the
-        # simple imputers above (see the leakage note in transform.py / separate.py).
-        n_na = int(df[num_cols].isnull().sum().sum())
-        if n_na:
-            df[num_cols] = _model_impute(df[num_cols], cfg["impute_num"])
-            imputed_num = n_na
-            log.append(f"{n_na} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
-    else:
-        for c in num_cols:
-            n_na = int(df[c].isnull().sum())
-            if not n_na:
-                continue
-            val = df[c].median() if cfg["impute_num"] == "median" else \
-                df[c].mean() if cfg["impute_num"] == "mean" else 0
-            df[c] = df[c].fillna(val)
-            imputed_num += n_na
-        if imputed_num:
-            log.append(f"{imputed_num} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
-
-    # 4. Categorical imputation (NA = absence -> "None").
-    imputed_cat = 0
-    if cfg["impute_cat"] == "drop_rows":
-        before = len(df)
-        df = df.dropna(subset=cat_cols)
-        log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN catégoriels).")
-    else:
-        for c in cat_cols:
-            n_na = int(df[c].isnull().sum())
-            if not n_na:
-                continue
-            if cfg["impute_cat"] == "most_frequent":
-                mode = df[c].mode(dropna=True)
-                val = mode.iloc[0] if not mode.empty else "None"
-            else:
-                val = "None"
-            df[c] = df[c].fillna(val)
-            imputed_cat += n_na
-        if imputed_cat:
-            log.append(f"{imputed_cat} valeur(s) catégorielle(s) imputée(s) ({cfg['impute_cat']}).")
-
-    # 5. Outliers (numeric features only). IQR (Tukey bounds) or z-score (k·σ),
-    #    each in a clip (bound the value) or remove (drop the row) variant.
-    outliers_handled = 0
-    method = cfg["outlier_method"]
-    if method != "none":
-        k = float(cfg["outlier_k"])
-        clip = method.endswith("_clip")
-        bounds = _iqr_bounds if method.startswith("iqr") else _zscore_bounds
-        label = "IQR" if method.startswith("iqr") else "z-score"
-        if clip:
-            for c in num_cols:
-                s = df[c]
-                low, high = bounds(s, k)
-                if low is None:
-                    continue
-                outliers_handled += int(((s < low) | (s > high)).sum())
-                df[c] = s.clip(low, high)
-            log.append(f"{outliers_handled} valeur(s) bornée(s) ({label} k={k}).")
+    # 3./4./5. Statistical operations. On the exploratory path they are fit on
+    # the full frame (what the analyst inspects); the modelling path calls this
+    # with stats=False and refits them on the TRAIN split via CleanPreprocessor.
+    imputed_num = imputed_cat = outliers_handled = 0
+    if stats:
+        # 3. Numeric imputation.
+        if cfg["impute_num"] == "drop_rows":
+            before = len(df)
+            df = df.dropna(subset=num_cols)
+            log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN numériques).")
+        elif cfg["impute_num"] in ("knn", "iterative") and num_cols:
+            # Model-based imputation: estimate a missing cell from the OTHER numeric
+            # features (KNN neighbours / iterative regression). Better than a per-column
+            # constant when features are correlated.
+            n_na = int(df[num_cols].isnull().sum().sum())
+            if n_na:
+                df[num_cols] = _model_impute(df[num_cols], cfg["impute_num"])
+                imputed_num = n_na
+                log.append(f"{n_na} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
         else:
-            mask = pd.Series(True, index=df.index)
             for c in num_cols:
-                s = df[c]
-                low, high = bounds(s, k)
-                if low is None:
+                n_na = int(df[c].isnull().sum())
+                if not n_na:
                     continue
-                mask &= s.between(low, high)
-            outliers_handled = int((~mask).sum())
-            df = df[mask]
-            log.append(f"{outliers_handled} ligne(s) aberrante(s) supprimée(s) ({label} k={k}).")
+                val = df[c].median() if cfg["impute_num"] == "median" else \
+                    df[c].mean() if cfg["impute_num"] == "mean" else 0
+                df[c] = df[c].fillna(val)
+                imputed_num += n_na
+            if imputed_num:
+                log.append(f"{imputed_num} valeur(s) numérique(s) imputée(s) ({cfg['impute_num']}).")
+
+        # 4. Categorical imputation (NA = absence -> "None").
+        if cfg["impute_cat"] == "drop_rows":
+            before = len(df)
+            df = df.dropna(subset=cat_cols)
+            log.append(f"{before - len(df)} ligne(s) supprimée(s) (NaN catégoriels).")
+        else:
+            for c in cat_cols:
+                n_na = int(df[c].isnull().sum())
+                if not n_na:
+                    continue
+                if cfg["impute_cat"] == "most_frequent":
+                    mode = df[c].mode(dropna=True)
+                    val = mode.iloc[0] if not mode.empty else "None"
+                else:
+                    val = "None"
+                df[c] = df[c].fillna(val)
+                imputed_cat += n_na
+            if imputed_cat:
+                log.append(f"{imputed_cat} valeur(s) catégorielle(s) imputée(s) ({cfg['impute_cat']}).")
+
+        # 5. Outliers (numeric features only). IQR (Tukey bounds) or z-score (k·σ),
+        #    each in a clip (bound the value) or remove (drop the row) variant.
+        method = cfg["outlier_method"]
+        if method != "none":
+            k = float(cfg["outlier_k"])
+            clip = method.endswith("_clip")
+            bounds = _iqr_bounds if method.startswith("iqr") else _zscore_bounds
+            label = "IQR" if method.startswith("iqr") else "z-score"
+            if clip:
+                for c in num_cols:
+                    s = df[c]
+                    low, high = bounds(s, k)
+                    if low is None:
+                        continue
+                    outliers_handled += int(((s < low) | (s > high)).sum())
+                    df[c] = s.clip(low, high)
+                log.append(f"{outliers_handled} valeur(s) bornée(s) ({label} k={k}).")
+            else:
+                mask = pd.Series(True, index=df.index)
+                for c in num_cols:
+                    s = df[c]
+                    low, high = bounds(s, k)
+                    if low is None:
+                        continue
+                    mask &= s.between(low, high)
+                outliers_handled = int((~mask).sum())
+                df = df[mask]
+                log.append(f"{outliers_handled} ligne(s) aberrante(s) supprimée(s) ({label} k={k}).")
 
     # 5b. Univariate row exclusion (expert-driven, e.g. GrLivArea > 4000).
     excl_col = cfg.get("exclude_column") or ""
@@ -405,6 +411,117 @@ def _zscore_bounds(s, k):
     if not np.isfinite(sd) or sd == 0:
         return None, None
     return mu - k * sd, mu + k * sd
+
+
+class CleanPreprocessor:
+    """Statistical half of the Clean stage, with a train-only ``fit``.
+
+    The exploratory ``run()`` fits imputation values and outlier bounds on the
+    full frame (fine for inspection, leaky for modelling). This object relearns
+    exactly those parameters on the TRAIN partition only — ``separate.py`` fits
+    it right after the split — and applies them to test/serving rows without any
+    re-fit, mirroring ``FeaturePreprocessor`` for the Clean step.
+
+    Row-dropping options never touch test/serving rows: ``*_remove`` outliers
+    are removed from the train rows only (``training=True``), and ``drop_rows``
+    imputation falls back to the train median / "None" fills outside training —
+    the semantics the serving layer always used (``_CLEAN_SERVING_OVERRIDE``).
+    Clipping, a deterministic transform once its bounds are fixed, applies to
+    train, test AND serving with the train bounds.
+    """
+
+    def __init__(self, clean_cfg, target_col=None):
+        cfg = dict(clean_cfg or {})
+        self.impute_num = str(cfg.get("impute_num", "median"))
+        self.impute_cat = str(cfg.get("impute_cat", "constant"))
+        self.outlier_method = str(cfg.get("outlier_method", "none"))
+        self.outlier_k = float(cfg.get("outlier_k", 1.5))
+        self.target_col = target_col
+        self.fitted_ = False
+        self.num_cols_, self.cat_cols_ = [], []
+        self.num_fill_ = {}       # col -> train fill value (median / mean / 0)
+        self.num_imputer_ = None  # fitted KNN / Iterative imputer (model-based modes)
+        self.cat_fill_ = {}       # col -> train fill value ("None" / train mode)
+        self.bounds_ = {}         # col -> (low, high) outlier bounds from train
+
+    def fit(self, df):
+        self.num_cols_, self.cat_cols_ = dg.feature_columns(df, self.target_col)
+        # Fill values from train (also the fallback when a model imputer fails).
+        for c in self.num_cols_:
+            v = 0.0 if self.impute_num == "zero" else \
+                df[c].mean() if self.impute_num == "mean" else df[c].median()
+            self.num_fill_[c] = 0.0 if pd.isna(v) else float(v)
+        if self.impute_num in ("knn", "iterative") and self.num_cols_:
+            try:
+                from sklearn.impute import KNNImputer
+                if self.impute_num == "iterative":
+                    from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+                    from sklearn.impute import IterativeImputer
+                    imp = IterativeImputer(random_state=42, max_iter=10, sample_posterior=False)
+                else:
+                    imp = KNNImputer(n_neighbors=5)
+                self.num_imputer_ = imp.fit(df[self.num_cols_])
+            except Exception:
+                self.num_imputer_ = None
+        for c in self.cat_cols_:
+            if self.impute_cat == "most_frequent":
+                mode = df[c].mode(dropna=True)
+                self.cat_fill_[c] = str(mode.iloc[0]) if not mode.empty else "None"
+            else:
+                self.cat_fill_[c] = "None"
+        # Bounds are learned on the IMPUTED train frame, like run() (impute, then
+        # outliers), so the two paths see the same quantiles.
+        if self.outlier_method != "none":
+            filled = self._impute(df.copy())
+            fn = _iqr_bounds if self.outlier_method.startswith("iqr") else _zscore_bounds
+            for c in self.num_cols_:
+                low, high = fn(filled[c], self.outlier_k)
+                if low is not None:
+                    self.bounds_[c] = (float(low), float(high))
+        self.fitted_ = True
+        return self
+
+    def _impute(self, df):
+        """Numeric + categorical fills with the train-fitted parameters."""
+        num = [c for c in self.num_cols_ if c in df.columns]
+        if self.num_imputer_ is not None and num == self.num_cols_ \
+                and df[num].isnull().to_numpy().any():
+            try:
+                arr = self.num_imputer_.transform(df[num])
+                df[num] = pd.DataFrame(arr, columns=num, index=df.index)
+            except Exception:
+                df[num] = df[num].fillna(self.num_fill_)
+        else:
+            for c in num:
+                if df[c].isnull().any():
+                    df[c] = df[c].fillna(self.num_fill_.get(c, 0.0))
+        for c in self.cat_cols_:
+            if c in df.columns and df[c].isnull().any():
+                df[c] = df[c].fillna(self.cat_fill_.get(c, "None"))
+        return df
+
+    def transform(self, df, training=False):
+        """Apply the train-fitted cleaning statistics; never drops rows unless
+        ``training=True`` (drop_rows imputation / *_remove outliers)."""
+        if not self.fitted_:
+            raise RuntimeError("CleanPreprocessor.transform() appelé avant fit().")
+        df = df.copy()
+        if training and self.impute_num == "drop_rows":
+            df = df.dropna(subset=[c for c in self.num_cols_ if c in df.columns])
+        if training and self.impute_cat == "drop_rows":
+            df = df.dropna(subset=[c for c in self.cat_cols_ if c in df.columns])
+        df = self._impute(df)
+        if self.outlier_method.endswith("_clip"):
+            for c, (low, high) in self.bounds_.items():
+                if c in df.columns:
+                    df[c] = df[c].clip(low, high)
+        elif training and self.outlier_method.endswith("_remove"):
+            mask = pd.Series(True, index=df.index)
+            for c, (low, high) in self.bounds_.items():
+                if c in df.columns:
+                    mask &= df[c].between(low, high)
+            df = df[mask]
+        return df
 
 
 def data_quality_by_column(df, ctx, max_card=0.9):

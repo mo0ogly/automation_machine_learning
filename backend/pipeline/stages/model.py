@@ -188,7 +188,8 @@ def diagnose(session):
                                          int(cfg["max_depth"]) or None, cw)
     info = {"ready": True, "mode": "supervised", "train_size": int(len(art["X_train"])),
             "n_features": len(art["feature_names"]), "leaderboard": rows, "recommended_model": best,
-            "cv_folds": cv, "leakage_free": art.get("preprocessor") is not None,
+            "cv_folds": cv, "leakage_free": (art.get("preprocessor") is not None
+                                             and art.get("clean_preprocessor") is not None),
             "primary_metric": (f"RMSE (CV {cv} plis, train)" if ptype == REGRESSION
                                else f"Accuracy (CV {cv} plis, train)")}
     plots = [_leaderboard_plot(rows, ptype)] if rows else []

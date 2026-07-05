@@ -30,11 +30,16 @@ import pandas as pd
 import aegis_pipeline
 from aegis_pipeline import preprocessing as _preprocessing
 from aegis_pipeline import scoring
+from aegis_pipeline import stages as _stages
+from aegis_pipeline.stages import clean as _clean
 
-# The FeaturePreprocessor was pickled under the app's module path
-# ("pipeline.preprocessing"); alias it to the bundled package so joblib can unpickle.
+# The preprocessors were pickled under the app's module paths
+# ("pipeline.preprocessing", "pipeline.stages.clean"); alias them to the bundled
+# package so joblib can unpickle.
 sys.modules.setdefault("pipeline", aegis_pipeline)
 sys.modules.setdefault("pipeline.preprocessing", _preprocessing)
+sys.modules.setdefault("pipeline.stages", _stages)
+sys.modules.setdefault("pipeline.stages.clean", _clean)
 
 HERE = Path(__file__).resolve().parent
 _META = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -74,6 +79,7 @@ class _Session:
                 "label_encoder": _BUNDLE.get("label_encoder"),
                 "X_full": _BUNDLE.get("X_full"),
                 "preprocessor": _BUNDLE.get("preprocessor"),
+                "clean_preprocessor": _BUNDLE.get("clean_preprocessor"),
             }),
             "model": _Run(artifacts={
                 "model": _BUNDLE["model"],

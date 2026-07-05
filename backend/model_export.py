@@ -90,8 +90,10 @@ def _model_payload(session) -> dict:
     sep, mdl = session.get_run("separate"), session.get_run("model")
     payload = {"model": model,
                "label_encoder": sep.artifacts.get("label_encoder") if sep else None,
-               # Train-fitted preprocessor (leakage-free sessions): serving reuses it as-is.
-               "preprocessor": sep.artifacts.get("preprocessor") if sep else None}
+               # Train-fitted preprocessors (leakage-free sessions): serving reuses
+               # them as-is — clean statistics + feature transforms.
+               "preprocessor": sep.artifacts.get("preprocessor") if sep else None,
+               "clean_preprocessor": sep.artifacts.get("clean_preprocessor") if sep else None}
     # Centroid fallback (DBSCAN / Agglomerative) needs the training matrix + labels.
     if session.ctx.problem_type in (CLUSTERING, ANOMALY):
         if sep is not None and sep.artifacts.get("X_full") is not None:

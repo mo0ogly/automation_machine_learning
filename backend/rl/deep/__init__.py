@@ -7,21 +7,27 @@ the UI and the AI helper reason about. Heavy imports (torch) stay lazy: importin
 this package only touches the registries, not stable_baselines3.
 """
 
-from . import envs, algos, jobs, cyber_envs, presets
+from . import envs, algos, jobs, cyber_envs, noc_envs, presets, custom_envs, registry, evaluate
 
-# Register the custom cyber-defense environments with Gymnasium at import time so
-# gym.make("AlertTriage-v0") works wherever the package is loaded.
+# Register the custom cyber-defense (SOC) and network-operations (NOC) envs with
+# Gymnasium at import time so gym.make("AlertTriage-v0") works wherever the
+# package is loaded, then re-register any user-imported CSV environments
+# persisted from a previous run.
 cyber_envs.register()
+noc_envs.register()
+custom_envs.load_persisted()
 
-__all__ = ["envs", "algos", "jobs", "cyber_envs", "presets", "catalog", "deep_rl_fields"]
+__all__ = ["envs", "algos", "jobs", "cyber_envs", "noc_envs", "presets",
+           "custom_envs", "registry", "evaluate", "catalog", "deep_rl_fields"]
 
 
 def catalog() -> dict:
-    """Everything the UI needs to render the workbench: the environment list, the
-    algorithm list (with per-algorithm hyperparameter schema + supported action
-    kinds), and the ready-to-train presets ("base models")."""
+    """Everything the UI needs to render the workbench: the environment list
+    (built-ins + user imports), the algorithm list (with per-algorithm
+    hyperparameter schema + supported action kinds), the ready-to-train presets
+    ("base models"), and the analyst's own saved agents ("My agents")."""
     return {"envs": envs.list_envs(), "algos": algos.list_algos(),
-            "presets": presets.list_presets()}
+            "presets": presets.list_presets(), "agents": registry.list_agents()}
 
 
 def deep_rl_fields() -> list:

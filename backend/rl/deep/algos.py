@@ -52,6 +52,31 @@ _OFFPOLICY_CONT_FIELDS = [
              "(replay buffer). Plus grand = plus de recul mais plus de mémoire."},
 ]
 
+# On-policy exploration knob (PPO / A2C / RecurrentPPO / MaskablePPO).
+_ENT_COEF_FIELD = {
+    "name": "ent_coef", "label": "Coefficient d'entropie", "type": "range",
+    "min": 0.0, "max": 0.05, "step": 0.005, "default": 0.0,
+    "help": "Encourage l'exploration en pénalisant les politiques trop sûres "
+            "d'elles. 0 = aucune incitation ; augmenter si l'agent converge trop "
+            "vite vers une mauvaise stratégie."}
+
+# ARS is gradient-free (random search): it has neither gamma nor entropy, but a
+# perturbation scale (delta_std) and a larger learning rate than the SGD algos.
+_ARS_FIELDS = [
+    {"name": "total_timesteps", "label": "Pas d'entraînement", "type": "range",
+     "min": 2000, "max": 200000, "step": 1000, "default": 40000,
+     "help": "Nombre total d'interactions agent-environnement. Plus = meilleure "
+             "politique mais entraînement plus long."},
+    {"name": "learning_rate", "label": "Taux d'apprentissage", "type": "range",
+     "min": 0.005, "max": 0.05, "step": 0.005, "default": 0.02,
+     "help": "Pas de mise à jour de la politique le long des perturbations. ARS "
+             "tolère un taux bien plus grand que les méthodes à gradient."},
+    {"name": "delta_std", "label": "Amplitude des perturbations (delta)", "type": "range",
+     "min": 0.01, "max": 0.1, "step": 0.01, "default": 0.05,
+     "help": "Écart-type du bruit ajouté aux poids pour explorer. Grand = "
+             "exploration large mais bruitée ; petit = fin mais lent."},
+]
+
 # Field names carrying an integer count (rounded when clamped).
 _INT_FIELDS = {"total_timesteps", "buffer_size"}
 
@@ -126,9 +151,40 @@ _ALGOS = {
         "action_kinds": [CONTINUOUS],
         "fields": _COMMON_FIELDS + _OFFPOLICY_CONT_FIELDS,
     },
+    "RecurrentPPO": {
+        "id": "RecurrentPPO", "family": "on-policy récurrent (LSTM)", "contrib": True,
+        "action_kinds": [DISCRETE, CONTINUOUS],
+        "fields": _COMMON_FIELDS + [_ENT_COEF_FIELD],
+    },
+    "ARS": {
+        "id": "ARS", "family": "sans gradient (recherche aléatoire)", "contrib": True,
+        "action_kinds": [DISCRETE, CONTINUOUS],
+        "fields": _ARS_FIELDS,
+    },
+    "CrossQ": {
+        # Off-policy continuous control; drops target networks (no tau), keeps a
+        # replay buffer — often more sample-efficient than SAC.
+        "id": "CrossQ", "family": "off-policy (sans réseau cible, BatchNorm)", "contrib": True,
+        "action_kinds": [CONTINUOUS],
+        "fields": _COMMON_FIELDS + [
+            {"name": "buffer_size", "label": "Taille du tampon de rejeu", "type": "range",
+             "min": 10000, "max": 1000000, "step": 10000, "default": 100000,
+             "help": "Nombre de transitions passées gardées en mémoire pour "
+                     "ré-apprentissage. Plus grand = plus de recul mais plus de mémoire."},
+        ],
+    },
+    "MaskablePPO": {
+        # PPO with invalid-action masking; only meaningful on envs that expose an
+        # action mask (``requires_mask``), e.g. the SOC triage envs.
+        "id": "MaskablePPO", "family": "on-policy (PPO avec masquage d'actions)",
+        "contrib": True, "requires_mask": True,
+        "action_kinds": [DISCRETE],
+        "fields": _COMMON_FIELDS + [_ENT_COEF_FIELD],
+    },
 }
 
-_ORDER = ["PPO", "DQN", "A2C", "SAC", "TD3", "DDPG", "QRDQN", "TRPO", "TQC"]
+_ORDER = ["PPO", "DQN", "A2C", "SAC", "TD3", "DDPG",
+          "QRDQN", "TRPO", "TQC", "RecurrentPPO", "ARS", "CrossQ", "MaskablePPO"]
 
 
 def list_algos() -> list:
@@ -151,6 +207,20 @@ def supports(name: str, kind: str) -> bool:
     """Whether algorithm ``name`` accepts an action space of ``kind``."""
     algo = _ALGOS.get(name)
     return bool(algo and kind in algo["action_kinds"])
+
+
+def requires_mask(name: str) -> bool:
+    """Whether the algorithm needs an action-mask-capable env (MaskablePPO)."""
+    algo = _ALGOS.get(name)
+    return bool(algo and algo.get("requires_mask"))
+
+
+def compatible(name: str, kind: str, maskable: bool = False) -> bool:
+    """Full compatibility check: action space AND (for MaskablePPO) that the env
+    exposes an action mask."""
+    if not supports(name, kind):
+        return False
+    return bool(maskable) if requires_mask(name) else True
 
 
 def _clamp_to_field(field: dict, value):

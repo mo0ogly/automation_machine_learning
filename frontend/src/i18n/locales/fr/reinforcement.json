@@ -9,7 +9,7 @@
   "deep": {
     "kicker": "Renforcement à l'échelle réelle",
     "title": "Deep Reinforcement Learning",
-    "intro": "Ici l'agent n'apprend plus une table mais un réseau de neurones, capable de gérer des états continus. On choisit un environnement Gymnasium standard, un algorithme (PPO, DQN ou A2C), puis on lance un entraînement réel sur CPU.",
+    "intro": "Ici l'agent n'apprend plus une table mais un réseau de neurones, capable de gérer des états continus. On choisit un environnement (Gymnasium standard, triage SOC intégré, ou votre propre CSV), un algorithme parmi 13, puis on lance un entraînement réel sur CPU — les agents obtenus se sauvegardent, se réévaluent, s'exportent et se réimportent.",
     "step1": "Choisir l'environnement",
     "step1Hint": "Chaque environnement est un problème de contrôle standard, avec des états continus.",
     "step2": "Choisir l'algorithme",
@@ -43,7 +43,11 @@
       "unsolvedTitle": "Pas encore résolu",
       "unsolvedText": "La récompense reste sous le seuil — essayez plus de pas d'entraînement, ou ajustez le taux d'apprentissage.",
       "doneTitle": "Entraînement terminé",
-      "doneText": "Cet environnement n'a pas de seuil officiel : jugez la qualité à la courbe et à la récompense moyenne."
+      "doneText": "Cet environnement n'a pas de seuil officiel : jugez la qualité à la courbe et à la récompense moyenne.",
+      "beatsRandomTitle": "Modèle utile — bat la politique aléatoire",
+      "beatsRandomText": "La politique apprise dépasse nettement une politique au hasard (voir « Gain vs aléatoire ») : l'agent a appris quelque chose d'exploitable. Utilisez le Diagnostic IA pour la suite.",
+      "notBetterTitle": "Pas mieux que le hasard",
+      "notBetterText": "La récompense ne dépasse pas une politique aléatoire : l'agent n'a pas encore appris. Augmentez les pas d'entraînement, changez d'algorithme, ou revoyez les hyperparamètres."
     },
     "fields": {
       "total_timesteps": { "label": "Pas d'entraînement", "hint": "Nombre total d'interactions agent-environnement. Plus = meilleure politique mais entraînement plus long." },
@@ -52,10 +56,12 @@
       "ent_coef": { "label": "Coefficient d'entropie", "hint": "Encourage l'exploration en pénalisant les politiques trop sûres d'elles. 0 = aucune incitation." },
       "exploration_fraction": { "label": "Fraction d'exploration", "hint": "Part de l'entraînement où l'exploration décroît (epsilon-greedy Deep). L'équivalent de l'exploration du Q-learning tabulaire." },
       "tau": { "label": "Mise à jour douce (tau)", "hint": "Vitesse de rapprochement du réseau cible vers le réseau courant. Petit = cible stable mais lente ; grand = plus réactif mais instable." },
-      "buffer_size": { "label": "Taille du tampon de rejeu", "hint": "Nombre de transitions passées gardées en mémoire pour ré-apprentissage (replay buffer). Plus grand = plus de recul mais plus de mémoire." }
+      "buffer_size": { "label": "Taille du tampon de rejeu", "hint": "Nombre de transitions passées gardées en mémoire pour ré-apprentissage (replay buffer). Plus grand = plus de recul mais plus de mémoire." },
+      "delta_std": { "label": "Amplitude des perturbations (delta)", "hint": "Écart-type du bruit ajouté aux poids pour explorer (ARS). Grand = exploration large mais bruitée ; petit = fin mais lent." }
     },
     "groups": {
       "cyber_defense": "Cyber défense",
+      "noc_ops": "Opérations réseau (NOC)",
       "classic_control": "Contrôle classique (références)"
     },
     "download": "Télécharger l'agent (.zip)",
@@ -65,17 +71,35 @@
     "presets": {
       "soc_triage_dqn": { "name": "Triage SOC (DQN)", "desc": "Trier un flux d'alertes sous budget analyste : bloquer les vraies attaques, épargner le trafic légitime. Value-based." },
       "soc_triage_ppo": { "name": "Triage SOC (PPO)", "desc": "Même problème de triage d'alertes, résolu par une méthode acteur-critique (PPO)." },
+      "soc_triage_maskable": { "name": "Triage SOC (MaskablePPO)", "desc": "Triage avec masquage d'actions : BLOQUER est interdit quand le budget de réponse est épuisé. PPO qui respecte la contrainte opérationnelle." },
+      "incident_ppo": { "name": "Confinement d'incident (PPO)", "desc": "Décision temporelle : enquêter, isoler ou éradiquer avant que l'infection ne se propage. Actualisation longue (gamma élevé)." },
+      "threshold_sac": { "name": "Seuil IDS (SAC)", "desc": "Contrôle continu cyber : régler le seuil de détection en ligne sous dérive d'attaque. SAC, efficace en échantillons." },
+      "soc_assign_maskable": { "name": "Affectation d'analystes (MaskablePPO)", "desc": "Répartir les incidents entre juniors et seniors : les seniors résolvent tout mais sont rares. AFFECTER SENIOR est masqué quand ils sont tous occupés." },
+      "soc_patch_maskable": { "name": "Priorisation de correctifs (MaskablePPO)", "desc": "Dépenser les rares fenêtres de maintenance d'urgence sur les vulnérabilités les plus à risque (CVSS, exploitation active, exposition). URGENCE est masqué quand toutes les fenêtres sont consommées." },
+      "soc_invest_recurrent": { "name": "Investigation de cas (RecurrentPPO)", "desc": "Apprendre quand assez de preuves suffisent : enquêter, classer ou escalader. Problème partiellement observable — la politique LSTM suit l'accumulation de preuves." },
+      "noc_reroute_dqn": { "name": "Reroutage NOC (DQN)", "desc": "Trier un flux d'événements de congestion sous budget de chemins de secours : rerouter les vraies dégradations, épargner les liens sains. Value-based." },
+      "noc_reroute_maskable": { "name": "Reroutage NOC (MaskablePPO)", "desc": "Reroutage avec masquage d'actions : REROUTER est interdit quand il ne reste plus de chemin de secours. PPO qui respecte la contrainte opérationnelle." },
+      "noc_capacity_sac": { "name": "Capacité réseau (SAC)", "desc": "Contrôle continu NOC : dimensionner la capacité en ligne face au cycle journalier et aux pics de trafic. SAC, efficace en échantillons." },
       "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Référence pédagogique rapide : équilibrer un pendule inversé." },
       "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Référence à action continue : redresser un pendule par un couple dosé." },
-      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Contrôle continu off-policy prêt à l'emploi : SAC sur Pendulum, efficace en échantillons." }
+      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Contrôle continu off-policy prêt à l'emploi : SAC sur Pendulum, efficace en échantillons." },
+      "pendulum_crossq": { "name": "Pendulum (CrossQ)", "desc": "Contrôle continu off-policy récent : CrossQ sur Pendulum, souvent plus efficace en échantillons que SAC." }
     },
     "envs": {
       "AlertTriage-v0": { "label": "Triage d'alertes SOC", "desc": "Trier un flux d'alertes de sécurité sous budget de réponse : chaque alerte (score de menace, criticité de l'actif, réputation source, budget restant) appelle une décision — ignorer, surveiller ou bloquer. Bloquer une vraie attaque paie ; bloquer du trafic légitime coûte ; manquer une attaque coûte cher." },
+      "IncidentContainment-v0": { "label": "Confinement d'incident", "desc": "Contenir un incident qui se propage (ver, mouvement latéral de rançongiciel). L'état évolue : la fraction infectée croît à chaque pas. Enquêter (monter en confiance), isoler des segments (freine la propagation mais coûte au métier) ou éradiquer (cher, et efficace seulement si le diagnostic est sûr). Vrai arbitrage temporel." },
+      "ThresholdTuning-v0": { "label": "Réglage de seuil IDS", "desc": "Ajuster en continu le seuil de détection d'un IDS pendant qu'une campagne d'attaque monte puis retombe. L'action est un nombre réel (pousser le seuil). Récompense : vrais positifs payés, faux positifs (fatigue analyste) et attaques manquées facturés — l'arbitrage exact du panneau de seuil supervisé, mais en ligne." },
+      "AnalystAssignment-v0": { "label": "Affectation d'analystes SOC", "desc": "Répartir une file d'incidents entre une équipe limitée : différer, affecter un junior ou un senior. Les seniors résolvent toujours mais restent occupés plusieurs pas ; les juniors échouent sur les incidents difficiles (reprise coûteuse) ; différer un incident sévère coûte de plus en plus cher. L'arbitrage d'allocation de ressources d'un chef d'équipe SOC." },
+      "PatchPrioritization-v0": { "label": "Priorisation de correctifs", "desc": "Prioriser une file de vulnérabilités sous budget de fenêtres de maintenance : chaque signalement (score CVSS, exploitation active façon catalogue KEV, exposition internet, fenêtres restantes) appelle une décision — différer, planifier au prochain cycle ou corriger en urgence. Corriger en urgence une vulnérabilité sur le point d'être exploitée paie ; brûler une fenêtre (interruption de production) sur un signalement bénin gaspille ; différer une vulnérabilité ensuite exploitée coûte très cher." },
+      "CaseInvestigation-v0": { "label": "Investigation de cas", "desc": "Décider quand arrêter d'enquêter sur un cas suspect (arrêt optimal). La vérité est cachée : l'agent ne voit qu'une estimation bruitée de suspicion. Enquêter coûte du temps analyste et gonfle le backlog mais rapproche l'estimation de la vérité ; classer un vrai incident coûte très cher ; escalader un cas bénin gaspille la réponse à incident. Partiellement observable — une politique récurrente (RecurrentPPO) y a un vrai avantage." },
+      "TrafficRerouting-v0": { "label": "Reroutage de trafic NOC", "desc": "Traiter un flux d'événements de congestion sous budget de chemins de secours : chaque événement (utilisation, latence, criticité du lien, budget restant) appelle une décision — maintenir, limiter ou rerouter. Rerouter une vraie dégradation paie ; rerouter un lien sain perturbe les flux pour rien ; ignorer une dégradation coûte cher." },
+      "CapacityScaling-v0": { "label": "Dimensionnement de capacité", "desc": "Ajuster en continu la capacité provisionnée pendant que la demande suit un cycle journalier avec des pics aléatoires. L'action est un nombre réel (monter ou baisser la capacité). Récompense : trafic servi payé, sur-provisionnement facturé (coût), trafic rejeté lourdement facturé (SLA) — l'arbitrage classique de dimensionnement NOC, en ligne." },
       "CartPole-v1": { "label": "CartPole", "desc": "Maintenir un pendule inversé en équilibre en déplaçant un chariot à gauche ou à droite." },
       "Acrobot-v1": { "label": "Acrobot", "desc": "Balancer un double pendule sous-actionné pour hisser son extrémité au-dessus d'une ligne." },
       "MountainCar-v0": { "label": "MountainCar", "desc": "Prendre de l'élan pour faire gravir une colline à une voiture sous-motorisée." },
       "Pendulum-v1": { "label": "Pendulum", "desc": "Appliquer un couple continu pour redresser et stabiliser un pendule à la verticale." },
-      "MountainCarContinuous-v0": { "label": "MountainCar (continu)", "desc": "Version à action continue de MountainCar : doser précisément la poussée." }
+      "MountainCarContinuous-v0": { "label": "MountainCar (continu)", "desc": "Version à action continue de MountainCar : doser précisément la poussée." },
+      "customDesc": "Environnement de triage SOC construit depuis votre CSV importé ({{n}} alertes). L'agent apprend à trier sur vos données réelles."
     },
     "algos": {
       "PPO": { "desc": "Robuste et polyvalent, le choix par défaut. Gère actions discrètes et continues." },
@@ -86,10 +110,54 @@
       "DDPG": { "desc": "Acteur-critique déterministe off-policy, prédécesseur de TD3. Actions continues uniquement." },
       "QRDQN": { "desc": "DQN distributionnel : apprend la distribution des retours, pas seulement leur moyenne. Actions discrètes uniquement (sb3-contrib)." },
       "TRPO": { "desc": "Optimisation en région de confiance : pas de mise à jour bornés pour la stabilité. Actions discrètes et continues (sb3-contrib)." },
-      "TQC": { "desc": "Critiques quantiles tronqués, réduit la surestimation de la valeur. Souvent au-dessus de SAC en continu (sb3-contrib)." }
+      "TQC": { "desc": "Critiques quantiles tronqués, réduit la surestimation de la valeur. Souvent au-dessus de SAC en continu (sb3-contrib)." },
+      "RecurrentPPO": { "desc": "PPO récurrent (LSTM) : garde une mémoire des observations passées, utile pour les états partiellement observables. Actions discrètes et continues (sb3-contrib)." },
+      "ARS": { "desc": "Recherche aléatoire augmentée : optimise la politique sans gradient, très simple et robuste. Bon contrepoint aux méthodes à gradient. Actions discrètes et continues (sb3-contrib)." },
+      "CrossQ": { "desc": "Off-policy continu sans réseau cible (BatchNorm), souvent plus efficace en échantillons que SAC. Actions continues uniquement (sb3-contrib)." },
+      "MaskablePPO": { "desc": "PPO avec masquage d'actions : interdit les actions invalides selon l'état (ex : bloquer alors que le budget SOC est épuisé). Environnements masquables uniquement (sb3-contrib)." }
     },
     "contribBadge": "contrib",
-    "explainResults": "Expliquer les résultats"
+    "maskable": "masquable",
+    "explainResults": "Expliquer les résultats",
+    "diagnose": "Diagnostic IA : ce modèle est-il bon ? que faire ?",
+    "evalTitle": "Évaluation d'un agent existant",
+    "evalText": "Ces résultats mesurent la politique d'un agent déjà entraîné, sans réentraînement — la courbe d'apprentissage est donc vide.",
+    "registry": {
+      "title": "Mes agents",
+      "hint": "Vos agents entraînés ou importés, sauvegardés et réutilisables. Réévaluez-les, poursuivez leur entraînement, téléchargez-les ou exportez-les.",
+      "empty": "Aucun agent sauvegardé pour l'instant. Entraînez un agent puis « Sauvegarder dans Mes agents », ou importez un .zip.",
+      "importedBadge": "importé",
+      "reward": "récompense moy. {{value}}",
+      "evaluate": "Évaluer",
+      "continue": "Continuer l'entraînement",
+      "download": "Télécharger",
+      "export": "Exporter (modèle + rapport)",
+      "delete": "Supprimer",
+      "saveTitle": "Nom de l'agent",
+      "save": "Sauvegarder dans Mes agents",
+      "saved": "Agent « {{name}} » sauvegardé dans Mes agents.",
+      "namePlaceholder": "ex : triage-soc-v1"
+    },
+    "import": {
+      "title": "Importer",
+      "hint": "Réintégrez un agent entraîné ailleurs, ou transformez un CSV d'alertes réelles en environnement de triage sur mesure.",
+      "agentTitle": "Importer un agent (.zip)",
+      "agentHint": "Un modèle Stable-Baselines3 exporté. Il est validé (chargeable + dimension d'observation compatible) avant d'être ajouté à Mes agents.",
+      "name": "Nom",
+      "namePlaceholder": "ex : agent-importé",
+      "env": "Environnement cible",
+      "algo": "Algorithme",
+      "file": "Fichier .zip",
+      "submitAgent": "Importer l'agent",
+      "envTitle": "Importer un environnement (CSV)",
+      "envHint": "Un CSV d'alertes réelles devient un environnement de triage SOC : l'agent apprend sur vos données. Colonnes attendues :",
+      "csv": "Fichier .csv",
+      "envNamePlaceholder": "ex : alertes-prod-mai",
+      "submitEnv": "Importer l'environnement",
+      "incomplete": "Complétez les champs requis (fichier, environnement, algorithme).",
+      "agentOk": "Agent « {{name}} » importé dans Mes agents.",
+      "envOk": "Environnement « {{name}} » importé — disponible à l'étape 1."
+    }
   },
   "intro": {
     "kicker": "Troisième paradigme",

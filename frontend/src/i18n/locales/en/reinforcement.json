@@ -9,7 +9,7 @@
   "deep": {
     "kicker": "Reinforcement learning at real scale",
     "title": "Deep Reinforcement Learning",
-    "intro": "Here the agent no longer learns a table but a neural network, able to handle continuous states. Pick a standard Gymnasium environment, an algorithm (PPO, DQN or A2C), then launch a real training run on CPU.",
+    "intro": "Here the agent no longer learns a table but a neural network, able to handle continuous states. Pick an environment (standard Gymnasium, the built-in SOC triage, or your own CSV), one of 13 algorithms, then launch a real training run on CPU — the resulting agents can be saved, re-evaluated, exported and re-imported.",
     "step1": "Choose the environment",
     "step1Hint": "Each environment is a standard control problem with continuous states.",
     "step2": "Choose the algorithm",
@@ -43,7 +43,11 @@
       "unsolvedTitle": "Not solved yet",
       "unsolvedText": "Reward stays below the threshold — try more training steps, or adjust the learning rate.",
       "doneTitle": "Training complete",
-      "doneText": "This environment has no official threshold: judge quality from the curve and the mean reward."
+      "doneText": "This environment has no official threshold: judge quality from the curve and the mean reward.",
+      "beatsRandomTitle": "Useful model — beats the random policy",
+      "beatsRandomText": "The learned policy clearly outperforms acting at random (see \"Gain vs random\"): the agent learned something usable. Use the AI diagnosis for next steps.",
+      "notBetterTitle": "No better than random",
+      "notBetterText": "The reward does not beat a random policy: the agent hasn't learned yet. Increase training steps, change algorithm, or revisit the hyperparameters."
     },
     "fields": {
       "total_timesteps": { "label": "Training steps", "hint": "Total agent-environment interactions. More = better policy but longer training." },
@@ -52,10 +56,12 @@
       "ent_coef": { "label": "Entropy coefficient", "hint": "Encourages exploration by penalising over-confident policies. 0 = no incentive." },
       "exploration_fraction": { "label": "Exploration fraction", "hint": "Share of training over which exploration decays (Deep epsilon-greedy). The counterpart of tabular Q-learning exploration." },
       "tau": { "label": "Soft update (tau)", "hint": "How fast the target network moves toward the current one. Small = stable but slow target; large = more reactive but unstable." },
-      "buffer_size": { "label": "Replay buffer size", "hint": "Number of past transitions kept in memory for re-learning (replay buffer). Larger = more history but more memory." }
+      "buffer_size": { "label": "Replay buffer size", "hint": "Number of past transitions kept in memory for re-learning (replay buffer). Larger = more history but more memory." },
+      "delta_std": { "label": "Perturbation scale (delta)", "hint": "Standard deviation of the weight noise used to explore (ARS). Large = broad but noisy exploration; small = fine but slow." }
     },
     "groups": {
       "cyber_defense": "Cyber defense",
+      "noc_ops": "Network operations (NOC)",
       "classic_control": "Classic control (references)"
     },
     "download": "Download the agent (.zip)",
@@ -65,17 +71,35 @@
     "presets": {
       "soc_triage_dqn": { "name": "SOC triage (DQN)", "desc": "Triage an alert stream under an analyst budget: block real attacks, spare legitimate traffic. Value-based." },
       "soc_triage_ppo": { "name": "SOC triage (PPO)", "desc": "Same alert-triage problem, solved with an actor-critic method (PPO)." },
+      "soc_triage_maskable": { "name": "SOC triage (MaskablePPO)", "desc": "Triage with action masking: BLOCK is forbidden once the response budget is spent. PPO that honours the operational constraint." },
+      "incident_ppo": { "name": "Incident containment (PPO)", "desc": "Temporal decision-making: investigate, isolate or eradicate before the infection spreads. Long horizon (high gamma)." },
+      "threshold_sac": { "name": "IDS threshold (SAC)", "desc": "Continuous cyber control: tune the detection threshold online under attack drift. SAC, sample-efficient." },
+      "soc_assign_maskable": { "name": "Analyst assignment (MaskablePPO)", "desc": "Dispatch incidents between juniors and seniors: seniors always resolve but are scarce. ASSIGN SENIOR is masked while they are all busy." },
+      "soc_patch_maskable": { "name": "Patch prioritization (MaskablePPO)", "desc": "Spend the scarce emergency maintenance windows on the riskiest vulnerabilities (CVSS, active exploitation, exposure). EMERGENCY is masked once every window is spent." },
+      "soc_invest_recurrent": { "name": "Case investigation (RecurrentPPO)", "desc": "Learn when enough evidence is enough: investigate, close or escalate. Partially observable — the LSTM policy tracks the accumulating evidence." },
+      "noc_reroute_dqn": { "name": "NOC rerouting (DQN)", "desc": "Triage a stream of congestion events under a spare-path budget: reroute genuine degradations, spare healthy links. Value-based." },
+      "noc_reroute_maskable": { "name": "NOC rerouting (MaskablePPO)", "desc": "Rerouting with action masking: REROUTE is forbidden once no spare path remains. PPO that honours the operational constraint." },
+      "noc_capacity_sac": { "name": "Network capacity (SAC)", "desc": "Continuous NOC control: dimension capacity online against the diurnal cycle and traffic bursts. SAC, sample-efficient." },
       "cartpole_ppo": { "name": "CartPole (PPO)", "desc": "Fast teaching reference: balance an inverted pole." },
       "pendulum_ppo": { "name": "Pendulum (PPO)", "desc": "Continuous-action reference: swing up a pendulum with modulated torque." },
-      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Ready-made off-policy continuous control: SAC on Pendulum, sample-efficient." }
+      "pendulum_sac": { "name": "Pendulum (SAC)", "desc": "Ready-made off-policy continuous control: SAC on Pendulum, sample-efficient." },
+      "pendulum_crossq": { "name": "Pendulum (CrossQ)", "desc": "Recent off-policy continuous control: CrossQ on Pendulum, often more sample-efficient than SAC." }
     },
     "envs": {
       "AlertTriage-v0": { "label": "SOC alert triage", "desc": "Triage a stream of security alerts under a response budget: each alert (threat score, asset criticality, source reputation, remaining budget) calls for a decision — dismiss, monitor or block. Blocking a real attack pays off; blocking legitimate traffic costs; missing an attack is expensive." },
+      "IncidentContainment-v0": { "label": "Incident containment", "desc": "Contain a spreading incident (worm, ransomware lateral movement). The state evolves: the infected fraction grows every step. Investigate (raise confidence), isolate segments (slows the spread but costs the business) or eradicate (expensive, and effective only once the diagnosis is confident). A genuine temporal trade-off." },
+      "ThresholdTuning-v0": { "label": "IDS threshold tuning", "desc": "Continuously tune an IDS detection threshold while an attack campaign ramps up and down. The action is a real number (nudge the threshold). Reward: true positives paid, false positives (analyst fatigue) and missed attacks charged — the exact trade-off of the supervised threshold panel, but online." },
+      "AnalystAssignment-v0": { "label": "SOC analyst assignment", "desc": "Dispatch a queue of incidents to a limited team: defer, assign a junior or a senior. Seniors always resolve but stay busy for several steps; juniors fail on hard incidents (costly rework); deferring a severe incident gets more and more expensive. The resource-allocation trade-off a SOC shift lead faces." },
+      "PatchPrioritization-v0": { "label": "Patch prioritization", "desc": "Prioritize a queue of vulnerabilities under a maintenance-window budget: each finding (CVSS score, active exploitation à la KEV catalogue, internet exposure, remaining windows) calls for a decision — defer, schedule for the next cycle, or patch in an emergency window. Emergency-patching a vulnerability about to be exploited pays off; burning a window (production disruption) on a benign finding is wasteful; deferring a vulnerability that then gets exploited is very expensive." },
+      "CaseInvestigation-v0": { "label": "Case investigation", "desc": "Decide when to stop investigating a suspicious case (optimal stopping). The truth is hidden: the agent only sees a noisy suspicion estimate. Investigating costs analyst time and inflates the backlog but pulls the estimate toward the truth; closing a real incident is very costly; escalating a benign case wastes incident response. Partially observable — a recurrent policy (RecurrentPPO) has a genuine edge." },
+      "TrafficRerouting-v0": { "label": "NOC traffic rerouting", "desc": "Handle a stream of congestion events under a spare-path budget: each event (utilization, latency, link criticality, remaining budget) calls for a decision — keep, throttle or reroute. Rerouting a genuine degradation pays off; rerouting a healthy link churns flows for nothing; ignoring a degradation is expensive." },
+      "CapacityScaling-v0": { "label": "Capacity scaling", "desc": "Continuously adjust provisioned capacity while demand follows a diurnal cycle with random bursts. The action is a real number (scale capacity up or down). Reward: served traffic paid, over-provisioning charged (cost), dropped traffic heavily charged (SLA) — the classic NOC dimensioning trade-off, online." },
       "CartPole-v1": { "label": "CartPole", "desc": "Keep an inverted pole balanced by moving a cart left or right." },
       "Acrobot-v1": { "label": "Acrobot", "desc": "Swing an underactuated double pendulum to raise its tip above a line." },
       "MountainCar-v0": { "label": "MountainCar", "desc": "Build momentum to drive an underpowered car up a hill." },
       "Pendulum-v1": { "label": "Pendulum", "desc": "Apply continuous torque to swing up and stabilise a pendulum upright." },
-      "MountainCarContinuous-v0": { "label": "MountainCar (continuous)", "desc": "Continuous-action version of MountainCar: precisely modulate the push." }
+      "MountainCarContinuous-v0": { "label": "MountainCar (continuous)", "desc": "Continuous-action version of MountainCar: precisely modulate the push." },
+      "customDesc": "SOC triage environment built from your imported CSV ({{n}} alerts). The agent learns to triage on your real data."
     },
     "algos": {
       "PPO": { "desc": "Robust and versatile, the default choice. Handles discrete and continuous actions." },
@@ -86,10 +110,54 @@
       "DDPG": { "desc": "Deterministic off-policy actor-critic, the predecessor of TD3. Continuous actions only." },
       "QRDQN": { "desc": "Distributional DQN: learns the distribution of returns, not just their mean. Discrete actions only (sb3-contrib)." },
       "TRPO": { "desc": "Trust-region optimisation: bounded updates for stability. Discrete and continuous actions (sb3-contrib)." },
-      "TQC": { "desc": "Truncated quantile critics, curbs value overestimation. Often beats SAC on continuous control (sb3-contrib)." }
+      "TQC": { "desc": "Truncated quantile critics, curbs value overestimation. Often beats SAC on continuous control (sb3-contrib)." },
+      "RecurrentPPO": { "desc": "Recurrent PPO (LSTM): keeps a memory of past observations, useful for partially observable states. Discrete and continuous actions (sb3-contrib)." },
+      "ARS": { "desc": "Augmented Random Search: optimises the policy without gradients, very simple and robust. A good counterpoint to gradient methods. Discrete and continuous actions (sb3-contrib)." },
+      "CrossQ": { "desc": "Off-policy continuous control without target networks (BatchNorm), often more sample-efficient than SAC. Continuous actions only (sb3-contrib)." },
+      "MaskablePPO": { "desc": "PPO with action masking: forbids invalid actions given the state (e.g. blocking when the SOC budget is spent). Maskable environments only (sb3-contrib)." }
     },
     "contribBadge": "contrib",
-    "explainResults": "Explain the results"
+    "maskable": "maskable",
+    "explainResults": "Explain the results",
+    "diagnose": "AI diagnosis: is this model good? what next?",
+    "evalTitle": "Evaluating an existing agent",
+    "evalText": "These results measure a previously trained agent's policy, without retraining — so the learning curve is empty.",
+    "registry": {
+      "title": "My agents",
+      "hint": "Your trained or imported agents, saved and reusable. Re-evaluate them, continue their training, download or export them.",
+      "empty": "No saved agent yet. Train an agent then \"Save to My agents\", or import a .zip.",
+      "importedBadge": "imported",
+      "reward": "mean reward {{value}}",
+      "evaluate": "Evaluate",
+      "continue": "Continue training",
+      "download": "Download",
+      "export": "Export (model + report)",
+      "delete": "Delete",
+      "saveTitle": "Agent name",
+      "save": "Save to My agents",
+      "saved": "Agent \"{{name}}\" saved to My agents.",
+      "namePlaceholder": "e.g. soc-triage-v1"
+    },
+    "import": {
+      "title": "Import",
+      "hint": "Bring back an agent trained elsewhere, or turn a CSV of real alerts into a custom triage environment.",
+      "agentTitle": "Import an agent (.zip)",
+      "agentHint": "An exported Stable-Baselines3 model. It is validated (loadable + matching observation dimension) before being added to My agents.",
+      "name": "Name",
+      "namePlaceholder": "e.g. imported-agent",
+      "env": "Target environment",
+      "algo": "Algorithm",
+      "file": ".zip file",
+      "submitAgent": "Import the agent",
+      "envTitle": "Import an environment (CSV)",
+      "envHint": "A CSV of real alerts becomes a SOC triage environment: the agent learns on your data. Expected columns:",
+      "csv": ".csv file",
+      "envNamePlaceholder": "e.g. prod-alerts-may",
+      "submitEnv": "Import the environment",
+      "incomplete": "Fill in the required fields (file, environment, algorithm).",
+      "agentOk": "Agent \"{{name}}\" imported into My agents.",
+      "envOk": "Environment \"{{name}}\" imported — available at step 1."
+    }
   },
   "intro": {
     "kicker": "Third paradigm",

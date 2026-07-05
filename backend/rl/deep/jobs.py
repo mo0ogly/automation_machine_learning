@@ -25,6 +25,7 @@ from pathlib import Path
 
 from pipeline import plotting
 from . import train as trainer
+from . import evaluate as evaluator
 from . import plots as deep_plots
 
 _MAX_KEPT = 12
@@ -51,7 +52,8 @@ def _evict_old():
         _JOBS.popitem(last=False)
 
 
-def _run(job_id: str, env_id: str, algo: str, config: dict):
+def _run(job_id: str, env_id: str, algo: str, config: dict, kind: str,
+         load_from, model_zip):
     def on_progress(frac):
         _set(job_id, progress=round(float(frac), 3))
 
@@ -61,9 +63,14 @@ def _run(job_id: str, env_id: str, algo: str, config: dict):
 
     try:
         _EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-        save_path = str(_EXPORT_DIR / f"deeprl_{job_id}.zip")
-        result, extras = trainer.train(env_id, algo, config, on_progress=on_progress,
-                                       should_cancel=should_cancel, save_path=save_path)
+        if kind == "eval":
+            result, extras = evaluator.evaluate(env_id, algo, model_zip)
+            save_path = None
+        else:  # "train" (fresh) or warm-start via load_from
+            save_path = str(_EXPORT_DIR / f"deeprl_{job_id}.zip")
+            result, extras = trainer.train(env_id, algo, config, on_progress=on_progress,
+                                           should_cancel=should_cancel,
+                                           save_path=save_path, load_from=load_from)
         with plotting.PLOT_LOCK:  # matplotlib is not thread-safe
             figs = deep_plots.all_plots(result, extras)
         status = "cancelled" if result.get("cancelled") else "done"
@@ -71,24 +78,39 @@ def _run(job_id: str, env_id: str, algo: str, config: dict):
         _set(job_id, status=status, progress=1.0, model_path=model_path,
              result={"metrics": result["metrics"], "plots": figs,
                      "solved": result["solved"], "cancelled": result["cancelled"],
-                     "env_id": env_id, "algo": algo,
+                     "env_id": env_id, "algo": algo, "kind": kind,
+                     "obs_dim": result.get("obs_dim"), "action_kind": result.get("action_kind"),
+                     "group": result.get("group"), "threshold": result.get("threshold"),
+                     "random_reward": result.get("random_reward"),
+                     "beats_random": result.get("beats_random"),
                      "can_download": bool(model_path and os.path.exists(model_path))})
     except Exception as exc:  # surfaced to the UI as a failed job, never crashes the server
         _set(job_id, status="error", error=f"{type(exc).__name__}: {exc}")
 
 
-def start_training(env_id: str, algo: str, config: dict) -> str:
-    """Spawn a background training job and return its id."""
+def _start(env_id, algo, config, kind, load_from=None, model_zip=None) -> str:
     job_id = _new_id()
     with _LOCK:
         _JOBS[job_id] = {"id": job_id, "status": "running", "progress": 0.0,
                          "cancel": False, "result": None, "error": None,
-                         "env_id": env_id, "algo": algo}
+                         "env_id": env_id, "algo": algo, "kind": kind,
+                         "config": dict(config or {})}
         _evict_old()
-    thread = threading.Thread(target=_run, args=(job_id, env_id, algo, config),
+    thread = threading.Thread(target=_run,
+                              args=(job_id, env_id, algo, config, kind, load_from, model_zip),
                               name=f"deeprl-{job_id}", daemon=True)
     thread.start()
     return job_id
+
+
+def start_training(env_id: str, algo: str, config: dict, load_from=None) -> str:
+    """Spawn a background training job (optionally warm-started from ``load_from``)."""
+    return _start(env_id, algo, config, "train", load_from=load_from)
+
+
+def start_evaluation(env_id: str, algo: str, model_zip: str) -> str:
+    """Spawn a background evaluation job for a saved/imported agent."""
+    return _start(env_id, algo, {}, "eval", model_zip=model_zip)
 
 
 _INTERNAL = {"cancel", "model_path"}  # never leaked to the client

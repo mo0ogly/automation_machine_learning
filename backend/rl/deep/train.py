@@ -18,6 +18,7 @@ import time
 from . import algos as algo_registry
 from . import envs as env_registry
 from . import cyber_envs
+from . import noc_envs
 
 
 def _make_callback(total_timesteps, on_progress, should_cancel):
@@ -58,48 +59,113 @@ def _make_callback(total_timesteps, on_progress, should_cancel):
     return _CB()
 
 
-def _build_model(algo_name, env, kwargs):
-    """Instantiate the SB3 (or sb3-contrib) model. ``kwargs`` are validated/clamped."""
+# Non-default SB3 policy aliases (everything else uses "MlpPolicy").
+_POLICY = {"RecurrentPPO": "MlpLstmPolicy"}
+
+
+def algo_class(algo_name):
+    """Return the SB3 / sb3-contrib algorithm class for ``algo_name`` (lazy import)."""
     from stable_baselines3 import PPO, A2C, DQN, SAC, TD3, DDPG
     classes = {"PPO": PPO, "A2C": A2C, "DQN": DQN, "SAC": SAC, "TD3": TD3, "DDPG": DDPG}
-    if algo_name in ("QRDQN", "TRPO", "TQC"):  # sb3-contrib (lazy import)
-        from sb3_contrib import QRDQN, TRPO, TQC
-        classes.update({"QRDQN": QRDQN, "TRPO": TRPO, "TQC": TQC})
-    cls = classes[algo_name]
-    common = dict(policy="MlpPolicy", env=env, verbose=0, device="cpu", seed=0,
-                  learning_rate=kwargs["learning_rate"], gamma=kwargs["gamma"])
-    if algo_name in ("PPO", "A2C"):
-        common["ent_coef"] = kwargs.get("ent_coef", 0.0)
-    elif algo_name in ("DQN", "QRDQN"):
-        common["exploration_fraction"] = kwargs.get("exploration_fraction", 0.1)
-    elif algo_name in ("SAC", "TD3", "DDPG", "TQC"):  # off-policy, replay buffer + soft update
-        common["tau"] = kwargs.get("tau", 0.005)
-        common["buffer_size"] = kwargs.get("buffer_size", 100000)
-    # TRPO uses only the common on-policy hyperparameters exposed above.
-    return cls(**common)
+    if algo_name in ("QRDQN", "TRPO", "TQC", "RecurrentPPO", "ARS", "CrossQ", "MaskablePPO"):
+        from sb3_contrib import QRDQN, TRPO, TQC, RecurrentPPO, ARS, CrossQ, MaskablePPO
+        classes.update({"QRDQN": QRDQN, "TRPO": TRPO, "TQC": TQC,
+                        "RecurrentPPO": RecurrentPPO, "ARS": ARS,
+                        "CrossQ": CrossQ, "MaskablePPO": MaskablePPO})
+    cls = classes.get(algo_name)
+    if cls is None:
+        raise ValueError(f"Algorithme inconnu : {algo_name}")
+    return cls
+
+
+def _build_model(algo_name, env, kwargs):
+    """Instantiate the SB3 (or sb3-contrib) model.
+
+    Rather than hand-maintaining which constructor accepts which keyword (they
+    differ: ARS has no ``gamma``, CrossQ has no ``tau``, …), we assemble the
+    superset of hyperparameters we might pass and filter it to the arguments the
+    class actually declares — robust across algorithms and SB3 versions.
+    """
+    import inspect
+    cls = algo_class(algo_name)
+    desired = {"policy": _POLICY.get(algo_name, "MlpPolicy"), "env": env,
+               "verbose": 0, "device": "cpu", "seed": 0}
+    for key in ("learning_rate", "gamma", "ent_coef", "exploration_fraction",
+                "tau", "buffer_size", "delta_std"):
+        if kwargs.get(key) is not None:
+            desired[key] = kwargs[key]
+    accepted = set(inspect.signature(cls.__init__).parameters)
+    return cls(**{k: v for k, v in desired.items() if k in accepted})
+
+
+def _evaluate_policy_fn(algo_name):
+    """The right ``evaluate_policy`` for the algorithm (maskable variant for
+    MaskablePPO so masks are honoured at evaluation time)."""
+    if algo_name == "MaskablePPO":
+        from sb3_contrib.common.maskable.evaluation import evaluate_policy
+    else:
+        from stable_baselines3.common.evaluation import evaluate_policy
+    return evaluate_policy
+
+
+def random_baseline(env_id, n_episodes=20):
+    """Mean episode reward of a uniformly random policy on ``env_id``.
+
+    The honest reference every trained agent is compared against: "does the
+    learned policy actually beat acting at random?" — far more meaningful for a
+    bespoke cyber env than an arbitrary fixed threshold. Deterministic (fixed
+    seeds), so the same env always yields the same baseline.
+    """
+    import gymnasium as gym
+    cyber_envs.register()
+    noc_envs.register()
+    env = gym.make(env_id)
+    try:
+        rewards = []
+        for i in range(n_episodes):
+            env.reset(seed=1000 + i)
+            done, total = False, 0.0
+            while not done:
+                _, r, term, trunc, _ = env.step(env.action_space.sample())
+                total += float(r)
+                done = term or trunc
+            rewards.append(total)
+    finally:
+        env.close()
+    return sum(rewards) / len(rewards)
+
+
+def _quality(mean_r, random_ref):
+    """Whether ``mean_r`` clearly beats the random baseline (margin scaled to the
+    baseline's magnitude, so it is robust to very different reward scales)."""
+    margin = 0.1 * abs(random_ref) + 0.01
+    return mean_r >= random_ref + margin
 
 
 def train(env_id, algo_name, config, on_progress=None, should_cancel=None,
-          n_eval_episodes=20, save_path=None):
+          n_eval_episodes=20, save_path=None, load_from=None):
     """Train ``algo_name`` on ``env_id`` and evaluate the learned policy.
 
     Returns ``(result, extras)`` where ``result`` holds analyst-facing metrics +
     the learning curve, and ``extras`` holds raw arrays the plot layer needs.
     When ``save_path`` is given, the trained Stable-Baselines3 model is saved
-    there (a ``.zip``) so it can be downloaded afterwards.
+    there (a ``.zip``) so it can be downloaded afterwards. When ``load_from`` is
+    given, training resumes from that saved model (warm-start) instead of a fresh
+    network — the workbench's "continue training" path.
     Raises ``ValueError`` on an unknown env / algo / incompatible action space.
     """
     cyber_envs.register()  # idempotent; ensures custom envs are known to gym.make
+    noc_envs.register()
     meta = env_registry.get_env(env_id)
     if meta is None:
         raise ValueError(f"Environnement inconnu : {env_id}")
-    if not algo_registry.supports(algo_name, meta["action_kind"]):
+    if not algo_registry.compatible(algo_name, meta["action_kind"], meta.get("maskable")):
         raise ValueError(
-            f"{algo_name} ne supporte pas un espace d'action {meta['action_kind']} "
-            f"({env_id}). Choisissez PPO ou A2C.")
+            f"{algo_name} n'est pas compatible avec l'environnement {env_id} "
+            f"(action {meta['action_kind']}, masquable={bool(meta.get('maskable'))}).")
 
     from stable_baselines3.common.env_util import make_vec_env
-    from stable_baselines3.common.evaluation import evaluate_policy
+    evaluate_policy = _evaluate_policy_fn(algo_name)
 
     kwargs = algo_registry.build_kwargs(algo_name, config)
     total_timesteps = kwargs.pop("total_timesteps")
@@ -107,7 +173,10 @@ def train(env_id, algo_name, config, on_progress=None, should_cancel=None,
     env = make_vec_env(env_id, n_envs=1, seed=0)
     started = time.time()
     try:
-        model = _build_model(algo_name, env, kwargs)
+        if load_from:
+            model = algo_class(algo_name).load(load_from, env=env, device="cpu")
+        else:
+            model = _build_model(algo_name, env, kwargs)
         cb = _make_callback(total_timesteps, on_progress, should_cancel)
         model.learn(total_timesteps=total_timesteps, callback=cb, progress_bar=False)
         cancelled = bool(should_cancel and should_cancel())
@@ -131,6 +200,8 @@ def train(env_id, algo_name, config, on_progress=None, should_cancel=None,
     std_r = (sum((r - mean_r) ** 2 for r in ep_rewards) / len(ep_rewards)) ** 0.5
     threshold = meta.get("reward_threshold")
     solved = threshold is not None and mean_r >= threshold
+    random_ref = random_baseline(env_id, n_eval_episodes)
+    beats_random = _quality(mean_r, random_ref)
 
     metrics = {
         "Algorithme": algo_name,
@@ -138,6 +209,8 @@ def train(env_id, algo_name, config, on_progress=None, should_cancel=None,
         "Pas d'entraînement": int(total_timesteps),
         "Récompense d'évaluation (moy.)": round(mean_r, 1),
         "Écart-type": round(std_r, 1),
+        "Récompense aléatoire (réf.)": round(random_ref, 1),
+        "Gain vs aléatoire": round(mean_r - random_ref, 1),
         "Épisodes d'évaluation": int(n_eval_episodes),
         "Seuil de réussite": ("—" if threshold is None else round(float(threshold), 1)),
         "Résolu": ("—" if threshold is None else ("oui" if solved else "non")),
@@ -149,7 +222,9 @@ def train(env_id, algo_name, config, on_progress=None, should_cancel=None,
         "cancelled": cancelled,
         "solved": bool(solved),
         "threshold": (None if threshold is None else float(threshold)),
-        "env_id": env_id, "algo": algo_name,
+        "random_reward": round(random_ref, 2), "beats_random": bool(beats_random),
+        "env_id": env_id, "algo": algo_name, "group": meta.get("group"),
+        "obs_dim": meta.get("obs_dim"), "action_kind": meta.get("action_kind"),
         "model_path": saved_path,
     }
     extras = {"eval_rewards": [float(r) for r in ep_rewards],

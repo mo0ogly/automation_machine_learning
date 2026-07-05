@@ -50,6 +50,10 @@ def eval_distribution(result, extras):
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.bar(range(1, rewards.size + 1), rewards, color="#0f3460", edgecolor="#e94560")
     ax.axhline(mean_r, color="#e94560", lw=1.6, label=f"Moyenne = {mean_r:.1f}")
+    random_ref = result.get("random_reward")
+    if random_ref is not None:
+        ax.axhline(random_ref, color="#f59e0b", ls=":", lw=1.5,
+                   label=f"Politique aléatoire = {random_ref:.1f}")
     threshold = result.get("threshold")
     if threshold is not None:
         ax.axhline(threshold, color="#16c79a", ls="--", lw=1.5, label="Seuil de réussite")

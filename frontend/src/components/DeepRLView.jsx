@@ -3,14 +3,25 @@ import { useTranslation } from 'react-i18next';
 import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
+import MyAgentsPanel from './deeprl/MyAgentsPanel';
+import ImportPanel from './deeprl/ImportPanel';
+import {
+  getCatalog, getRegistry, getJob, postTrain, postEvaluate, postContinue,
+  postSave, cancelJob, deleteAgent, deleteEnv, postExplain, jobDownloadUrl,
+} from './deeprl/api';
 import './components.css';
 import './reinforcement.css';
 
-// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
-// the local dev backend so `npm run dev` keeps working unchanged.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const POLL_MS = 1200;
 const TERMINAL = ['done', 'error', 'cancelled'];
+
+// An algorithm fits an environment when the action spaces match and — for a
+// mask-only algorithm (MaskablePPO) — the env exposes an action mask.
+function fits(algo, env) {
+  if (!algo || !env) return false;
+  if (!algo.action_kinds.includes(env.action_kind)) return false;
+  return algo.requires_mask ? Boolean(env.maskable) : true;
+}
 
 // Build the default config for an algorithm from its field schema (defaults live
 // in the backend catalogue, so the two never drift).
@@ -23,6 +34,7 @@ function defaultsFor(algo) {
 export default function DeepRLView() {
   const { t } = useTranslation('reinforcement');
   const [catalog, setCatalog] = useState(null);
+  const [registry, setRegistry] = useState([]);
   const [envId, setEnvId] = useState(null);
   const [algoName, setAlgoName] = useState('PPO');
   const [cfg, setCfg] = useState({});
@@ -32,6 +44,9 @@ export default function DeepRLView() {
   const [zoom, setZoom] = useState(null);
   const [answers, setAnswers] = useState({});
   const [explainBusy, setExplainBusy] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [savedNote, setSavedNote] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
   const pollRef = useRef(null);
 
   const envs = catalog ? catalog.envs : [];
@@ -42,14 +57,27 @@ export default function DeepRLView() {
   const running = job && job.status === 'running';
   const result = job && job.status !== 'running' ? job.result : null;
 
-  // Load the environment / algorithm / preset catalogue once.
+  const refreshRegistry = useCallback(() => {
+    getRegistry().then((d) => setRegistry(d.agents || [])).catch(() => {});
+  }, []);
+
+  const loadCatalog = useCallback((selectFirst) => {
+    return getCatalog().then((data) => {
+      setCatalog(data);
+      setRegistry(data.agents || []);
+      if (selectFirst && data.envs && data.envs.length) setEnvId(data.envs[0].id);
+      return data;
+    });
+  }, []);
+
+  // Load the environment / algorithm / preset / agent catalogue once.
   useEffect(() => {
     let alive = true;
-    fetch(API_URL + '/api/rl/deep/catalog')
-      .then((r) => r.json())
+    getCatalog()
       .then((data) => {
         if (!alive) return;
         setCatalog(data);
+        setRegistry(data.agents || []);
         if (data.envs && data.envs.length) setEnvId(data.envs[0].id);
       })
       .catch(() => { if (alive) setError(t('deep.error')); });
@@ -69,31 +97,28 @@ export default function DeepRLView() {
     });
   }, [algo]);
 
-  // Keep the algorithm compatible with the selected environment's action space.
+  // Keep the algorithm compatible with the selected environment (action space +
+  // action-mask requirement).
   useEffect(() => {
     if (!env || !algos.length) return;
     const current = algos.find((a) => a.id === algoName);
-    if (!current || !current.action_kinds.includes(env.action_kind)) {
-      const compat = algos.find((a) => a.action_kinds.includes(env.action_kind));
+    if (!fits(current, env)) {
+      const compat = algos.find((a) => fits(a, env));
       if (compat) setAlgoName(compat.id);
     }
   }, [env, algos, algoName]);
 
-  const supports = useCallback(
-    (a) => Boolean(env && a.action_kinds.includes(env.action_kind)),
-    [env],
-  );
+  const supports = useCallback((a) => fits(a, env), [env]);
 
   const stopPolling = () => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
-  // Poll the training job until it reaches a terminal state.
+  // Poll the current job until it reaches a terminal state.
   useEffect(() => {
     if (!jobId) return undefined;
     const tick = () => {
-      fetch(API_URL + '/api/rl/deep/job/' + jobId)
-        .then((r) => r.json())
+      getJob(jobId)
         .then((data) => {
           setJob(data);
           if (TERMINAL.includes(data.status)) stopPolling();
@@ -107,7 +132,10 @@ export default function DeepRLView() {
 
   const setField = (name, value) => setCfg((p) => ({ ...p, [name]: value }));
 
-  const clearRun = () => { stopPolling(); setJob(null); setJobId(null); setError(null); setAnswers({}); };
+  const clearRun = () => {
+    stopPolling(); setJob(null); setJobId(null); setError(null);
+    setAnswers({}); setSavedNote(null); setSaveName('');
+  };
 
   const applyPreset = (p) => {
     clearRun();
@@ -116,64 +144,96 @@ export default function DeepRLView() {
     setCfg({ ...p.config });   // the algo-change effect fills any missing field
   };
 
-  const train = async () => {
-    if (!envId || !algoName) return;
-    setError(null); setAnswers({});
+  // Start a job from a promise that resolves to { job_id }, and begin polling.
+  const beginJob = async (promise) => {
+    setError(null); setAnswers({}); setSavedNote(null); setSaveName('');
     setJob({ status: 'running', progress: 0 });
     try {
-      const res = await fetch(API_URL + '/api/rl/deep/train', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env_id: envId, algo: algoName, config: cfg }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail || t('deep.error')); setJob(null); return; }
+      const data = await promise;
       setJobId(data.job_id);
-    } catch {
-      setError(t('deep.error'));
+    } catch (e) {
+      setError(e.message || t('deep.error'));
       setJob(null);
     }
   };
 
-  const cancel = () => {
-    if (!jobId) return;
-    fetch(API_URL + '/api/rl/deep/job/' + jobId + '/cancel', { method: 'POST' }).catch(() => {});
+  const train = () => {
+    if (!envId || !algoName) return;
+    beginJob(postTrain({ env_id: envId, algo: algoName, config: cfg }));
   };
 
+  const evaluateAgent = (a) => beginJob(postEvaluate(a.id, a.env_id));
+  const continueAgent = (a) => beginJob(postContinue(a.id, a.env_id, cfg));
+
+  const removeAgent = async (a) => {
+    setActionBusy(true);
+    try { await deleteAgent(a.id); refreshRegistry(); } catch { /* non-blocking */ }
+    setActionBusy(false);
+  };
+
+  const removeEnv = async (e) => {
+    setActionBusy(true);
+    try {
+      await deleteEnv(e.id);
+      const data = await loadCatalog(false);
+      if (envId === e.id && data.envs && data.envs.length) setEnvId(data.envs[0].id);
+    } catch { /* non-blocking */ }
+    setActionBusy(false);
+  };
+
+  const saveTrained = async () => {
+    if (!jobId) return;
+    setActionBusy(true);
+    try {
+      const entry = await postSave(jobId, saveName);
+      setSavedNote(t('deep.registry.saved', { name: entry.name }));
+      setSaveName('');
+      refreshRegistry();
+    } catch (e) { setError(e.message); }
+    setActionBusy(false);
+  };
+
+  const cancel = () => { if (jobId) cancelJob(jobId); };
   const reset = () => { clearRun(); if (algo) setCfg(defaultsFor(algo)); };
 
-  // Per-element AI helper (reuses the session-free assist agent). Handles both a
-  // hyperparameter slider (param = field name) and a result graph (param =
-  // "graphe: <caption>", enriched with the run's metrics as context).
+  // Per-element AI helper (reuses the session-free assist agent). Handles a
+  // hyperparameter slider (param = field name), the whole results table
+  // (param = "resultats"), and a result graph (param = "graphe: <caption>").
   const askExplain = async (param) => {
     setExplainBusy(true);
     try {
       const body = { param, level: 'novice', config: cfg };
-      if (result && param === 'resultats') {           // explain the whole results table
+      if (result && param === 'resultats') {
         body.caption = t('deep.metricsTitle');
         body.metrics = result.metrics;
+        body.group = result.group;
+        body.random_reward = result.random_reward;
+        body.threshold = result.threshold;
+        body.beats_random = result.beats_random;
       } else if (param.indexOf('graphe:') === 0 && result) {
         body.caption = param.replace(/^graphe:\s*/, '');
         body.metrics = result.metrics;
       }
-      const res = await fetch(API_URL + '/api/rl/deep/explain', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (res.ok) setAnswers((p) => ({ ...p, [param]: data }));
+      const data = await postExplain(body);
+      setAnswers((p) => ({ ...p, [param]: data }));
     } catch { /* explanation is non-blocking */ }
     setExplainBusy(false);
   };
   const applySuggestion = (sc) => setCfg((p) => ({ ...p, ...sc }));
 
   const pct = Math.round((job && job.progress ? job.progress : 0) * 100);
+  const isEval = result && result.kind === 'eval';
 
   // "solved" verdict, read from the trained env's threshold (from the catalogue).
   const verdict = useMemo(() => {
     if (!result) return null;
     const trainedEnv = envs.find((e) => e.id === result.env_id);
     const hasThreshold = trainedEnv && trainedEnv.reward_threshold != null;
-    if (!hasThreshold) return { tone: 'success', title: t('deep.verdict.doneTitle'), text: t('deep.verdict.doneText') };
+    if (!hasThreshold) {
+      // No official threshold (e.g. bespoke cyber env): judge against the random baseline.
+      if (result.beats_random) return { tone: 'success', title: t('deep.verdict.beatsRandomTitle'), text: t('deep.verdict.beatsRandomText') };
+      return { tone: 'warning', title: t('deep.verdict.notBetterTitle'), text: t('deep.verdict.notBetterText') };
+    }
     if (result.solved) return { tone: 'success', title: t('deep.verdict.solvedTitle'), text: t('deep.verdict.solvedText') };
     return { tone: 'warning', title: t('deep.verdict.unsolvedTitle'), text: t('deep.verdict.unsolvedText') };
   }, [result, envs, t]);
@@ -223,6 +283,12 @@ export default function DeepRLView() {
         </div>
       </section>
 
+      <MyAgentsPanel agents={registry} onEvaluate={evaluateAgent} onContinue={continueAgent}
+        onDelete={removeAgent} busy={actionBusy || running} />
+
+      <ImportPanel envs={envs} algos={algos}
+        onAgentImported={refreshRegistry} onEnvImported={() => loadCatalog(false)} />
+
       <div className="rl-workbench">
         <section className="rl-panel glass-panel" aria-label={t('deep.step1')}>
           <header className="rl-step-head">
@@ -231,19 +297,26 @@ export default function DeepRLView() {
           </header>
           <div className="rl-env-grid">
             {envs.map((e) => (
-              <button key={e.id} type="button"
-                className={'rl-env-card' + (e.id === envId ? ' active' : '')}
-                aria-pressed={e.id === envId} onClick={() => setEnvId(e.id)}>
-                <span className={'rl-tag rl-tag-group rl-tag-' + e.group}>{t('deep.groups.' + e.group)}</span>
-                <strong>{t('deep.envs.' + e.id + '.label')}</strong>
-                <small>{t('deep.envs.' + e.id + '.desc')}</small>
-                <span className="rl-env-tags">
-                  <span className={'rl-tag rl-tag-' + e.action_kind}>
-                    {t('deep.actionKind.' + e.action_kind)}
+              <div key={e.id}
+                className={'rl-env-card' + (e.id === envId ? ' active' : '')}>
+                <button type="button" className="rl-env-select"
+                  aria-pressed={e.id === envId} onClick={() => setEnvId(e.id)}>
+                  <span className={'rl-tag rl-tag-group rl-tag-' + e.group}>{t('deep.groups.' + e.group)}</span>
+                  <strong>{e.custom ? e.label : t('deep.envs.' + e.id + '.label')}</strong>
+                  <small>{e.custom ? t('deep.envs.customDesc', { n: e.n_rows }) : t('deep.envs.' + e.id + '.desc')}</small>
+                  <span className="rl-env-tags">
+                    <span className={'rl-tag rl-tag-' + e.action_kind}>
+                      {t('deep.actionKind.' + e.action_kind)}
+                    </span>
+                    <span className="rl-tag">{t('deep.obsDim', { n: e.obs_dim })}</span>
+                    {e.maskable ? <span className="rl-tag rl-tag-mask">{t('deep.maskable')}</span> : null}
                   </span>
-                  <span className="rl-tag">{t('deep.obsDim', { n: e.obs_dim })}</span>
-                </span>
-              </button>
+                </button>
+                {e.custom ? (
+                  <button type="button" className="btn btn-ghost btn-sm rl-env-del"
+                    disabled={actionBusy} onClick={() => removeEnv(e)}>{t('deep.registry.delete')}</button>
+                ) : null}
+              </div>
             ))}
           </div>
         </section>
@@ -308,11 +381,11 @@ export default function DeepRLView() {
           <div><h3>{t('deep.step4')}</h3><p>{t('deep.step4Hint')}</p></div>
           {result ? (
             <span className="rl-results-actions">
-              <AssistButton topic="resultats" label={t('deep.explainResults')} text={t('deep.ai')}
+              <AssistButton topic="resultats" label={t('deep.diagnose')} text={t('deep.ai')}
                 onAssist={askExplain} busy={explainBusy} />
               {result.can_download ? (
                 <a className="btn btn-secondary rl-download" download
-                  href={API_URL + '/api/rl/deep/job/' + jobId + '/download'}>{t('deep.download')}</a>
+                  href={jobDownloadUrl(jobId)}>{t('deep.download')}</a>
               ) : null}
             </span>
           ) : null}
@@ -321,6 +394,11 @@ export default function DeepRLView() {
           <div className="rl-result">
             {result.cancelled ? (
               <div className="rl-stale" role="status">{t('deep.cancelled')}</div>
+            ) : null}
+            {isEval ? (
+              <div className="rl-verdict rl-verdict-info" role="status">
+                <strong>{t('deep.evalTitle')}</strong><span>{t('deep.evalText')}</span>
+              </div>
             ) : null}
             {verdict ? (
               <div className={'rl-verdict rl-verdict-' + verdict.tone} role="status">
@@ -336,6 +414,17 @@ export default function DeepRLView() {
                 </div>
               ))}
             </div>
+            {result.can_download ? (
+              <div className="rl-save" role="group" aria-label={t('deep.registry.saveTitle')}>
+                <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)}
+                  placeholder={t('deep.registry.namePlaceholder')} aria-label={t('deep.registry.saveTitle')} />
+                <button type="button" className="btn btn-primary" onClick={saveTrained}
+                  disabled={actionBusy}>{t('deep.registry.save')}</button>
+              </div>
+            ) : null}
+            {savedNote ? (
+              <div className="rl-verdict rl-verdict-success" role="status"><span>{savedNote}</span></div>
+            ) : null}
             <div className="plots-grid">
               {result.plots.map((p, i) => {
                 const topic = 'graphe: ' + (p.caption || i);

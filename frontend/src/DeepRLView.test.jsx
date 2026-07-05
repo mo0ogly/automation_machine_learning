@@ -29,6 +29,17 @@ const CATALOG = {
     { id: 'soc_triage_dqn', group: 'cyber_defense', env_id: 'AlertTriage-v0', algo: 'DQN', config: {}, recommended: true },
     { id: 'cartpole_ppo', group: 'classic_control', env_id: 'CartPole-v1', algo: 'PPO', config: {}, recommended: false },
   ],
+  agents: [],
+};
+
+// Catalogue variant carrying one saved agent (to render the "My agents" panel).
+const CATALOG_WITH_AGENT = {
+  ...CATALOG,
+  agents: [
+    { id: 'ag1', name: 'triage-soc-v1', env_id: 'AlertTriage-v0', algo: 'DQN',
+      imported: false, created: '2026-07-05T10:00:00',
+      metrics: { "Récompense d'évaluation (moy.)": 41.2 } },
+  ],
 };
 
 function mockCatalogFetch() {
@@ -84,16 +95,41 @@ describe('DeepRLView (smoke)', () => {
     render(<DeepRLView />);
     await screen.findByText('Deep Reinforcement Learning');
     fireEvent.click(screen.getByText("Entraîner l'agent"));
-    // The metrics table renders...
-    await waitFor(() => expect(screen.getByText('Algorithme')).toBeTruthy());
-    expect(screen.getByText("Récompense d'évaluation (moy.)")).toBeTruthy();
-    // ...with an AI button on the whole results table...
-    expect(screen.getByTitle(/Expliquer les résultats/)).toBeTruthy();
+    // The metrics table renders once the job completes (wait on a results-only
+    // metric key — "Algorithme" now also appears as an import-form label).
+    await waitFor(() => expect(screen.getByText("Récompense d'évaluation (moy.)")).toBeTruthy());
+    // ...with an AI diagnosis button on the whole results table...
+    expect(screen.getByTitle(/Diagnostic IA/)).toBeTruthy();
     // ...and an AI button on the chart.
     expect(screen.getByText("Deep RL — courbe d'apprentissage")).toBeTruthy();
     expect(screen.getByTitle(/courbe d'apprentissage/)).toBeTruthy();
     // Download link present (trained model).
     expect(screen.getByText("Télécharger l'agent (.zip)")).toBeTruthy();
+  });
+
+  it('renders the "My agents" registry with per-agent actions', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (String(url).includes('/api/rl/deep/catalog')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(CATALOG_WITH_AGENT) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }));
+    render(<DeepRLView />);
+    await screen.findByText('Deep Reinforcement Learning');
+    // The saved agent shows up with its name and action buttons.
+    await waitFor(() => expect(screen.getByText('triage-soc-v1')).toBeTruthy());
+    expect(screen.getByText('Évaluer')).toBeTruthy();
+    expect(screen.getByText("Continuer l'entraînement")).toBeTruthy();
+  });
+
+  it('renders the import panel (agent .zip + CSV environment)', async () => {
+    mockCatalogFetch();
+    render(<DeepRLView />);
+    await screen.findByText('Deep Reinforcement Learning');
+    expect(screen.getByText('Importer un agent (.zip)')).toBeTruthy();
+    expect(screen.getByText('Importer un environnement (CSV)')).toBeTruthy();
+    // The expected CSV columns are shown to guide the analyst.
+    expect(screen.getByText(/threat_score, asset_criticality/)).toBeTruthy();
   });
 
   it('greys out DQN on a continuous environment', async () => {

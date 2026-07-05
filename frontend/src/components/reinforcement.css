@@ -168,6 +168,7 @@
 .rl-tag-continuous { background: rgba(16, 185, 129, 0.16); color: var(--status-success); }
 .rl-tag-group { align-self: flex-start; font-weight: 600; letter-spacing: 0.03em; }
 .rl-tag-cyber_defense { background: rgba(233, 69, 96, 0.16); color: var(--accent-secondary, #e94560); }
+.rl-tag-noc_ops { background: rgba(56, 189, 248, 0.16); color: var(--accent-primary, #38bdf8); }
 
 /* Algorithm selector. */
 .rl-algo-row { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
@@ -191,6 +192,51 @@
   transition: width 0.3s ease; }
 .rl-progress-txt { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
 .rl-download { margin-left: auto; }
+
+/* Small button size + verdict variant reused by the new panels. */
+.btn-sm { font-size: 0.74rem; padding: 0.3rem 0.65rem; }
+.rl-verdict-info { background: rgba(59, 130, 246, 0.10); border: 1px solid rgba(59, 130, 246, 0.4);
+  border-left: 3px solid var(--accent-primary); }
+
+/* Environment card: clickable body + (custom envs only) a delete affordance. */
+.rl-env-select { display: flex; flex-direction: column; gap: 0.3rem; width: 100%;
+  background: none; border: none; padding: 0; margin: 0; text-align: left;
+  color: inherit; cursor: pointer; font: inherit; }
+.rl-env-del { align-self: flex-end; margin-top: 0.4rem; }
+.rl-tag-mask { background: rgba(168, 85, 247, 0.18); color: #c4b5fd; }
+
+/* "My agents" registry. */
+.rl-agent-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.rl-agent-card { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.8rem 0.9rem;
+  border-radius: 12px; border: 1px solid var(--border-color); }
+.rl-agent-head { display: flex; align-items: center; gap: 0.5rem; }
+.rl-agent-name { font-size: 0.9rem; }
+.rl-agent-meta { font-size: 0.72rem; color: var(--text-secondary);
+  font-family: var(--font-mono, monospace); }
+.rl-agent-sub { font-size: 0.7rem; color: var(--text-tertiary); }
+.rl-agent-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.45rem; }
+.rl-agent-del { margin-left: auto; color: var(--status-error); }
+.rl-tag-imported { background: rgba(245, 158, 11, 0.16); color: var(--status-warning); }
+
+/* Import forms (agent .zip + CSV environment). */
+.rl-import-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.rl-import-form { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.9rem;
+  border-radius: 12px; border: 1px solid var(--border-subtle); }
+.rl-import-form h4 { margin: 0; font-size: 0.85rem; }
+.rl-import-form label { display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: 0.76rem; color: var(--text-secondary); }
+.rl-import-form input[type="text"], .rl-import-form select { padding: 0.4rem 0.55rem;
+  border-radius: 8px; border: 1px solid var(--border-highlight);
+  background: var(--bg-surface-elevated); color: var(--text-primary); font: inherit; }
+.rl-import-form input[type="file"] { font-size: 0.74rem; color: var(--text-secondary); }
+.rl-csv-cols { display: block; font-size: 0.68rem; padding: 0.35rem 0.5rem; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25); color: var(--text-tertiary); overflow-x: auto; }
+
+/* Save-to-registry control under the results. */
+.rl-save { display: flex; gap: 0.5rem; align-items: center; margin: 0.6rem 0; flex-wrap: wrap; }
+.rl-save input[type="text"] { flex: 1; min-width: 180px; padding: 0.4rem 0.6rem; border-radius: 8px;
+  border: 1px solid var(--border-highlight); background: var(--bg-surface-elevated);
+  color: var(--text-primary); font: inherit; }
 
 @media (max-width: 960px) {
   .rl-intro { grid-template-columns: 1fr; }

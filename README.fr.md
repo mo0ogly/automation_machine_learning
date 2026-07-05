@@ -36,9 +36,19 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   décision** pour nommer les clusters) **et détection d'anomalies** (Isolation Forest / LOF).
 - **Renforcement** — deux modes dans l'onglet « Renforcement » dédié : une démo **Q-learning**
   tabulaire sur GridWorld (un ou plusieurs buts, pièges visibles), et un atelier **Deep RL**
-  (Gymnasium + Stable-Baselines3 : DQN/PPO/A2C) sur des environnements à états continus — dont un
-  environnement **cyber défense** sur mesure (triage d'alertes SOC sous budget de réponse), des
-  presets cyber-first prêts à entraîner (« modèles de base »), et un agent entraîné téléchargeable (`.zip`).
+  (Gymnasium + Stable-Baselines3) sur des environnements à états continus. Il propose **13 algorithmes**
+  (PPO/A2C/DQN/SAC/TD3/DDPG de base + QRDQN/TRPO/TQC/RecurrentPPO/ARS/CrossQ/MaskablePPO via
+  sb3-contrib) et trois environnements **cyber défense** dédiés : triage d'alertes SOC sous budget de
+  réponse (avec masquage d'actions), **confinement d'incident** qui se propage (vrai arbitrage
+  temporel), et **réglage de seuil IDS** en ligne (action *continue* — les algos de contrôle continu
+  servent enfin à la cyber, pas à un pendule). Chaque run est comparé à une **baseline aléatoire**
+  mesurée (« bat-il vraiment le hasard ? ») et un bouton **Diagnostic IA** donne un verdict clair
+  (bon / moyen / insuffisant) plus des actions SOC concrètes. Des presets cyber-first prêts à
+  entraîner (« modèles de base ») sont inclus.
+  Les agents sont un objet de première classe : **sauvegarder** un agent entraîné dans un registre
+  persistant **« Mes agents »**, le **réévaluer**, **poursuivre son entraînement** (warm-start),
+  **importer** un `.zip` entraîné ailleurs, **importer votre propre CSV** d'alertes comme
+  environnement de triage sur mesure, et **exporter** un bundle auto-décrit (modèle + rapport de métriques).
 
 > **Architecture détaillée** (socle, couche agentique, 3 paradigmes) :
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -201,9 +211,15 @@ npm run dev                   # http://localhost:5173 (appelle le backend :8000)
 | POST | `/api/session/{sid}/stage/{stage}/run` · `/recommend` · `/assist` | Exécute · affine · explique un élément |
 | POST | `/api/session/{sid}/autorun` | Exécute toutes les étapes (config par défaut) |
 | POST | `/api/rl/train` | Entraîne un agent Q-learning sur GridWorld → métriques + graphes |
-| GET | `/api/rl/deep/catalog` | Environnements Deep RL, algorithmes + hyperparamètres, presets |
-| POST | `/api/rl/deep/train` | Démarre un job d'entraînement Deep RL (DQN/PPO/A2C) → `job_id` |
+| GET | `/api/rl/deep/catalog` | Environnements Deep RL, 13 algorithmes + hyperparamètres, presets, agents sauvegardés |
+| POST | `/api/rl/deep/train` | Démarre un job d'entraînement Deep RL → `job_id` |
 | GET | `/api/rl/deep/job/{id}` · `/download` | Suit un job (progression + résultat) · télécharge l'agent entraîné (`.zip`) |
+| POST | `/api/rl/deep/save` | Sauvegarde l'agent d'un job terminé dans le registre « Mes agents » |
+| GET · DELETE | `/api/rl/deep/registry` · `/registry/{id}` | Liste les agents sauvegardés · en supprime un |
+| GET | `/api/rl/deep/registry/{id}/download` · `/export` | Télécharge un agent (`.zip`) · exporte un bundle (modèle + rapport) |
+| POST | `/api/rl/deep/evaluate` · `/continue` | Évalue un agent sauvegardé · poursuit l'entraînement (warm-start) |
+| POST | `/api/rl/deep/import` · `/import-env` | Importe un agent SB3 (`.zip`) · importe un CSV comme env de triage |
+| DELETE | `/api/rl/deep/env/{id}` | Supprime un environnement CSV importé par l'utilisateur |
 
 ## Tests
 ```bash

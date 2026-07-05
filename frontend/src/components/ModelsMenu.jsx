@@ -64,7 +64,7 @@ export default function ModelsMenu({ apiBase, onClose }) {
       <thead>
         <tr>
           <th>{t('columns.dataset')}</th><th>{t('columns.algorithm')}</th><th>{t('columns.type')}</th>
-          <th>{t('columns.size')}</th><th>{t('columns.modified')}</th><th />
+          <th>{t('columns.size')}</th><th>{t('columns.modified')}</th><th>{t('columns.actions')}</th>
         </tr>
       </thead>
       <tbody>

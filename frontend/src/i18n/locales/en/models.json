@@ -12,7 +12,8 @@
     "algorithm": "Algorithm",
     "type": "Type",
     "size": "Size",
-    "modified": "Modified"
+    "modified": "Modified",
+    "actions": "Download / open"
   },
   "unnamed": "(unnamed)",
   "bundleTitle": "Standalone Python bundle (model + data + code + predict.py)",

@@ -18,7 +18,7 @@ import './components.css';
 // the local dev backend so `npm run dev` keeps working unchanged.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-const Dashboard = ({ aiRefresh }) => {
+const Dashboard = ({ aiRefresh, onOpenRL }) => {
   const { t } = useTranslation('dashboard');
   // Human-readable label for the detected problem type (badge in the session bar).
   const PTYPE_LABELS = {
@@ -46,6 +46,7 @@ const Dashboard = ({ aiRefresh }) => {
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [recentSessions, setRecentSessions] = useState([]);
   const [cardName, setCardName] = useState(null);
+  const [rlAgents, setRlAgents] = useState([]);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -56,6 +57,9 @@ const Dashboard = ({ aiRefresh }) => {
     // Recent sessions for the one-click reopen list on the landing screen.
     fetch(API_URL + '/api/sessions').then((r) => r.json())
       .then((d) => setRecentSessions(d.sessions || [])).catch(() => {});
+    // Saved Deep RL agents (SOC/NOC), surfaced as a landing card.
+    fetch(API_URL + '/api/rl/deep/registry').then((r) => r.json())
+      .then((d) => setRlAgents(d.agents || [])).catch(() => {});
     // Restore the previous session after a reload (graphs/results survive).
     let saved = null;
     try { saved = localStorage.getItem('ml_session'); } catch (e) { saved = null; }
@@ -373,6 +377,20 @@ const Dashboard = ({ aiRefresh }) => {
                 {otherDemos.map((ds) => renderDemo(ds, false))}
               </>
             ) : null}
+          </div>
+
+          <div className="card mt-2">
+            <div className="cyber-subhead">
+              <span className="badge-cyber">SOC / NOC</span> {t('landing.rlTitle')}
+            </div>
+            <p className="muted landing-rl-desc">
+              {rlAgents.length
+                ? t('landing.rlCount', { n: rlAgents.length })
+                : t('landing.rlEmpty')}
+            </p>
+            <button type="button" className="btn btn-secondary" onClick={onOpenRL}>
+              {t('landing.rlOpen')}
+            </button>
           </div>
 
           {recentSessions.length ? (

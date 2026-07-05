@@ -40,6 +40,10 @@
     "unnamed": "(sans nom)",
     "noModel": "pas de modèle",
     "agentActive": "Agent IA actif",
+    "rlTitle": "Agents SOC / NOC (apprentissage par renforcement)",
+    "rlCount": "{{n}} agents entraînés disponibles : triage d'alertes, priorisation de correctifs, affectation d'analystes, reroutage de trafic, capacité réseau…",
+    "rlEmpty": "Aucun agent entraîné pour l'instant — les modèles de base SOC/NOC s'entraînent en un clic dans l'atelier.",
+    "rlOpen": "Ouvrir l'atelier Deep RL",
     "noAgentConfigured": "Aucun backend IA configuré — recommandations heuristiques",
     "datasetCardTitle": "Voir la fiche du jeu de données"
   },

@@ -40,6 +40,10 @@
     "unnamed": "(unnamed)",
     "noModel": "no model",
     "agentActive": "AI agent active",
+    "rlTitle": "SOC / NOC agents (reinforcement learning)",
+    "rlCount": "{{n}} trained agents available: alert triage, patch prioritization, analyst assignment, traffic rerouting, network capacity…",
+    "rlEmpty": "No trained agent yet — the SOC/NOC base models train in one click in the workbench.",
+    "rlOpen": "Open the Deep RL workbench",
     "noAgentConfigured": "No AI backend configured — heuristic recommendations",
     "datasetCardTitle": "View dataset card"
   },

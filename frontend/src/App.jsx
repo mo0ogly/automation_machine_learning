@@ -148,7 +148,7 @@ function App() {
       <main className="app-main">
         {view === 'rl' ? <ReinforcementView />
           : view === 'exploit' ? <ExploitView />
-            : <Dashboard aiRefresh={aiRefresh} />}
+            : <Dashboard aiRefresh={aiRefresh} onOpenRL={() => setView('rl')} />}
       </main>
       {aiPanelOpen ? (
         <AiBackendsPanel apiBase={API_URL} onClose={() => setAiPanelOpen(false)}

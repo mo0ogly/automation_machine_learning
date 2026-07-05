@@ -29,7 +29,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 5173
 
+# Probe 127.0.0.1, not localhost: in the container localhost resolves to ::1
+# (IPv6) but nginx `listen 5173;` binds IPv4 only, so a localhost probe hits
+# [::1]:5173 and is refused — the container reads unhealthy while actually serving.
 HEALTHCHECK --interval=10s --timeout=3s --retries=6 --start-period=5s \
-    CMD wget -qO- http://localhost:5173/ >/dev/null 2>&1 || exit 1
+    CMD wget -qO- http://127.0.0.1:5173/ >/dev/null 2>&1 || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

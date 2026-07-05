@@ -8,14 +8,16 @@ function isListOfObjects(v) {
 function MiniTable({ rows }) {
   const cols = Object.keys(rows[0]);
   return (
-    <table className="diag-table">
-      <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-      <tbody>
-        {rows.slice(0, 8).map((r, i) => (
-          <tr key={i}>{cols.map((c) => <td key={c}>{String(r[c])}</td>)}</tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="diag-table-scroll">
+      <table className="diag-table">
+        <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+        <tbody>
+          {rows.slice(0, 8).map((r, i) => (
+            <tr key={i}>{cols.map((c) => <td key={c}>{String(r[c])}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

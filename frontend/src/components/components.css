@@ -564,9 +564,9 @@
 
 /* ── Diagnostics ── */
 .diag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
-.diag-block { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; }
+.diag-block { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; min-width: 0; }
 .diag-block h5 { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
-.diag-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+.diag-table-scroll { overflow-x: auto; max-width: 100%; } .diag-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
 .diag-table th { text-align: left; color: var(--text-tertiary); font-weight: 500; padding: 0.2rem 0.3rem; border-bottom: 1px solid var(--border-subtle); }
 .diag-table td { padding: 0.2rem 0.3rem; color: var(--text-primary); border-bottom: 1px solid rgba(255,255,255,0.03); }
 .diag-kv { display: flex; flex-direction: column; gap: 0.25rem; }

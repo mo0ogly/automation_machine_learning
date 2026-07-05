@@ -1,0 +1,8 @@
+/* Trained-models modal (ModelsMenu). The generic .ai-modal is 900px, which is
+   too tight for this table's 7 columns: widen it, and let the action buttons
+   wrap inside their cell instead of overflowing the modal edge. */
+
+.ai-modal.models-modal { width: min(1200px, 97vw); }
+
+.models-modal .ai-test-row { flex-wrap: wrap; }
+.models-modal .ai-table td:last-child { min-width: 170px; }

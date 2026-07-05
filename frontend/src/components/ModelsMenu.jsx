@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isCyber } from './cyber';
+import './models-menu.css';
 
 // Trained-models browser (top-right header). A model lives inside the session
 // that produced it, so this is a focused, cross-session view of every session
@@ -152,7 +153,7 @@ export default function ModelsMenu({ apiBase, onClose }) {
 
   return (
     <div className="ai-modal-overlay" onClick={onClose}>
-      <div className="ai-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="ai-modal glass-panel models-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal-head">
           <h2>{t('title')}</h2>
           <button type="button" className="ai-modal-close" onClick={onClose} title={t('close')}>×</button>

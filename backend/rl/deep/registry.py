@@ -18,13 +18,18 @@ archived or shared as a single self-describing artefact.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import uuid
 import zipfile
 from datetime import datetime
 from pathlib import Path
 
-_DIR = Path(__file__).resolve().parents[2] / "exports" / "registry"
+# Under Docker the app tree is ephemeral (wiped on rebuild) — point the
+# registry at the persistent volume via ML_REGISTRY_DIR so saved agents
+# survive redeploys. Bare-metal runs keep the in-tree default.
+_DIR = Path(os.environ.get("ML_REGISTRY_DIR")
+            or Path(__file__).resolve().parents[2] / "exports" / "registry")
 _INDEX = _DIR / "index.json"
 
 # Fields exposed to the client (the on-disk path stays server-side).

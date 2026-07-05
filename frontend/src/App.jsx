@@ -73,17 +73,21 @@ function App() {
 
   useEffect(() => {
     let alive = true;
-    fetch(API_URL + '/api/sessions')
+    // The badge counts everything the Models modal lists: distinct supervised
+    // models (dataset + algo pairs, not raw re-training sessions) PLUS the
+    // saved Deep RL agents (SOC/NOC) from the RL registry.
+    const supervised = fetch(API_URL + '/api/sessions')
       .then((r) => r.json())
-      .then((d) => {
-        if (!alive) return;
-        // Same grouping as the Models modal: count distinct dataset + algo
-        // pairs, not raw re-training sessions (83 runs can be 5 models).
-        const n = groupModels((d.sessions || []).filter(
-          (s) => s.summary && s.summary.model && isCyber(s.filename))).length;
-        setCyberCount(n);
-      })
-      .catch(() => { /* backend offline: leave the badge hidden */ });
+      .then((d) => groupModels((d.sessions || []).filter(
+        (s) => s.summary && s.summary.model && isCyber(s.filename))).length)
+      .catch(() => 0);
+    const rlAgents = fetch(API_URL + '/api/rl/deep/registry')
+      .then((r) => r.json())
+      .then((d) => (d.agents || []).length)
+      .catch(() => 0);
+    Promise.all([supervised, rlAgents]).then(([nSup, nRl]) => {
+      if (alive) setCyberCount(nSup + nRl);
+    });
     return () => { alive = false; };
   }, [modelsOpen]);
 

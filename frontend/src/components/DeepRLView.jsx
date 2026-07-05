@@ -277,7 +277,7 @@ export default function DeepRLView() {
               <span className={'rl-tag rl-tag-group rl-tag-' + p.group}>{t('deep.groups.' + p.group)}</span>
               <strong>{t('deep.presets.' + p.id + '.name')}</strong>
               <small>{t('deep.presets.' + p.id + '.desc')}</small>
-              <span className="rl-preset-meta">{p.algo} · {p.env_id}{p.recommended ? ' ★' : ''}</span>
+              <span className="rl-preset-meta">{p.algo} · {t('deep.envs.' + p.env_id + '.label')}{p.recommended ? ' ★' : ''}</span>
             </button>
           ))}
         </div>

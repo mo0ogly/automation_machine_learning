@@ -81,7 +81,7 @@ describe('DeepRLView (smoke)', () => {
     expect(screen.getByText('Modèles de base')).toBeTruthy();
     // Cyber-defense env + preset (i18n labels), proving the catalogue was consumed
     await waitFor(() => expect(screen.getByText("Triage d'alertes SOC")).toBeTruthy());
-    expect(screen.getByText('Triage SOC (DQN)')).toBeTruthy();
+    expect(screen.getByText('Trier les alertes sous budget — simple et rapide')).toBeTruthy();
     // The three algorithm buttons render
     expect(algoBtn('PPO')).toBeTruthy();
     expect(algoBtn('DQN')).toBeTruthy();

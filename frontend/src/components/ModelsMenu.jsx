@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isCyber } from './cyber';
+import { groupModels } from './modelGroups';
 import './models-menu.css';
 
 // Trained-models browser (top-right header). A model lives inside the session
@@ -20,7 +21,9 @@ function fmtDate(iso) {
 
 export default function ModelsMenu({ apiBase, onClose }) {
   const { t } = useTranslation('models');
+  const { t: tr } = useTranslation('reinforcement');
   const [models, setModels] = useState(null);
+  const [agents, setAgents] = useState([]);
   const [error, setError] = useState(null);
 
   const PTYPE_LABELS = {
@@ -39,6 +42,13 @@ export default function ModelsMenu({ apiBase, onClose }) {
     } catch (e) {
       setError(t('apiUnreachable'));
     }
+    // Saved Deep RL agents (SOC/NOC) live in their own registry — surface them
+    // here too so every trained model is findable from one place.
+    try {
+      const r = await fetch(apiBase + '/api/rl/deep/registry');
+      const d = await r.json();
+      if (r.ok) setAgents(d.agents || []);
+    } catch (e) { /* non-blocking: the supervised table still renders */ }
   }, [apiBase, t]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -82,24 +92,6 @@ export default function ModelsMenu({ apiBase, onClose }) {
     if (pt === 'anomaly') return t('use.anomaly');
     if (pt === 'clustering') return t('use.clustering');
     return '—';
-  };
-
-  // Re-training the same algorithm on the same dataset creates one session per
-  // run — shown raw, the table drowns in duplicates. Group by dataset + algo,
-  // keep the most recent session, and carry a counter of the grouped runs.
-  const groupModels = (list) => {
-    const byKey = new Map();
-    for (const s of list) {
-      const key = (s.filename || '') + '|' + ((s.summary && s.summary.model) || '');
-      const cur = byKey.get(key);
-      if (!cur) {
-        byKey.set(key, { ...s, runs: 1 });
-      } else {
-        const newer = (s.updated_at || '') > (cur.updated_at || '');
-        byKey.set(key, newer ? { ...s, runs: cur.runs + 1 } : { ...cur, runs: cur.runs + 1 });
-      }
-    }
-    return [...byKey.values()].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
   };
 
   // Cyber models are the heart of the thesis — surface them in a pinned section.
@@ -187,6 +179,47 @@ export default function ModelsMenu({ apiBase, onClose }) {
               </>
             ) : null}
           </>
+        )}
+
+        <h3 className="other-head">
+          {t('rlSection')} <span className="muted">({agents.length})</span>
+        </h3>
+        <p className="ai-modal-note">{t('rlNote')}</p>
+        {agents.length === 0 ? (
+          <p className="ai-empty">{t('rlEmpty')}</p>
+        ) : (
+          <table className="ai-table">
+            <thead>
+              <tr>
+                <th>{t('rlColumns.agent')}</th><th>{t('rlColumns.env')}</th>
+                <th>{t('columns.algorithm')}</th><th>{t('rlColumns.reward')}</th>
+                <th>{t('rlColumns.created')}</th><th>{t('columns.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agents.map((a) => {
+                const reward = (a.metrics || {})["Récompense d'évaluation (moy.)"];
+                return (
+                  <tr key={a.id}>
+                    <td><strong>{a.name}</strong></td>
+                    <td>{tr('deep.envs.' + a.env_id + '.label', { defaultValue: a.env_id })}</td>
+                    <td><span className="ai-key-ok">{a.algo}</span></td>
+                    <td>{reward != null ? Number(reward).toFixed(1) : '—'}</td>
+                    <td>{fmtDate(a.created)}</td>
+                    <td>
+                      <span className="ai-test-row">
+                        <a className="ai-btn ai-btn-primary"
+                          href={apiBase + '/api/rl/deep/registry/' + a.id + '/export'}
+                          target="_blank" rel="noreferrer" title={t('rlBundleTitle')}>{t('bundleLabel')}</a>
+                        <a className="ai-btn" href={apiBase + '/api/rl/deep/registry/' + a.id + '/download'}
+                          target="_blank" rel="noreferrer" title={t('rlZipTitle')}>.zip</a>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

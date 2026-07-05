@@ -9,6 +9,7 @@ import ConfigMenu from './components/ConfigMenu'
 import AiBackendsPanel from './components/AiBackendsPanel'
 import ModelsMenu from './components/ModelsMenu'
 import { isCyber } from './components/cyber'
+import { groupModels } from './components/modelGroups'
 
 // Prompts panel pulls in Monaco (bundled offline). Code-split so the editor only
 // loads when the panel is opened, keeping the initial app bundle light.
@@ -76,8 +77,10 @@ function App() {
       .then((r) => r.json())
       .then((d) => {
         if (!alive) return;
-        const n = (d.sessions || []).filter(
-          (s) => s.summary && s.summary.model && isCyber(s.filename)).length;
+        // Same grouping as the Models modal: count distinct dataset + algo
+        // pairs, not raw re-training sessions (83 runs can be 5 models).
+        const n = groupModels((d.sessions || []).filter(
+          (s) => s.summary && s.summary.model && isCyber(s.filename))).length;
         setCyberCount(n);
       })
       .catch(() => { /* backend offline: leave the badge hidden */ });

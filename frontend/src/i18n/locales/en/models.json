@@ -44,5 +44,16 @@
   "loading": "Loading…",
   "empty": "No trained model yet. Complete the \"Modelling\" step of a session.",
   "cyberModels": "Cyber models",
-  "otherModels": "Other models"
+  "otherModels": "Other models",
+  "rlSection": "Deep RL agents (SOC / NOC)",
+  "rlNote": "Trained and saved reinforcement-learning agents (alert triage, patching, rerouting…). Stable-Baselines3 format (.zip) — trained and evaluated in the Reinforcement → Deep RL view.",
+  "rlEmpty": "No saved agent yet. Train a base model in the Reinforcement → Deep RL view, then save it.",
+  "rlColumns": {
+    "agent": "Agent",
+    "env": "What the agent does",
+    "reward": "Avg. reward",
+    "created": "Created"
+  },
+  "rlBundleTitle": "Self-contained bundle (model + metrics report)",
+  "rlZipTitle": "Raw Stable-Baselines3 model (.zip)"
 }

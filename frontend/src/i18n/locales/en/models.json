@@ -46,6 +46,7 @@
   "cyberModels": "Cyber models",
   "otherModels": "Other models",
   "rlSection": "Deep RL agents (SOC / NOC)",
+  "supervisedSection": "Supervised models (CSV pipeline)",
   "rlNote": "Trained and saved reinforcement-learning agents (alert triage, patching, rerouting…). Stable-Baselines3 format (.zip) — trained and evaluated in the Reinforcement → Deep RL view.",
   "rlEmpty": "No saved agent yet. Train a base model in the Reinforcement → Deep RL view, then save it.",
   "rlColumns": {

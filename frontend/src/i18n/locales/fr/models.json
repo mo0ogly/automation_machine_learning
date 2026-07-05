@@ -46,6 +46,7 @@
   "cyberModels": "Modèles cyber",
   "otherModels": "Autres modèles",
   "rlSection": "Agents Deep RL (SOC / NOC)",
+  "supervisedSection": "Modèles supervisés (pipeline CSV)",
   "rlNote": "Agents d'apprentissage par renforcement entraînés et sauvegardés (triage d'alertes, correctifs, reroutage…). Format Stable-Baselines3 (.zip) — s'entraînent et s'évaluent dans la vue Renforcement → Deep RL.",
   "rlEmpty": "Aucun agent sauvegardé pour l'instant. Entraînez un modèle de base dans la vue Renforcement → Deep RL, puis sauvegardez-le.",
   "rlColumns": {

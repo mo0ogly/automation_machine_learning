@@ -155,32 +155,6 @@ export default function ModelsMenu({ apiBase, onClose }) {
         </p>
         {error ? <div className="banner banner-block mb-2">{error}</div> : null}
 
-        {models === null ? (
-          <p className="ai-empty">{t('loading')}</p>
-        ) : models.length === 0 ? (
-          <p className="ai-empty">
-            {t('empty')}
-          </p>
-        ) : (
-          <>
-            {cyber.length ? (
-              <div className="cyber-block">
-                <h3 className="cyber-head">
-                  <span className="badge-cyber">CYBER</span>
-                  {t('cyberModels')} <span className="muted">({cyber.length})</span>
-                </h3>
-                {renderTable(cyber, true)}
-              </div>
-            ) : null}
-            {others.length ? (
-              <>
-                <h3 className="other-head">{t('otherModels')} <span className="muted">({others.length})</span></h3>
-                {renderTable(others, false)}
-              </>
-            ) : null}
-          </>
-        )}
-
         <h3 className="other-head">
           {t('rlSection')} <span className="muted">({agents.length})</span>
         </h3>
@@ -220,6 +194,33 @@ export default function ModelsMenu({ apiBase, onClose }) {
               })}
             </tbody>
           </table>
+        )}
+
+        <h3 className="other-head">{t('supervisedSection')}</h3>
+        {models === null ? (
+          <p className="ai-empty">{t('loading')}</p>
+        ) : models.length === 0 ? (
+          <p className="ai-empty">
+            {t('empty')}
+          </p>
+        ) : (
+          <>
+            {cyber.length ? (
+              <div className="cyber-block">
+                <h3 className="cyber-head">
+                  <span className="badge-cyber">CYBER</span>
+                  {t('cyberModels')} <span className="muted">({cyber.length})</span>
+                </h3>
+                {renderTable(cyber, true)}
+              </div>
+            ) : null}
+            {others.length ? (
+              <>
+                <h3 className="other-head">{t('otherModels')} <span className="muted">({others.length})</span></h3>
+                {renderTable(others, false)}
+              </>
+            ) : null}
+          </>
         )}
       </div>
     </div>

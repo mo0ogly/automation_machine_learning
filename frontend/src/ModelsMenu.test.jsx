@@ -47,8 +47,8 @@ describe('ModelsMenu (smoke)', () => {
     // The actions column: labelled header + actions pointing at the LATEST run.
     expect(screen.getAllByText('Télécharger / ouvrir').length).toBeGreaterThan(0);
     const bundles = screen.getAllByText('Bundle .zip');
-    expect(bundles.length).toBe(3);  // 2 supervised rows + 1 RL agent row
-    expect(bundles[0].getAttribute('href')).toContain('/api/session/abc123/export-bundle');
+    expect(bundles.length).toBe(3);  // 1 RL agent row (first) + 2 supervised rows
+    expect(bundles[1].getAttribute('href')).toContain('/api/session/abc123/export-bundle');
     const pkls = screen.getAllByText('.pkl');
     expect(pkls[0].getAttribute('href')).toContain('/api/session/abc123/download-model');
     expect(screen.getAllByText('Ouvrir').length).toBe(2);

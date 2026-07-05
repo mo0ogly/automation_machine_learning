@@ -85,6 +85,11 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Typologie en 4 voies** : quantitative continue / discrète / catégorielle **nominale** / **ordinale**.
 - **Encodage ordinal ordonné** : les notes de qualité (`Po<Fa<TA<Gd<Ex`) gardent leur ordre
   sémantique (table de correspondance dédiée), pas l'ordre alphabétique ; les nominales en One-Hot.
+- **Feature engineering** : features métier (gardées) plus des **interactions** génériques
+  (produits / rapports des variables numériques les plus variables, borné) et le **binning**
+  (discrétisation par quantiles / largeur égale). Partagé avec le préprocesseur anti-fuite : les
+  colonnes de base des interactions et les bornes de bins sont **ajustées sur le train seul** et
+  réutilisées au test/serving (`feature_engineering.py`).
 - **Nettoyage** : **imputation** modélisée (KNN / itérative, qui estime une valeur manquante à
   partir des autres variables) en plus de médiane/moyenne/zéro ; traitement des **aberrants**
   par IQR (Tukey) ou z-score, en variante borner ou supprimer ; et un **diagnostic data-quality

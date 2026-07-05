@@ -83,6 +83,10 @@ All **3 learning paradigms** are covered:
 - **4-way typology**: quantitative continuous / discrete / **nominal** / **ordinal** categorical.
 - **Ordered ordinal encoding**: quality grades (`Po<Fa<TA<Gd<Ex`) keep their semantic order
   (a dedicated lookup table), not alphabetical order; nominals are One-Hot encoded.
+- **Feature engineering**: domain features (guarded) plus generic **interactions** (products /
+  ratios of the highest-variance numeric columns, bounded) and **binning** (quantile / uniform
+  discretisation). Shared with the leakage-free preprocessor: the interaction base columns and
+  bin edges are **fit on the train split only** and reused on test/serving (`feature_engineering.py`).
 - **Cleaning**: model-based **imputation** (KNN / iterative, estimating a missing cell from the
   other features) beside median/mean/zero; **outlier handling** by IQR (Tukey) or z-score, in
   clip or remove variants; and a **per-column data-quality diagnostic** (missing %, distinct,

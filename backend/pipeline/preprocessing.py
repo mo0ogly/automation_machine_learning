@@ -31,20 +31,14 @@ from sklearn.preprocessing import (
 )
 
 from . import typology as typ
+from . import feature_engineering as fe
 
 _SCALERS = {"standard": StandardScaler, "minmax": MinMaxScaler, "robust": RobustScaler}
 
 
-def _engineer(df: pd.DataFrame) -> tuple[pd.DataFrame, list]:
-    """Stateless domain features (mirror of the Transform stage), guarded on columns."""
-    engineered = []
-    if {"YrSold", "YearBuilt"}.issubset(df.columns):
-        df["Age"] = (df["YrSold"] - df["YearBuilt"]).clip(lower=0)
-        engineered.append("Age")
-    if {"YearBuilt", "YearRemodAdd"}.issubset(df.columns):
-        df["Renov"] = (df["YearBuilt"] != df["YearRemodAdd"]).astype(int)
-        engineered.append("Renov")
-    return df, engineered
+# Domain / interaction / binning feature construction is shared with the Transform
+# stage via pipeline.feature_engineering; the preprocessor fits the interaction base
+# and bin edges on TRAIN and reuses them on test/serving (see _build_features).
 
 
 class FeaturePreprocessor:
@@ -76,13 +70,37 @@ class FeaturePreprocessor:
         self.pca_ = None
         self.pca_input_cols_ = []
         self.selected_features_ = None  # univariate selection result (train-fitted)
+        # Feature construction fit on train, reused on test/serving (leakage-free):
+        self.interaction_base_ = []     # numeric columns combined into interactions
+        self.bin_edges_ = {}            # {col: edges} for binning
         self.feature_names_ = []
+
+    def _build_features(self, df, fitting: bool):
+        """Domain features + (optional) interactions + (optional) binning.
+
+        On ``fitting`` the interaction base columns and bin edges are chosen from
+        this (train) frame and stored; otherwise the stored ones are reused — so
+        the same derived columns appear on train, test and serving."""
+        cfg = self.transform_cfg
+        df, _dom = fe.domain_features(df)
+        imode = str(cfg.get("interactions", "none"))
+        if imode in ("products", "ratios", "both"):
+            if fitting:
+                self.interaction_base_ = fe.interaction_base(df, self.target_col)
+            df, _ = fe.apply_interactions(df, self.interaction_base_, imode)
+        bmode = str(cfg.get("binning", "none"))
+        if bmode in ("quantile", "uniform"):
+            if fitting:
+                cols = fe.bin_candidate_cols(df, self.target_col)
+                self.bin_edges_ = fe.fit_bin_edges(df, cols, int(cfg.get("n_bins", 5)), bmode)
+            df, _ = fe.apply_bins(df, self.bin_edges_)
+        return df
 
     # ── fit ──────────────────────────────────────────────────────────────
     def fit(self, df: pd.DataFrame, y=None) -> "FeaturePreprocessor":
         cfg = self.transform_cfg
         df = df.copy()
-        df, _ = _engineer(df)
+        df = self._build_features(df, fitting=True)
         t = typ.classify(df, self.target_col, ordinal_overrides=cfg.get("ordinal_overrides"))
         self.typology_ = t
         numeric = [c for c in (t["continue"] + t["discrete"]) if c in df.columns]
@@ -214,7 +232,7 @@ class FeaturePreprocessor:
         if not self.fitted_:
             raise RuntimeError("FeaturePreprocessor.transform() appelé avant fit().")
         df = df.copy()
-        df, _ = _engineer(df)
+        df = self._build_features(df, fitting=False)
 
         for c, how in self.skew_cols_:
             if c not in df.columns:

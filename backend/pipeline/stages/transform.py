@@ -26,6 +26,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Or
 from .. import diagnostics as dg
 from .. import typology as typ
 from .. import eda_plots as eda
+from .. import feature_engineering as fe
 from ..plotting import style_plot, fig_to_base64, message_plot
 from .base import select, toggle, rng, number, counts
 
@@ -37,6 +38,9 @@ OBJECTIVE = "Échelle, asymétrie, encodage ORDONNÉ des ordinales / One-Hot des
 def default_config(df, ctx):
     return {
         "feature_engineering": True,
+        "interactions": "none",
+        "binning": "none",
+        "n_bins": 5,
         "skew_correction": False,
         "skew_threshold": 1.0,
         "skew_method": "yeo-johnson",
@@ -50,6 +54,19 @@ def config_schema(df, ctx):
     return [
         toggle("feature_engineering", "Features dérivées", True,
                "Crée des variables métier quand les colonnes existent (Age = YrSold − YearBuilt, Renov)."),
+        select("interactions", "Interactions de variables",
+               [("none", "Aucune"), ("products", "Produits (a×b)"),
+                ("ratios", "Rapports (a/b)"), ("both", "Produits + rapports")], "none",
+               "Combine les variables numériques les plus variables (produits/rapports) pour "
+               "capter des effets non additifs. Nombre borné pour éviter l'explosion de colonnes. "
+               "En cas de doute, cliquez « IA »."),
+        select("binning", "Discrétisation (binning)",
+               [("none", "Aucune"), ("quantile", "Quantiles (effectifs égaux)"),
+                ("uniform", "Largeur égale")], "none",
+               "Transforme des variables continues en tranches (bins) — utile pour des seuils "
+               "métier ou des relations non linéaires. Les bornes sont ajustées sur le train seul."),
+        number("n_bins", "Nombre de tranches (bins)", 5, 2, 20,
+               "Nombre de tranches quand la discrétisation est active."),
         toggle("skew_correction", "Corriger l'asymétrie", False,
                "Transformation de puissance sur les variables très asymétriques."),
         rng("skew_threshold", "Seuil d'asymétrie |skew|", 0.5, 3.0, 0.25, 1.0, ""),
@@ -101,16 +118,26 @@ def run(df, config, ctx, make_plots=True):
     target = ctx.target_col
     engineered, skewed, ordinal_enc, nominal_oh, nominal_ord, scaled = [], [], [], [], [], []
 
-    # 1. Feature engineering (domain-aware, guarded on column presence).
+    # 1. Feature engineering (preview — the leakage-free preprocessor rebuilds these
+    #    with train-fitted interaction base / bin edges; here we build on the working
+    #    frame for the exploratory view). Shared logic: pipeline.feature_engineering.
     if cfg["feature_engineering"]:
-        if {"YrSold", "YearBuilt"}.issubset(df.columns):
-            df["Age"] = (df["YrSold"] - df["YearBuilt"]).clip(lower=0)
-            engineered.append("Age")
-        if {"YearBuilt", "YearRemodAdd"}.issubset(df.columns):
-            df["Renov"] = (df["YearBuilt"] != df["YearRemodAdd"]).astype(int)
-            engineered.append("Renov")
-        if engineered:
-            log.append(f"Features créées : {', '.join(engineered)}.")
+        df, dom = fe.domain_features(df)
+        engineered += dom
+    imode = str(cfg.get("interactions", "none"))
+    if imode in ("products", "ratios", "both"):
+        base = fe.interaction_base(df, target)
+        df, inter = fe.apply_interactions(df, base, imode)
+        engineered += inter
+    bmode = str(cfg.get("binning", "none"))
+    if bmode in ("quantile", "uniform"):
+        cols = fe.bin_candidate_cols(df, target)
+        edges = fe.fit_bin_edges(df, cols, int(cfg.get("n_bins", 5)), bmode)
+        df, binned = fe.apply_bins(df, edges)
+        engineered += binned
+    if engineered:
+        log.append(f"Features créées : {', '.join(engineered[:8])}"
+                   + ("…" if len(engineered) > 8 else "") + ".")
 
     # 2. Typology (4-way) on the engineered frame.
     t = typ.classify(df, target, ordinal_overrides=cfg.get("ordinal_overrides"))

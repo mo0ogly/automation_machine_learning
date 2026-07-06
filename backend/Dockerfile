@@ -9,7 +9,7 @@
 # Single stage: the runtime IS the test image (tests/ ship so `mlauto test` runs
 # the same code in-container). Non-root, OpenMP runtime for XGBoost, deps cached.
 
-FROM python:3.11-slim AS runtime
+FROM python:3.14.6-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -37,6 +37,24 @@ RUN apt-get update \
 
 COPY backend/certs/ /usr/local/share/ca-certificates/
 RUN update-ca-certificates
+
+# SQLite pinned to 3.53.3 (the base image ships 3.46.1): built from source and
+# installed to /usr/local so it takes ld.so priority over the apt-provided
+# libsqlite3, which is what Python's stdlib sqlite3 module (ML_SESSION_DB —
+# session persistence) dynamically links against at runtime.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential wget \
+    && wget -q https://www.sqlite.org/2026/sqlite-autoconf-3530300.tar.gz \
+    && tar xzf sqlite-autoconf-3530300.tar.gz \
+    && cd sqlite-autoconf-3530300 \
+    && ./configure --prefix=/usr/local \
+    && make -j"$(nproc)" \
+    && make install \
+    && ldconfig \
+    && cd .. \
+    && rm -rf sqlite-autoconf-3530300* \
+    && apt-get purge -y --auto-remove build-essential wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Dedicated non-root runtime user (least privilege; binds 8000 which is > 1024).
 RUN useradd --create-home --shell /usr/sbin/nologin mlauto

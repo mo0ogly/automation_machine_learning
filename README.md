@@ -126,6 +126,10 @@ All **3 learning paradigms** are covered:
 - **Evaluation**: RMSE/MAE/MAPE/R² (regression); accuracy/precision/recall/F1 + **ROC-AUC,
   PR-AUC with their curves** (binary) or weighted OVR AUC (multiclass); overfit control
   (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
+- **Model card (enriched)**: the Exploit view's model dossier now includes the recommended
+  **operating point** (min-cost threshold + resulting recall/precision) and a data-driven
+  **assessment** (verdict + strengths + cautions: overfitting gap, ROC-AUC, calibration,
+  leakage-free flag, drift reminder).
 - **Explainability**: `SHAP` importance + waterfall — `TreeExplainer` for tree models,
   `LinearExplainer` for linear families, configurable explained class in multiclass.
 - **Partial dependence (PDP)**: beside SHAP (which ranks feature *importance*), the

@@ -132,6 +132,10 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   PR-AUC avec leurs courbes** (binaire) ou AUC OVR pondéré (multiclasse) ; contrôle du
   surapprentissage (train/test/CV) et **courbe d'apprentissage** ; option
   `class_weight='balanced'` pour le déséquilibre.
+- **Carte modèle (enrichie)** : le dossier modèle de la vue Exploiter inclut désormais le
+  **point de fonctionnement** recommandé (seuil coût-minimal + rappel/précision associés) et une
+  **évaluation** data-driven (verdict + points forts + précautions : écart de surapprentissage,
+  ROC-AUC, calibration, prétraitement anti-fuite, rappel de dérive).
 - **Explicabilité** : `SHAP` importance + waterfall — `TreeExplainer` pour les arbres,
   `LinearExplainer` pour les familles linéaires, classe expliquée configurable en multiclasse.
 - **Dépendance partielle (PDP)** : à côté de SHAP (qui classe l'*importance* des variables),

@@ -1,0 +1,11 @@
+/* Enriched model card — operating point + assessment blocks. Dedicated file
+   (components.css is size-capped). */
+.xp-card-op { margin-top: 0.6rem; font-size: 0.8rem; color: var(--text-secondary); }
+.xp-card-assess { margin-top: 0.7rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; }
+.xp-assess-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
+.xp-verdict { font-weight: 700; font-size: 0.82rem; }
+.xp-assess-block { margin: 0.3rem 0; }
+.xp-assess-block strong { font-size: 0.76rem; color: var(--accent-secondary); }
+.xp-assess-block ul { margin: 0.15rem 0 0; padding-left: 1.1rem; }
+.xp-assess-block li { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.15rem; }
+.xp-assess-caution strong { color: #e8a33d; }

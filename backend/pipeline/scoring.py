@@ -418,6 +418,60 @@ def score_dataframe(session, df):
     return enriched, _score_summary(pt, [p.get("prediction") for p in preds])
 
 
+def _card_operating_point(ev_diag: dict) -> dict:
+    """Recommended (min-cost) operating point for a binary detector, from the
+    stored operational analysis — so the card tells the analyst WHERE to run it."""
+    op = (ev_diag or {}).get("operational") or {}
+    if op.get("mode") != "binary" or not op.get("threshold_sweep"):
+        return None
+    reco = (op.get("recommended_thresholds") or {}).get("min_cost")
+    if reco is None:
+        return None
+    row = min(op["threshold_sweep"], key=lambda r: abs(r["threshold"] - reco))
+    return {"threshold": reco, "recall": row.get("recall"), "precision": row.get("precision"),
+            "alert_rate": row.get("alert_rate"), "positive_class": op.get("positive_class")}
+
+
+def _card_assessment(pt: str, report: dict, ev_diag: dict) -> dict:
+    """Plain-language verdict + strengths + cautions, entirely data-driven (no
+    invention): overfitting gap, headline metric, calibration, leakage-free flag."""
+    report = report or {}
+    strengths, cautions = [], []
+    verdict = "Déployable"
+    if pt == REGRESSION:
+        r2 = report.get("R²")
+        if r2 is not None:
+            (strengths if float(r2) >= 0.85 else cautions).append(
+                f"R² = {r2} ({'bonne' if float(r2) >= 0.85 else 'modeste'} capacité explicative).")
+            if float(r2) < 0.3:
+                verdict = "Fragile"
+    elif pt == CLASSIFICATION:
+        auc = report.get("ROC-AUC")
+        acc = report.get("Accuracy")
+        if auc is not None:
+            (strengths if float(auc) >= 0.85 else cautions).append(
+                f"ROC-AUC = {auc} (pouvoir discriminant {'élevé' if float(auc) >= 0.85 else 'limité'}).")
+        elif acc is not None:
+            strengths.append(f"Exactitude = {acc}.")
+    gap = (ev_diag or {}).get("controle_surapprentissage", {}).get("ecart_overfit")
+    if gap is not None:
+        if abs(float(gap)) > 0.1:
+            cautions.append(f"Écart train-test = {gap} : surapprentissage à surveiller.")
+            verdict = "À utiliser avec prudence"
+        else:
+            strengths.append(f"Généralisation saine (écart train-test = {gap}).")
+    op = (ev_diag or {}).get("operational") or {}
+    ece = (op.get("calibration") or {}).get("ece")
+    if ece is not None and float(ece) > 0.1:
+        cautions.append(f"Probabilités mal calibrées (ECE = {ece}) : prudence pour un tri par score.")
+    if (ev_diag or {}).get("leakage_free"):
+        strengths.append("Prétraitement anti-fuite (stats et encodeurs ajustés sur le train seul).")
+    else:
+        cautions.append("Prétraitement non entièrement ajusté sur le train : fuite possible.")
+    cautions.append("Valider sur des données récentes avant tout usage réel (dérive).")
+    return {"verdict": verdict, "strengths": strengths, "cautions": cautions}
+
+
 def model_card(session) -> dict:
     """A presentable dossier of the trained model: what it does + how good it is."""
     ctx = session.ctx
@@ -437,6 +491,8 @@ def model_card(session) -> dict:
         present = "Je range chaque observation dans un segment à partir de " + str(n_fields) + " caractéristiques."
     else:
         present = "Je détecte les observations anormales à partir de " + str(n_fields) + " caractéristiques."
+    ev_diag = ev.result.get("diagnostics", {}) if ev else {}
+    report = ev.result.get("report", {}) if ev else {}
     return {
         "present": present,
         "target": ctx.target_col,
@@ -445,8 +501,11 @@ def model_card(session) -> dict:
         "n_features": len(sep.artifacts.get("feature_names", [])) if sep else None,
         "n_rows": int(len(session.raw_df)),
         "created_at": getattr(session, "created_at", None),
-        "metrics": ev.result.get("report", {}) if ev else {},
+        "metrics": report,
         "top_features": [f["name"] for f in schema["fields"][:8]],
         "target_stats": ts,
         "stages_run": [s["stage_id"] for s in session.stage_status() if s["ran"]],
+        # Enriched dossier: recommended operating point + a data-driven assessment.
+        "operating_point": _card_operating_point(ev_diag),
+        "assessment": _card_assessment(pt, report, ev_diag) if ev else None,
     }

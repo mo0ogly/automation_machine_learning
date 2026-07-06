@@ -4,9 +4,6 @@ set -euo pipefail
 # mlauto.sh — single entry point to manage the automation_machine_learning stack
 # (Docker: backend FastAPI :8000 + frontend nginx :5173).
 #
-# Inspired by the recette.sh dispatcher pattern (mo0ogly/recette_IA_agents):
-# one script routing to docker compose, with safe defaults and a health wait.
-#
 #   ./mlauto.sh up            # build if needed + start, wait until healthy
 #   ./mlauto.sh down          # stop and remove containers
 #   ./mlauto.sh restart       # restart both services
@@ -143,10 +140,53 @@ cmd_clean() {
     esac
 }
 
-cmd_help() { sed -n '4,33p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
+cmd_help() { sed -n '4,22p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
 
-cmd="${1:-help}"; shift || true
+# --- menu interactif ---------------------------------------------------------
+_opt()   { printf "  ${GREEN}%2s)${NC} %s\n" "$1" "$2"; }
+_pause() { echo; read -rp "  Entree pour continuer..." _; }
+
+show_menu() {
+    while true; do
+        hdr "mlauto — automation_machine_learning"
+        _opt 1  "Up            (build si necessaire + demarrage)"
+        _opt 2  "Down          (arret)"
+        _opt 3  "Restart"
+        _opt 4  "Build"
+        _opt 5  "Rebuild       (--no-cache)"
+        _opt 6  "Logs"
+        _opt 7  "ps            (etat des conteneurs)"
+        _opt 8  "Status        (conteneurs + sante)"
+        _opt 9  "Health"
+        _opt 10 "Shell         (backend)"
+        _opt 11 "Test          (suite backend)"
+        _opt 12 "Clean         (DESTRUCTIF — supprime le volume sessions)"
+        echo
+        _opt 0 "Quitter"
+        echo -n "  Choix : "
+        local c; read -r c
+        case "${c}" in
+            1)  cmd_up;      _pause ;;
+            2)  cmd_down;    _pause ;;
+            3)  cmd_restart; _pause ;;
+            4)  cmd_build;   _pause ;;
+            5)  cmd_rebuild; _pause ;;
+            6)  cmd_logs;    _pause ;;
+            7)  cmd_ps;      _pause ;;
+            8)  cmd_status;  _pause ;;
+            9)  cmd_health;  _pause ;;
+            10) cmd_shell;   _pause ;;
+            11) cmd_test;    _pause ;;
+            12) cmd_clean;   _pause ;;
+            0|q|Q) return ;;
+            *) warn "choix invalide"; _pause ;;
+        esac
+    done
+}
+
+cmd="${1:-menu}"; shift || true
 case "${cmd}" in
+    menu)         show_menu ;;
     up|start)     cmd_up ;;
     down|stop)    cmd_down ;;
     restart)      cmd_restart ;;

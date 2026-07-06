@@ -132,6 +132,9 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   PR-AUC avec leurs courbes** (binaire) ou AUC OVR pondéré (multiclasse) ; contrôle du
   surapprentissage (train/test/CV) et **courbe d'apprentissage** ; option
   `class_weight='balanced'` pour le déséquilibre.
+- **Batch scoring planifié** : `POST /batch-monitor` score un nouveau lot ET évalue la dérive en
+  un appel, avec un verdict actionnable (`ok` / `review` / `action_required`) + le CSV scoré —
+  conçu pour un cron/CI externe (aucune dépendance de planificateur intégré).
 - **Rapport téléchargeable** : un **rapport HTML autonome** en un clic (`GET /report`) — carte
   modèle, métriques, point de fonctionnement, évaluation et les graphes de diagnostic embarqués en
   base64 (aucun asset externe), prêt à joindre à un ticket ou partager, avec un bouton **impression / enregistrement PDF** (mise en page optimisée pour l'impression).

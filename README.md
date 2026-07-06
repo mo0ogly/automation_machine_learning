@@ -126,6 +126,9 @@ All **3 learning paradigms** are covered:
 - **Evaluation**: RMSE/MAE/MAPE/R² (regression); accuracy/precision/recall/F1 + **ROC-AUC,
   PR-AUC with their curves** (binary) or weighted OVR AUC (multiclass); overfit control
   (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
+- **Scheduled batch scoring**: `POST /batch-monitor` scores a new batch AND assesses drift in
+  one call, returning an actionable verdict (`ok` / `review` / `action_required`) + the scored
+  CSV — meant to be hit periodically by an external cron/CI (no in-process scheduler dependency).
 - **Downloadable report**: a one-click **self-contained HTML report** (`GET /report`) — model
   card, metrics, operating point, assessment and the diagnostic figures embedded as base64 (no
   external assets), ready to attach to a ticket or share with a colleague, with a **print / save-as-PDF** button (print-optimised layout).

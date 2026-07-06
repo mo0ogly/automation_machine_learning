@@ -162,6 +162,7 @@ opaque) — ce qui rend l'`autorun` résilient (il ne gère que des `HTTPExcepti
 | GET | `/api/session/{id}/journal` | Journal mémoire des échanges IA |
 | POST | `/api/session/{id}/level` | Niveau Novice/Expert |
 | POST | `/autorun` · `/predict` · GET `/download-model` | Pipeline complet / inférence / export `.pkl` |
+| POST | `/api/session/{id}/batch-monitor` | Batch scoring + dérive + verdict actionnable (`ok`/`review`/`action_required`) en un appel — pensé pour un cron externe (« batch scoring planifié » sans planificateur intégré) |
 | GET | `/api/session/{id}/report` | Rapport HTML autonome du modèle (carte + métriques + point de fonctionnement + graphes base64, `report.py`) |
 | POST | `/api/session/{id}/monitor` | Surveillance post-déploiement : upload d'un lot → dérive (PSI/KS), dérive de concept, reproductibilité, re-calibration du seuil (`monitoring.py`, routeur `routes_monitor.py`) |
 | POST | `/api/session/{id}/jitter` | Protocole jitter (stabilité des prédictions) : sans upload — bruit gaussien croissant sur le jeu de référence → courbe de taux de bascule, point de rupture, verdict. Déterministe (seed fixée) |

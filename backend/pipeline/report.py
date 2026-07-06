@@ -33,6 +33,12 @@ ul{margin:.2rem 0;padding-left:1.2rem}.caution li{color:#9a6b16}
 .figs figure{margin:0}.figs img{max-width:100%;border:1px solid #eee;border-radius:6px}
 figcaption{font-size:.75rem;color:#555;margin-top:.2rem}
 footer{margin-top:2rem;font-size:.72rem;color:#888;border-top:1px solid #eee;padding-top:.6rem}
+.printbar{position:sticky;top:0;background:#fff;padding:.5rem 0;margin:-1rem 0 .5rem;text-align:right}
+.printbtn{font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;color:#fff;background:#e94560;
+border:none;border-radius:6px;padding:.4rem .8rem}
+@media print{.no-print{display:none!important}body{margin:0;max-width:none}
+h2{page-break-after:avoid}.figs figure,table{page-break-inside:avoid}
+.figs{grid-template-columns:1fr 1fr}}
 """
 
 _VERDICT_CLASS = {"Déployable": "v-ok", "À utiliser avec prudence": "v-warn", "Fragile": "v-bad"}
@@ -106,6 +112,8 @@ def build_html_report(session) -> str:
     ] if x)
 
     body = [
+        '<div class="printbar no-print"><button class="printbtn" onclick="window.print()">'
+        "Imprimer / Enregistrer en PDF</button></div>",
         f"<h1>Rapport de modèle — {_esc(card.get('target') or 'cible')}</h1>",
         f'<div class="sub">{_esc(tags)}'
         + (f" · {_esc(card.get('created_at'))}" if card.get("created_at") else "") + "</div>",

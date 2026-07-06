@@ -134,7 +134,7 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   `class_weight='balanced'` pour le déséquilibre.
 - **Rapport téléchargeable** : un **rapport HTML autonome** en un clic (`GET /report`) — carte
   modèle, métriques, point de fonctionnement, évaluation et les graphes de diagnostic embarqués en
-  base64 (aucun asset externe), prêt à joindre à un ticket ou partager.
+  base64 (aucun asset externe), prêt à joindre à un ticket ou partager, avec un bouton **impression / enregistrement PDF** (mise en page optimisée pour l'impression).
 - **Carte modèle (enrichie)** : le dossier modèle de la vue Exploiter inclut désormais le
   **point de fonctionnement** recommandé (seuil coût-minimal + rappel/précision associés) et une
   **évaluation** data-driven (verdict + points forts + précautions : écart de surapprentissage,

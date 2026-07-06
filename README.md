@@ -128,7 +128,7 @@ All **3 learning paradigms** are covered:
   (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
 - **Downloadable report**: a one-click **self-contained HTML report** (`GET /report`) — model
   card, metrics, operating point, assessment and the diagnostic figures embedded as base64 (no
-  external assets), ready to attach to a ticket or share with a colleague.
+  external assets), ready to attach to a ticket or share with a colleague, with a **print / save-as-PDF** button (print-optimised layout).
 - **Model card (enriched)**: the Exploit view's model dossier now includes the recommended
   **operating point** (min-cost threshold + resulting recall/precision) and a data-driven
   **assessment** (verdict + strengths + cautions: overfitting gap, ROC-AUC, calibration,

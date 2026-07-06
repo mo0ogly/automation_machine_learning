@@ -38,6 +38,7 @@ import routes_deeprl
 import routes_exploit
 import routes_monitor
 import routes_prompts
+import routes_report
 import dataset_cards
 import model_export
 from pydantic import BaseModel
@@ -80,6 +81,8 @@ app.include_router(routes_prompts.router)
 app.include_router(routes_exploit.router)
 # Post-deployment drift & stability monitoring (upload a batch -> drift report).
 app.include_router(routes_monitor.router)
+# Downloadable self-contained HTML model report.
+app.include_router(routes_report.router)
 # Deep RL workbench (Gymnasium + Stable-Baselines3): DQN/PPO/A2C on continuous envs.
 app.include_router(routes_deeprl.router)
 

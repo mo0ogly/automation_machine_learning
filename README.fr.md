@@ -132,6 +132,9 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   PR-AUC avec leurs courbes** (binaire) ou AUC OVR pondéré (multiclasse) ; contrôle du
   surapprentissage (train/test/CV) et **courbe d'apprentissage** ; option
   `class_weight='balanced'` pour le déséquilibre.
+- **Rapport téléchargeable** : un **rapport HTML autonome** en un clic (`GET /report`) — carte
+  modèle, métriques, point de fonctionnement, évaluation et les graphes de diagnostic embarqués en
+  base64 (aucun asset externe), prêt à joindre à un ticket ou partager.
 - **Carte modèle (enrichie)** : le dossier modèle de la vue Exploiter inclut désormais le
   **point de fonctionnement** recommandé (seuil coût-minimal + rappel/précision associés) et une
   **évaluation** data-driven (verdict + points forts + précautions : écart de surapprentissage,

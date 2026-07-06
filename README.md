@@ -128,6 +128,10 @@ All **3 learning paradigms** are covered:
   (train/test/CV) and a **learning curve**; optional `class_weight='balanced'` for imbalance.
 - **Explainability**: `SHAP` importance + waterfall — `TreeExplainer` for tree models,
   `LinearExplainer` for linear families, configurable explained class in multiclass.
+- **Partial dependence (PDP)**: beside SHAP (which ranks feature *importance*), the
+  Explicability stage plots the *shape* of the learned effect — 1-D curves for the top
+  SHAP features and a **2-D surface for the top pair** (surfacing interactions), adaptive to
+  regression / binary / multiclass (`explain_plots.py`).
 - **Operational evaluation (SOC / threat-intel)**: an adaptive operating-point panel on top of
   the metrics — an interactive **decision-threshold** slider (0.5 is rarely right in cyber),
   **cost of errors** (a missed attack vs a false alert), a business confusion matrix

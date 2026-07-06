@@ -21,7 +21,8 @@ import shap
 
 from ..context import REGRESSION, CLASSIFICATION
 from ..plotting import message_plot
-from .base import number
+from .. import explain_plots as pdp
+from .base import number, toggle
 
 STAGE_ID = "explain"
 TITLE = "Explicabilité"
@@ -40,7 +41,7 @@ def _is_linear(model) -> bool:
 
 
 def default_config(ctx):
-    return {"sample_index": 0, "class_index": -1}
+    return {"sample_index": 0, "class_index": -1, "partial_dependence": True}
 
 
 def config_schema(ctx):
@@ -52,6 +53,10 @@ def config_schema(ctx):
         controls.append(number("class_index", "Classe expliquée (-1 = dernière)", -1, -1, 50,
                                "En multiclasse : indice de la classe dont on explique la "
                                "probabilité. -1 = dernière classe (positive en binaire)."))
+    controls.append(toggle("partial_dependence", "Dépendance partielle (PDP)", True,
+                           "Trace, pour les variables les plus influentes, la forme de l'effet "
+                           "moyen sur la prédiction (1D) + une surface 2D pour la paire de tête "
+                           "(révèle les interactions). Complète SHAP. En cas de doute, cliquez « IA »."))
     return controls
 
 
@@ -133,6 +138,15 @@ def run(session, config):
     mean_abs = np.abs(sv_use).mean(axis=0)
     order = np.argsort(mean_abs)[::-1][:8]
     top = [{"feature": str(Xs.columns[i]), "importance_shap": round(float(mean_abs[i]), 4)} for i in order]
+
+    # Partial dependence: the SHAP-ranked top features drive the PDP selection, so
+    # the analyst sees the SHAPE of the effect (1D) + the top pair's interaction (2D).
+    if cfg.get("partial_dependence") and len(order):
+        # In multiclass the PD output has one row per class → select the explained
+        # class; binary / regression have a single output row (0).
+        pdp_class = ci if (ctx.problem_type == CLASSIFICATION and n_out > 2) else 0
+        plots += pdp.partial_dependence_plots(model, Xs, list(Xs.columns),
+                                              [int(i) for i in order], ctx.problem_type, pdp_class)
 
     report = {"Modèle expliqué": origin, "Explainer": explainer_kind,
               "Variable la plus influente": top[0]["feature"] if top else "—"}

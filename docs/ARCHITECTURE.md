@@ -81,7 +81,7 @@ Les `control` sont rendus tels quels par le frontend. `column_table` = table de 
 | 5 | `model` | **Leaderboard** N modèles par **validation croisée sur le train** (RMSE/R² ou Acc/F1, moyenne ± σ — test vierge) + choix expert. **Déséquilibre** : class_weight (leaderboard-safe) ou rééchantillonnage over/under/SMOTE train-only (`resampling.py`). | régression/classif | **KMeans / DBSCAN / Agglomératif** (clustering, k auto par coude/k-distance) · **Isolation Forest / LOF** (anomalies) |
 | 6 | `tune` | GridSearch hyperparamètres. | oui | rejeté (409) |
 | 7 | `evaluate` | Métriques test + **contrôle surapprentissage** (train/test/CV) + **vue opérationnelle SOC** (`operational.py` : seuils, coût FN/FP, calibration, budget d'alertes, métriques robustes MCC/bal-acc/kappa ; fiche SOC/TI). Recalcul live via `/operating-point`. | régression : scatter + résidus + bandes de tolérance · classif : confusion + **précision/rappel/F1 pondérés + rapport par classe** + ROC/PR + point de fonctionnement | clustering : **silhouette + lecture métier (valeurs brutes) + PCA + profil** · anomalies : **taux + histogramme des scores + PCA + top lignes atypiques** + budget d'alertes |
-| 8 | `explain` | SHAP (importance globale + waterfall individuel). | oui | n/a |
+| 8 | `explain` | SHAP (importance globale + waterfall individuel) + **dépendance partielle (PDP 1D sur les variables SHAP top + surface 2D sur la paire de tête)** via `explain_plots.py`. | oui | n/a |
 
 ---
 

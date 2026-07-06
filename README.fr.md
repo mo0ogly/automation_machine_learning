@@ -134,6 +134,10 @@ Les **3 paradigmes** d'apprentissage sont couverts :
   `class_weight='balanced'` pour le déséquilibre.
 - **Explicabilité** : `SHAP` importance + waterfall — `TreeExplainer` pour les arbres,
   `LinearExplainer` pour les familles linéaires, classe expliquée configurable en multiclasse.
+- **Dépendance partielle (PDP)** : à côté de SHAP (qui classe l'*importance* des variables),
+  l'étape Explicabilité trace la *forme* de l'effet appris — courbes 1D pour les variables SHAP
+  de tête et une **surface 2D pour la paire de tête** (révèle les interactions), adaptée à la
+  régression / au binaire / au multiclasse (`explain_plots.py`).
 - **Évaluation opérationnelle (SOC / threat intel)** : un panneau de point de fonctionnement
   adaptatif au-dessus des métriques — curseur de **seuil de décision** interactif (0.5 est
   rarement optimal en cyber), **coût d'erreur** (attaque manquée vs fausse alerte), matrice de

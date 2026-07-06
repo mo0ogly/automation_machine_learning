@@ -107,6 +107,23 @@ def ice_1d(model, X, feature, feature_name, problem_type, class_row=0, max_lines
     return fig_to_base64(fig)
 
 
+def interaction_bar(pairs):
+    """Bar chart of the strongest SHAP feature-pair interactions.
+    ``pairs`` = [(name_a, name_b, strength), ...] sorted strongest-first."""
+    import matplotlib.pyplot as plt
+    style_plot()
+    if not pairs:
+        return None
+    labels = [f"{a} × {b}" for a, b, _ in pairs][::-1]
+    vals = [s for _, _, s in pairs][::-1]
+    fig, ax = plt.subplots(figsize=(7, max(2.5, 0.4 * len(labels) + 1)))
+    ax.barh(labels, vals, color="#8b5cf6", edgecolor="#0f3460")
+    ax.set_xlabel("Force d'interaction SHAP (|valeur| moyenne)")
+    ax.set_title("Interactions entre variables (paires les plus fortes)")
+    fig.tight_layout()
+    return fig_to_base64(fig)
+
+
 def partial_dependence_plots(model, X, feature_names, top_indices, problem_type, class_row=0,
                              ice=False):
     """1-D PDP for the top features + a 2-D PDP for the top pair. ``top_indices``

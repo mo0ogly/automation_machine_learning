@@ -31,7 +31,7 @@ C'est pourquoi le nombre « monte » quand on exécute une étape (ex. Nettoyage
 | **5. Modélisation** (`stages/model.py`) | Supervisé : `R²/Accuracy (validation croisée, train) par modèle` (leaderboard CV — le test reste vierge). Clustering : `Méthode du coude — choix de K` + `Graphe k-distance — calibrer eps (DBSCAN)` | Supervisé : `Importance des variables (top 12)`. Agglomératif : `Méthode du coude` + `Dendrogramme (Ward) — fusions hiérarchiques` ; messages selon le cas |
 | **6. Fine-tuning** (`stages/tune.py`) | — | `Score CV par combinaison d'hyperparamètres (top 10)` |
 | **7. Évaluation** (`stages/evaluate.py`) | — | Régression : `Réel vs Prédit` + `Résidus` + `Courbe d'apprentissage`. Classification : `Matrice de confusion` + `Courbe ROC (jeu de test)` + `Courbe précision-rappel (jeu de test)` (binaire) + `Contrôle du surapprentissage (train / test / CV)` + `Courbe d'apprentissage` + **vue opérationnelle** (`Précision / rappel / F2 selon le seuil`, `Coût opérationnel attendu selon le seuil`, `Diagramme de fiabilité`, `Budget d'alertes`). Clustering : `Clusters (projection PCA)` + `Profil moyen des clusters (écarts standardisés)`. Anomalies : `Distribution des scores d'anomalie` + `Anomalies (projection PCA)` + `Volume d'alertes selon le seuil d'anomalie` |
-| **8. Explicabilité** (`stages/explain.py`) | — | SHAP : summary + waterfall (TreeExplainer pour les arbres, LinearExplainer pour Linear/Ridge/Lasso/Logistic ; message sinon) + **dépendance partielle (PDP)** : `Dépendance partielle — <var>` (1D, top variables SHAP) + `Dépendance partielle 2D — <a> × <b>` (surface, interactions) + `Courbes individuelles (ICE) — <var>` (optionnel) via `explain_plots.py` |
+| **8. Explicabilité** (`stages/explain.py`) | — | SHAP : summary + waterfall (TreeExplainer pour les arbres, LinearExplainer pour Linear/Ridge/Lasso/Logistic ; message sinon) + **dépendance partielle (PDP)** : `Dépendance partielle — <var>` (1D, top variables SHAP) + `Dépendance partielle 2D — <a> × <b>` (surface, interactions) + `Courbes individuelles (ICE) — <var>` (optionnel) + `Interactions entre variables` (valeurs d'interaction SHAP, arbres uniquement, optionnel) via `explain_plots.py` |
 
 ## Règles anti-doublon (qui fait quoi)
 
@@ -172,6 +172,8 @@ Chaque type de graphe a **une seule étape propriétaire** :
   évidence les interactions qu'une vue additive manquerait.
 - **Courbes individuelles (ICE) — <var>** (optionnel) — une courbe par observation + la
   moyenne PDP ; révèle des sous-groupes qui réagissent différemment (hétérogénéité).
+- **Interactions entre variables** (optionnel, arbres) — force d'interaction SHAP des paires
+  de variables les plus liées ; pendant global de la dépendance partielle 2D.
 - **Waterfall** — décomposition d'UNE prédiction : ce qui la pousse vers le haut / le bas.
 
 ## Générateurs partagés

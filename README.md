@@ -138,7 +138,8 @@ All **3 learning paradigms** are covered:
 - **Partial dependence (PDP)**: beside SHAP (which ranks feature *importance*), the
   Explicability stage plots the *shape* of the learned effect — 1-D curves for the top
   SHAP features and a **2-D surface for the top pair** (surfacing interactions) plus optional
-  **ICE** curves (one per instance, revealing subgroup heterogeneity), adaptive to
+  **ICE** curves (one per instance) and **SHAP interaction values** (feature-pair interaction
+  strength, tree models — the global companion to the 2-D PDP), adaptive to
   regression / binary / multiclass (`explain_plots.py`).
 - **Operational evaluation (SOC / threat-intel)**: an adaptive operating-point panel on top of
   the metrics — an interactive **decision-threshold** slider (0.5 is rarely right in cyber),

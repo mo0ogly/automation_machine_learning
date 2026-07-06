@@ -144,7 +144,8 @@ Les **3 paradigmes** d'apprentissage sont couverts :
 - **Dépendance partielle (PDP)** : à côté de SHAP (qui classe l'*importance* des variables),
   l'étape Explicabilité trace la *forme* de l'effet appris — courbes 1D pour les variables SHAP
   de tête et une **surface 2D pour la paire de tête** (révèle les interactions), plus des courbes
-  **ICE** optionnelles (une par observation, révèle l'hétérogénéité des sous-groupes), adaptée
+  **ICE** optionnelles (une par observation) et les **valeurs d'interaction SHAP** (force des
+  interactions par paire, modèles à base d'arbres — pendant global de la PDP 2D), adaptée
   à la régression / au binaire / au multiclasse (`explain_plots.py`).
 - **Évaluation opérationnelle (SOC / threat intel)** : un panneau de point de fonctionnement
   adaptatif au-dessus des métriques — curseur de **seuil de décision** interactif (0.5 est

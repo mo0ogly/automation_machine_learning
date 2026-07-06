@@ -41,7 +41,8 @@ def _is_linear(model) -> bool:
 
 
 def default_config(ctx):
-    return {"sample_index": 0, "class_index": -1, "partial_dependence": True, "ice": False}
+    return {"sample_index": 0, "class_index": -1, "partial_dependence": True, "ice": False,
+            "interaction_values": False}
 
 
 def config_schema(ctx):
@@ -61,7 +62,39 @@ def config_schema(ctx):
                            "Ajoute, pour la variable la plus influente, une courbe par observation "
                            "(en plus de la moyenne PDP) : révèle des sous-groupes qui réagissent "
                            "différemment — hétérogénéité que la moyenne masque."))
+    controls.append(toggle("interaction_values", "Interactions SHAP (paires)", False,
+                           "Calcule la force d'interaction entre paires de variables (valeurs "
+                           "d'interaction SHAP, modèles à base d'arbres uniquement). Coûteux : "
+                           "limité aux jeux à peu de variables. Complète la dépendance partielle 2D."))
     return controls
+
+
+def _shap_interactions(explainer, Xs, class_row, max_features=40, max_rows=60):
+    """Top SHAP feature-pair interactions (tree models only). Returns a list of
+    ``(name_a, name_b, strength)`` strongest-first, or None when not computable /
+    too large (interaction values are O(n_features²) per row)."""
+    if Xs.shape[1] > max_features:
+        return None
+    sample = Xs.iloc[:max_rows] if len(Xs) > max_rows else Xs
+    try:
+        iv = explainer.shap_interaction_values(sample)
+    except Exception:
+        return None
+    arr = iv[class_row] if isinstance(iv, list) else iv
+    arr = np.asarray(arr)
+    if arr.ndim == 4:                               # (rows, f, f, classes)
+        arr = arr[:, :, :, class_row if class_row < arr.shape[-1] else -1]
+    if arr.ndim != 3:
+        return None
+    m = np.abs(arr).mean(axis=0)                     # (f, f) mean |interaction|
+    np.fill_diagonal(m, 0.0)
+    cols = list(Xs.columns)
+    pairs = []
+    for i in range(len(cols)):
+        for j in range(i + 1, len(cols)):
+            pairs.append((cols[i], cols[j], round(float(m[i, j] + m[j, i]), 4)))
+    pairs.sort(key=lambda p: -p[2])
+    return [p for p in pairs[:10] if p[2] > 0]
 
 
 def diagnose(session):
@@ -152,6 +185,15 @@ def run(session, config):
         plots += pdp.partial_dependence_plots(model, Xs, list(Xs.columns),
                                               [int(i) for i in order], ctx.problem_type, pdp_class,
                                               ice=bool(cfg.get("ice")))
+
+    # SHAP interaction values (tree models only, small feature spaces): the
+    # strongest feature-pair interactions, the global companion to the 2-D PDP.
+    if cfg.get("interaction_values") and explainer_kind == "TreeExplainer":
+        pairs = _shap_interactions(explainer, Xs, ci if isinstance(sv, list) else 0)
+        if pairs:
+            ip = pdp.interaction_bar(pairs)
+            if ip:
+                plots.append(ip)
 
     report = {"Modèle expliqué": origin, "Explainer": explainer_kind,
               "Variable la plus influente": top[0]["feature"] if top else "—"}

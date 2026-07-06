@@ -71,3 +71,23 @@ def _ice_captions(result):
 def test_ice_off_by_default_on_when_enabled():
     assert _ice_captions(_explain("breastcancer.csv")) == []            # off by default
     assert len(_ice_captions(_explain("breastcancer.csv", {"ice": True}))) == 1
+
+
+def _interaction_captions(result):
+    caps = [(p.get("caption", "") if isinstance(p, dict) else "") for p in result["plots"]]
+    return [c for c in caps if "Interactions entre variables" in c]
+
+
+def test_shap_interactions_tree_only_and_opt_in():
+    # Off by default; on for a tree model on a small feature space.
+    assert _interaction_captions(_explain("breastcancer.csv")) == []
+    r_on = _explain("breastcancer.csv", {"interaction_values": True})
+    assert len(_interaction_captions(r_on)) == 1
+    # Skipped (no crash) for a linear model — interaction values are tree-only.
+    sid = client.post("/api/session/start-demo/breastcancer.csv").json()["session_id"]
+    s = SESSIONS.get(sid)
+    for stg in ("clean", "transform", "integrate", "separate"):
+        run_stage(s, stg, {})
+    run_stage(s, "model", {"algorithm": "LogisticRegression"})
+    r_lin = run_stage(s, "explain", {"interaction_values": True})
+    assert _interaction_captions(r_lin) == []

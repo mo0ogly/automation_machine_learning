@@ -197,6 +197,13 @@ Then open **http://localhost:5173**. Other verbs: `down`, `restart`, `build`,
 they survive `down` + rebuild. Ports are overridable in `.env`
 (`BACKEND_PORT` / `FRONTEND_PORT`).
 
+**Access from another machine (LAN).** The frontend derives the backend URL from
+the page origin at runtime, so opening `http://<server-ip>:5173` from another
+computer automatically calls the backend on `http://<server-ip>:8000` — no
+rebuild or config needed. Just make sure both ports **5173 and 8000** are open
+in the server's firewall. To pin the backend to a fixed host instead, set
+`VITE_API_URL` before building (e.g. `VITE_API_URL=http://10.0.0.5:8000 ./mlauto.sh rebuild`).
+
 ### Option B — local (no Docker)
 
 ```bash

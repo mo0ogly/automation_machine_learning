@@ -39,8 +39,11 @@ services:
     build:
       context: ./frontend
       args:
-        # Default the bundle's API base at the host-published backend port.
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:${BACKEND_PORT:-8000}}
+        # Leave empty by default: the bundle derives the backend URL from the
+        # page origin at runtime (src/apiBase.js), so the app works on localhost
+        # AND from another machine over the LAN without a per-host rebuild.
+        # Set VITE_API_URL only to force a specific backend host/port.
+        VITE_API_URL: ${VITE_API_URL:-}
     image: automation-machine-learning-frontend:latest
     depends_on:
       backend:

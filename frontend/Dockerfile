@@ -3,16 +3,18 @@
 #   docker build -t automation-machine-learning-frontend ./frontend
 #
 # Two stages: node builds the static bundle, nginx serves it on :5173 with an SPA
-# fallback. The browser calls the backend directly (VITE_API_URL, default
-# http://localhost:8000) — both ports are published to the host by compose, so no
-# reverse proxy is needed for the local-compose case. Override VITE_API_URL at
-# build time to point a remote deployment at another host.
+# fallback. The browser calls the backend directly. VITE_API_URL is empty by
+# default: the bundle then derives the backend URL from the page origin at
+# runtime (src/apiBase.js), so it works on localhost AND from another machine on
+# the LAN. Both ports are published to the host by compose, so no reverse proxy
+# is needed. Set VITE_API_URL at build time only to force a fixed backend host.
 
 FROM node:22-alpine AS build
 WORKDIR /app
 
 # Baked into the bundle at build time (Vite inlines import.meta.env.VITE_*).
-ARG VITE_API_URL=http://localhost:8000
+# Empty by default -> runtime origin-based resolution (see src/apiBase.js).
+ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
 
 # Lockfile first for layer caching, then a reproducible install.

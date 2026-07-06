@@ -204,6 +204,14 @@ Puis ouvrir **http://localhost:5173**. Autres verbes : `down`, `restart`,
 `mlauto-data` (SQLite) et survivent à `down` + rebuild. Ports surchargeables
 dans `.env` (`BACKEND_PORT` / `FRONTEND_PORT`).
 
+**Accès depuis un autre poste (LAN).** Le frontend déduit l'URL du backend de
+l'origine de la page au runtime : ouvrir `http://<ip-serveur>:5173` depuis un
+autre ordinateur appelle automatiquement le backend sur
+`http://<ip-serveur>:8000` — sans rebuild ni configuration. Il faut seulement
+que les deux ports **5173 et 8000** soient ouverts dans le pare-feu du serveur.
+Pour figer le backend sur un hôte précis, définir `VITE_API_URL` avant le build
+(ex. `VITE_API_URL=http://10.0.0.5:8000 ./mlauto.sh rebuild`).
+
 ### Option B — local (sans Docker)
 
 ```bash

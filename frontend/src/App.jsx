@@ -10,14 +10,11 @@ import AiBackendsPanel from './components/AiBackendsPanel'
 import ModelsMenu from './components/ModelsMenu'
 import { isCyber } from './components/cyber'
 import { groupModels } from './components/modelGroups'
+import { API_URL } from './apiBase'
 
 // Prompts panel pulls in Monaco (bundled offline). Code-split so the editor only
 // loads when the panel is opened, keeping the initial app bundle light.
 const PromptsPanel = lazy(() => import('./components/PromptsPanel'))
-
-// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
-// the local dev backend so `npm run dev` keeps working unchanged.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Map a prompt's localisation.view to a top-nav view id.
 const VIEW_OF = { 'Pipeline': 'dashboard', 'Renforcement': 'rl', 'Exploiter': 'exploit' };

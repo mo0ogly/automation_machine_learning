@@ -2,9 +2,10 @@
 // persistent "My agents" registry, and import/export). Centralised here so the
 // view and its panels never duplicate the base URL or endpoint paths.
 
-// Configurable at build time (Docker passes VITE_API_URL); defaults to the local
-// dev backend so `npm run dev` keeps working unchanged.
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Base URL resolved in one place (src/apiBase.js) so localhost and LAN access
+// both work; re-exported for panels that import it from here.
+import { API_URL } from '../../apiBase';
+export { API_URL };
 const BASE = API_URL + '/api/rl/deep';
 
 async function jsonOrThrow(res) {

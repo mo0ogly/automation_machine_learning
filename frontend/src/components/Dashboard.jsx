@@ -12,11 +12,8 @@ import { isCyber } from './cyber';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import DataQualityBanner from './DataQualityBanner';
+import { API_URL } from '../apiBase';
 import './components.css';
-
-// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
-// the local dev backend so `npm run dev` keeps working unchanged.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Dashboard = ({ aiRefresh, onOpenRL }) => {
   const { t } = useTranslation('dashboard');

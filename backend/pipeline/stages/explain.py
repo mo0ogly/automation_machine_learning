@@ -41,7 +41,7 @@ def _is_linear(model) -> bool:
 
 
 def default_config(ctx):
-    return {"sample_index": 0, "class_index": -1, "partial_dependence": True}
+    return {"sample_index": 0, "class_index": -1, "partial_dependence": True, "ice": False}
 
 
 def config_schema(ctx):
@@ -57,6 +57,10 @@ def config_schema(ctx):
                            "Trace, pour les variables les plus influentes, la forme de l'effet "
                            "moyen sur la prédiction (1D) + une surface 2D pour la paire de tête "
                            "(révèle les interactions). Complète SHAP. En cas de doute, cliquez « IA »."))
+    controls.append(toggle("ice", "Courbes individuelles (ICE)", False,
+                           "Ajoute, pour la variable la plus influente, une courbe par observation "
+                           "(en plus de la moyenne PDP) : révèle des sous-groupes qui réagissent "
+                           "différemment — hétérogénéité que la moyenne masque."))
     return controls
 
 
@@ -146,7 +150,8 @@ def run(session, config):
         # class; binary / regression have a single output row (0).
         pdp_class = ci if (ctx.problem_type == CLASSIFICATION and n_out > 2) else 0
         plots += pdp.partial_dependence_plots(model, Xs, list(Xs.columns),
-                                              [int(i) for i in order], ctx.problem_type, pdp_class)
+                                              [int(i) for i in order], ctx.problem_type, pdp_class,
+                                              ice=bool(cfg.get("ice")))
 
     report = {"Modèle expliqué": origin, "Explainer": explainer_kind,
               "Variable la plus influente": top[0]["feature"] if top else "—"}

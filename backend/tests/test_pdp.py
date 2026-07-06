@@ -59,4 +59,15 @@ def test_pdp_schema_control_present():
     for stg in ("clean", "transform", "integrate", "separate", "model"):
         run_stage(s, stg, {})
     view = client.get(f"/api/session/{sid}/stage/explain").json()
-    assert any(c["name"] == "partial_dependence" for c in view["schema"])
+    names = {c["name"] for c in view["schema"]}
+    assert "partial_dependence" in names and "ice" in names
+
+
+def _ice_captions(result):
+    caps = [(p.get("caption", "") if isinstance(p, dict) else "") for p in result["plots"]]
+    return [c for c in caps if "ICE" in c]
+
+
+def test_ice_off_by_default_on_when_enabled():
+    assert _ice_captions(_explain("breastcancer.csv")) == []            # off by default
+    assert len(_ice_captions(_explain("breastcancer.csv", {"ice": True}))) == 1

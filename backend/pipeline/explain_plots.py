@@ -77,7 +77,38 @@ def pdp_2d(model, X, pair, names, problem_type, class_row=0):
     return fig_to_base64(fig)
 
 
-def partial_dependence_plots(model, X, feature_names, top_indices, problem_type, class_row=0):
+def ice_1d(model, X, feature, feature_name, problem_type, class_row=0, max_lines=40):
+    """Individual Conditional Expectation: one faint curve per instance + the bold
+    average (PDP). Reveals heterogeneity the average alone hides — subgroups whose
+    prediction reacts to the feature differently."""
+    import matplotlib.pyplot as plt
+    from sklearn.inspection import partial_dependence
+    style_plot()
+    try:
+        res = partial_dependence(model, X, [feature], kind="both", grid_resolution=30)
+    except Exception:
+        return None
+    xs = np.asarray(_grid(res)[0], dtype=float)
+    ind = np.asarray(res["individual"])          # (n_outputs, n_instances, n_grid)
+    row = class_row if 0 <= class_row < ind.shape[0] else 0
+    curves = ind[row]
+    avg = np.asarray(_class_row(res["average"], class_row), dtype=float)
+    fig, ax = plt.subplots(figsize=(6, 4.2))
+    n = min(max_lines, len(curves))
+    step = max(1, len(curves) // n)
+    for c in curves[::step]:
+        ax.plot(xs, c, color="#8b5cf6", lw=0.6, alpha=0.25)
+    ax.plot(xs, avg, color="#e94560", lw=2.4, label="Moyenne (PDP)")
+    ax.set_xlabel(str(feature_name))
+    ax.set_ylabel("Probabilité" if problem_type == "classification" else "Prédiction")
+    ax.set_title("Courbes individuelles (ICE) — " + str(feature_name))
+    ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+    return fig_to_base64(fig)
+
+
+def partial_dependence_plots(model, X, feature_names, top_indices, problem_type, class_row=0,
+                             ice=False):
     """1-D PDP for the top features + a 2-D PDP for the top pair. ``top_indices``
     are column positions into ``X`` (most influential first); ``class_row`` selects
     the class in multiclass (0 for binary / regression)."""
@@ -86,6 +117,11 @@ def partial_dependence_plots(model, X, feature_names, top_indices, problem_type,
         p = pdp_1d(model, X, int(i), feature_names[i], problem_type, class_row)
         if p:
             plots.append(p)
+    if ice and len(top_indices):                 # ICE for the single most influential feature
+        p_ice = ice_1d(model, X, int(top_indices[0]), feature_names[top_indices[0]],
+                       problem_type, class_row)
+        if p_ice:
+            plots.append(p_ice)
     if len(top_indices) >= 2:
         p2 = pdp_2d(model, X, (int(top_indices[0]), int(top_indices[1])),
                     (feature_names[top_indices[0]], feature_names[top_indices[1]]),

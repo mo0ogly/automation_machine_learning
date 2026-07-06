@@ -15,6 +15,7 @@ set -euo pipefail
 #   ./mlauto.sh health        # probe backend /health + frontend
 #   ./mlauto.sh shell [svc]   # open a shell in a service (default: backend)
 #   ./mlauto.sh test          # run the backend test-suite inside the container
+#   ./mlauto.sh seed          # replay the pipeline on every demo dataset (idempotent)
 #   ./mlauto.sh clean         # stop + remove the session volume (DESTRUCTIVE)
 #   ./mlauto.sh help
 #
@@ -81,6 +82,7 @@ cmd_up() {
     hdr "Démarrage de la stack (build si nécessaire)"
     "${DC[@]}" up -d --build
     _wait_healthy
+    cmd_seed
     _urls
 }
 
@@ -94,6 +96,7 @@ cmd_rebuild() {
     "${DC[@]}" build --no-cache
     "${DC[@]}" up -d
     _wait_healthy
+    cmd_seed
     _urls
 }
 
@@ -130,6 +133,12 @@ cmd_test() {
     "${DC[@]}" exec -T backend python -m pytest tests/ -q
 }
 
+cmd_seed() {
+    _require_daemon
+    hdr "Modèles exemples (rejeu du pipeline sur les datasets démo — idempotent)"
+    "${DC[@]}" exec -T backend python seed_examples.py
+}
+
 cmd_clean() {
     _require_daemon
     warn "Ceci arrête la stack ET supprime le volume des sessions (sessions.db perdues)."
@@ -160,7 +169,8 @@ show_menu() {
         _opt 9  "Health"
         _opt 10 "Shell         (backend)"
         _opt 11 "Test          (suite backend)"
-        _opt 12 "Clean         (DESTRUCTIF — supprime le volume sessions)"
+        _opt 12 "Seed          (modeles exemples — rejeu du pipeline, idempotent)"
+        _opt 13 "Clean         (DESTRUCTIF — supprime le volume sessions)"
         echo
         _opt 0 "Quitter"
         echo -n "  Choix : "
@@ -177,7 +187,8 @@ show_menu() {
             9)  cmd_health;  _pause ;;
             10) cmd_shell;   _pause ;;
             11) cmd_test;    _pause ;;
-            12) cmd_clean;   _pause ;;
+            12) cmd_seed;    _pause ;;
+            13) cmd_clean;   _pause ;;
             0|q|Q) return ;;
             *) warn "choix invalide"; _pause ;;
         esac
@@ -198,6 +209,7 @@ case "${cmd}" in
     health)       cmd_health ;;
     shell)        cmd_shell "$@" ;;
     test)         cmd_test ;;
+    seed)         cmd_seed ;;
     clean)        cmd_clean ;;
     -h|--help|help) cmd_help ;;
     *) err "commande inconnue : ${cmd}"; echo "  voir : ./mlauto.sh help"; exit 1 ;;

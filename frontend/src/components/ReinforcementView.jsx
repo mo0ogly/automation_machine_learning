@@ -4,12 +4,9 @@ import PlotModal from './PlotModal';
 import AssistButton from './AssistButton';
 import AssistAnswer from './AssistAnswer';
 import DeepRLView from './DeepRLView';
+import { API_URL } from '../apiBase';
 import './components.css';
 import './reinforcement.css';
-
-// API base: configurable at build time (Docker passes VITE_API_URL), defaults to
-// the local dev backend so `npm run dev` keeps working unchanged.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Q-learning hyperparameters exposed to the expert (bounds mirror the backend),
 // grouped by what they control: the world vs the algorithm.

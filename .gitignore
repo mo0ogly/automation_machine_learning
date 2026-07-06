@@ -46,3 +46,10 @@ Thumbs.db
 # ─── Backends IA (clés write-only, ne pas committer) ─────
 backend/ai_backends.json
 backend/prompt_overrides.json
+
+# ─── CA interne (info d'infra interne, ne pas committer) ─
+# Place ici les .crt de ta CA d'entreprise pour que le backend Docker leur
+# fasse confiance (voir backend/Dockerfile) ; le dossier reste dans le repo
+# (.gitkeep) mais son contenu réel ne l'est pas.
+backend/certs/*.crt
+backend/certs/*.pem

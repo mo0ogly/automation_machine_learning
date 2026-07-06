@@ -23,6 +23,7 @@ services:
       ML_PERSIST_SESSIONS: ${ML_PERSIST_SESSIONS:-1}
       ML_SESSION_DB: /data/sessions.db
       ML_REGISTRY_DIR: /data/deeprl_registry   # saved RL agents survive rebuilds
+      ML_AI_STORE: /data/ai_backends.json      # AI backends + keys survive rebuilds
     volumes:
       - mlauto-data:/data          # SQLite session store — survives restarts
     ports:

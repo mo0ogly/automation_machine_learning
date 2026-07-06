@@ -17,14 +17,26 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     MPLBACKEND=Agg \
     ML_SESSION_DB=/data/sessions.db \
-    HF_HOME=/app/.hf-cache
+    HF_HOME=/app/.hf-cache \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 WORKDIR /app
 
 # libgomp1: OpenMP runtime required by the XGBoost wheel at import time.
+# ca-certificates: base trust store, optionally extended with an internal CA
+# chain so httpx can reach corporate-internal HTTPS endpoints (e.g. a local
+# OpenAI-compatible gateway behind a private CA). httpx defaults to certifi's
+# bundled CA list, not the OS trust store, so SSL_CERT_FILE above is required
+# in addition to update-ca-certificates for any internal root to actually be
+# used. Drop your organization's .crt files in backend/certs/ (gitignored —
+# see backend/certs/.gitkeep) before building if you need this; the directory
+# is copied as-is so the build works with or without them.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgomp1 \
+    && apt-get install -y --no-install-recommends libgomp1 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+COPY backend/certs/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates
 
 # Dedicated non-root runtime user (least privilege; binds 8000 which is > 1024).
 RUN useradd --create-home --shell /usr/sbin/nologin mlauto

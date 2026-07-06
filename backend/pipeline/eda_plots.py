@@ -67,10 +67,13 @@ def univariate_plots(df, t):
 def bivariate_plots(df, target, t):
     """One boxplot per variable vs the target."""
     import matplotlib.pyplot as plt
+    import pandas as pd
     import seaborn as sns
     style_plot()
     if not target or target not in df.columns:
         return [message_plot("Pas de cible : analyse bivariée non applicable (non supervisé).")]
+    if not pd.api.types.is_numeric_dtype(df[target]):
+        return [message_plot("Cible non numérique : analyse bivariée par boxplot non applicable (classification).")]
 
     plots = []
     disc = [c for c in t["discrete"] if c in df.columns and c != target]

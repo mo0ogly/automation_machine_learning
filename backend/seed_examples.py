@@ -10,12 +10,15 @@ than calling pipeline internals directly, so it never drifts from what a real
 user click does.
 """
 
+import fcntl
 import sys
+from pathlib import Path
 
 import httpx
 
 BASE_URL = "http://localhost:8000"
 EXAMPLE_PREFIX = "[exemple] "
+LOCK_PATH = Path("/tmp/seed_examples.lock")
 
 # Every demo dataset from GET /api/demo-datasets.
 DATASETS = [
@@ -62,6 +65,15 @@ def _seed_one(client: httpx.Client, dataset_name: str) -> bool:
 
 
 def main() -> int:
+    # Guards against two concurrent seed runs (e.g. `up` launched twice) racing
+    # each other into duplicate example sessions.
+    lock_file = open(LOCK_PATH, "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print(f"Un autre seed_examples.py tourne déjà (verrou {LOCK_PATH}) — abandon.")
+        return 1
+
     with httpx.Client(base_url=BASE_URL, timeout=120.0) as client:
         try:
             sessions = client.get("/api/sessions").json()["sessions"]

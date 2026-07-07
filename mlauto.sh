@@ -16,6 +16,7 @@ set -euo pipefail
 #   ./mlauto.sh shell [svc]   # open a shell in a service (default: backend)
 #   ./mlauto.sh test          # run the backend test-suite inside the container
 #   ./mlauto.sh seed          # replay the pipeline on every demo dataset (idempotent)
+#   ./mlauto.sh seed-deeprl   # train + save SOC/NOC Deep RL example agents (idempotent, ~20min — NOT run by up/rebuild)
 #   ./mlauto.sh clean         # stop + remove the session volume (DESTRUCTIVE)
 #   ./mlauto.sh help
 #
@@ -139,6 +140,13 @@ cmd_seed() {
     "${DC[@]}" exec -T backend python seed_examples.py
 }
 
+cmd_seed_deeprl() {
+    _require_daemon
+    hdr "Agents Deep RL SOC/NOC exemples (idempotent, ~20 min la première fois)"
+    warn "Non lancé automatiquement par up/rebuild — voir mlauto.sh seed-deeprl."
+    "${DC[@]}" exec -T backend python seed_deeprl.py
+}
+
 cmd_clean() {
     _require_daemon
     warn "Ceci arrête la stack ET supprime le volume des sessions (sessions.db perdues)."
@@ -149,7 +157,7 @@ cmd_clean() {
     esac
 }
 
-cmd_help() { sed -n '4,22p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
+cmd_help() { sed -n '4,23p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
 
 # --- menu interactif ---------------------------------------------------------
 _opt()   { printf "  ${GREEN}%2s)${NC} %s\n" "$1" "$2"; }
@@ -170,7 +178,8 @@ show_menu() {
         _opt 10 "Shell         (backend)"
         _opt 11 "Test          (suite backend)"
         _opt 12 "Seed          (modeles exemples — rejeu du pipeline, idempotent)"
-        _opt 13 "Clean         (DESTRUCTIF — supprime le volume sessions)"
+        _opt 13 "Seed Deep RL  (agents SOC/NOC exemples — idempotent, ~20 min)"
+        _opt 14 "Clean         (DESTRUCTIF — supprime le volume sessions)"
         echo
         _opt 0 "Quitter"
         echo -n "  Choix : "
@@ -187,8 +196,9 @@ show_menu() {
             9)  cmd_health;  _pause ;;
             10) cmd_shell;   _pause ;;
             11) cmd_test;    _pause ;;
-            12) cmd_seed;    _pause ;;
-            13) cmd_clean;   _pause ;;
+            12) cmd_seed;         _pause ;;
+            13) cmd_seed_deeprl;  _pause ;;
+            14) cmd_clean;        _pause ;;
             0|q|Q) return ;;
             *) warn "choix invalide"; _pause ;;
         esac
@@ -210,6 +220,7 @@ case "${cmd}" in
     shell)        cmd_shell "$@" ;;
     test)         cmd_test ;;
     seed)         cmd_seed ;;
+    seed-deeprl)  cmd_seed_deeprl ;;
     clean)        cmd_clean ;;
     -h|--help|help) cmd_help ;;
     *) err "commande inconnue : ${cmd}"; echo "  voir : ./mlauto.sh help"; exit 1 ;;

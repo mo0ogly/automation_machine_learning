@@ -71,7 +71,7 @@ PROVIDERS = [
         "api_base": "https://openrouter.ai/api/v1",
         "base_url": None,
         "default_model": "",
-        "models": [],  # aggregator: type the full model slug (e.g. anthropic/claude-3.7-sonnet)
+        "models": [],  # aggregator: type the full model slug (e.g. anthropic/claude-sonnet-5)
     },
     {
         "id": "together", "label": "Together AI",

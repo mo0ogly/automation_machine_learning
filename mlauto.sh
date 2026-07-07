@@ -17,6 +17,7 @@ set -euo pipefail
 #   ./mlauto.sh test          # run the backend test-suite inside the container
 #   ./mlauto.sh seed          # replay the pipeline on every demo dataset (idempotent)
 #   ./mlauto.sh seed-deeprl   # train + save SOC/NOC Deep RL example agents (idempotent, ~20min — NOT run by up/rebuild)
+#   ./mlauto.sh push-gitlab   # mirror `main` to the internal GitLab, minus .claude/ (needs .gitlab.env)
 #   ./mlauto.sh clean         # stop + remove the session volume (DESTRUCTIVE)
 #   ./mlauto.sh help
 #
@@ -147,6 +148,12 @@ cmd_seed_deeprl() {
     "${DC[@]}" exec -T backend python seed_deeprl.py
 }
 
+cmd_push_gitlab() {
+    # Git mirror, not a Docker action — no daemon needed.
+    hdr "Miroir GitLab interne (main sans .claude)"
+    "${ROOT}/scripts/push_gitlab.sh"
+}
+
 cmd_clean() {
     _require_daemon
     warn "Ceci arrête la stack ET supprime le volume des sessions (sessions.db perdues)."
@@ -157,7 +164,7 @@ cmd_clean() {
     esac
 }
 
-cmd_help() { sed -n '4,23p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
+cmd_help() { sed -n '4,24p' "${ROOT}/mlauto.sh" | sed 's/^# \{0,1\}//'; }
 
 # --- menu interactif ---------------------------------------------------------
 _opt()   { printf "  ${GREEN}%2s)${NC} %s\n" "$1" "$2"; }
@@ -179,7 +186,8 @@ show_menu() {
         _opt 11 "Test          (suite backend)"
         _opt 12 "Seed          (modeles exemples — rejeu du pipeline, idempotent)"
         _opt 13 "Seed Deep RL  (agents SOC/NOC exemples — idempotent, ~20 min)"
-        _opt 14 "Clean         (DESTRUCTIF — supprime le volume sessions)"
+        _opt 14 "Push GitLab   (miroir main sans .claude vers le GitLab interne)"
+        _opt 15 "Clean         (DESTRUCTIF — supprime le volume sessions)"
         echo
         _opt 0 "Quitter"
         echo -n "  Choix : "
@@ -198,7 +206,8 @@ show_menu() {
             11) cmd_test;    _pause ;;
             12) cmd_seed;         _pause ;;
             13) cmd_seed_deeprl;  _pause ;;
-            14) cmd_clean;        _pause ;;
+            14) cmd_push_gitlab;  _pause ;;
+            15) cmd_clean;        _pause ;;
             0|q|Q) return ;;
             *) warn "choix invalide"; _pause ;;
         esac
@@ -221,6 +230,7 @@ case "${cmd}" in
     test)         cmd_test ;;
     seed)         cmd_seed ;;
     seed-deeprl)  cmd_seed_deeprl ;;
+    push-gitlab)  cmd_push_gitlab ;;
     clean)        cmd_clean ;;
     -h|--help|help) cmd_help ;;
     *) err "commande inconnue : ${cmd}"; echo "  voir : ./mlauto.sh help"; exit 1 ;;

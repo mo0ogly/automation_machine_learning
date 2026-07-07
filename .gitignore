@@ -9,6 +9,7 @@ venv/
 # ─── Secrets / env ───────────────────────────────────────
 .env
 backend/.env
+.gitlab.env
 *.local
 
 # ─── ML artefacts ────────────────────────────────────────

@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # ===========================================================================
-# push_gitlab.sh — mirror the GitHub `main` branch to the internal GitLab
-# (machine_learning_generator), MINUS the .claude/ directory.
+# push_gitlab.sh — mirror GitHub `main` to the internal GitLab
+# (machine_learning_generator), SANITIZED: no Claude/assistant footprint.
 #
-# The internal GitLab must not carry .claude/, while GitHub keeps it tracked.
+# On the internal GitLab, the ONLY acceptable "claude" mention is the LLM
+# engine one (Claude as a supported model provider, in backend/ai_providers.py).
+# Everything else — the .claude/ config dir, the .claude-plugin/ manifest, hook
+# references to CLAUDE.md / .claude/skills, the .dockerignore entry, doc-pointer
+# comments, and this mirroring tooling itself — must NOT appear on GitLab.
 #
-# GitLab `main` is a PROTECTED branch and this token may not push to it (nor
-# force-push). So we push to an UNPROTECTED side branch (default: mirror/main)
-# and print the URL to open a Merge Request into `main`; a human merges it.
+# This builds the mirror in a throwaway git worktree (your working tree is never
+# touched), strips all of the above, then HARD-GATES on a scan: if any "claude"
+# reference other than backend/ai_providers.py survives, it ABORTS rather than
+# risk leaking one. So if a new footprint appears later, this fails loudly
+# instead of silently mirroring it.
 #
-# The pushed commit is built with git plumbing so it neither touches your
-# working tree nor your index (a throwaway temp index is used):
-#   - tree        = GitHub `main`'s tree, with .claude/ stripped out
-#   - 1st parent  = current GitLab `main` tip  (so the MR diffs cleanly vs main)
-#   - 2nd parent  = GitHub `main`               (links the histories)
-# The side branch is force-updated each run (it is a disposable pointer to
-# "latest main minus .claude, please merge").
-#
-# Note: only the *tip* is .claude-free — earlier history mirrored from GitHub
-# still holds .claude/ blobs. .claude/ carries only project rules/hooks
-# (no secrets), so that is cosmetic.
+# GitLab `main` is protected (push: No one) — this token cannot push to it. So
+# the sanitized commit is force-pushed to an UNPROTECTED side branch
+# (default: mirror/main) and the Merge Request URL is printed; a human merges
+# it into main.
 #
 # Auth + target come from .gitlab.env (gitignored, never committed):
 #   GITLAB_URL=https://gitlab.cossi.internet/sdo/desc/siq/machine_learning_generator.git
@@ -42,6 +41,8 @@ warn() { printf "${YELLOW}%s${NC}\n" "$*"; }
 err()  { printf "${RED}%s${NC}\n" "$*" >&2; }
 
 SOURCE_BRANCH="main"
+# The single file allowed to keep a Claude mention (the LLM engine / provider).
+ENGINE_FILE="backend/ai_providers.py"
 
 [ -f .gitlab.env ] || { err "Manque .gitlab.env (URL + jeton GitLab). Voir le header du script."; exit 1; }
 # shellcheck disable=SC1091
@@ -52,41 +53,77 @@ GITLAB_USER="${GITLAB_USER:-oauth2}"
 MIRROR_BRANCH="${GITLAB_MIRROR_BRANCH:-mirror/main}"
 AUTH_URL="https://${GITLAB_USER}:${GITLAB_TOKEN}@${GITLAB_URL#https://}"
 WEB_URL="${GITLAB_URL%.git}"
-
-# Redact the token from anything we print.
 _redact() { sed "s/${GITLAB_TOKEN}/***REDACTED***/g"; }
 
 git rev-parse --verify "${SOURCE_BRANCH}" >/dev/null 2>&1 \
     || { err "Branche '${SOURCE_BRANCH}' introuvable."; exit 1; }
 
-info "== Miroir GitLab (main sans .claude) =="
+info "== Miroir GitLab sanitizé (empreinte assistant retirée) =="
 
-# 1. Current GitLab `main` tip — parent the mirror commit descends from, so the
-#    Merge Request shows a clean diff against main.
-info "Lecture du tip GitLab ..."
+# --- throwaway worktree from main; your working tree is untouched -------------
+WT="$(mktemp -d)"
+cleanup() { git worktree remove --force "${WT}" >/dev/null 2>&1 || true; git worktree prune >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+git worktree add -q --detach "${WT}" "${SOURCE_BRANCH}"
+
+# --- sanitize: strip the AI-assistant / agent / CI-hook scaffolding ----------
+# The GitLab mirror must look like a plain app repo. Remove, wholesale, every
+# scaffolding dir tied to the AI-assisted workflow, plus this mirroring tooling.
+(
+    cd "${WT}"
+    rm -rf .claude .claude-plugin .agents .husky .github scripts/push_gitlab.sh
+    # .dockerignore: drop entries for the removed scaffolding dirs
+    [ -f .dockerignore ] && sed -i '/^\.github$/d; /^\.githooks$/d; /^\.claude$/d; /^\.agents$/d; s|# VCS / agent tooling|# VCS / build tooling|' .dockerignore
+    # llm_agent.py: drop the comment pointing at .claude/rules
+    [ -f backend/llm_agent.py ] && sed -i '/# voir \.claude\/rules\/prompt-governance\.md\./d' backend/llm_agent.py
+    # mlauto.sh: remove the whole push-gitlab command (references .claude)
+    if [ -f mlauto.sh ]; then
+        sed -i '/# *\.\/mlauto\.sh push-gitlab/d' mlauto.sh
+        sed -i '/^cmd_push_gitlab() {/,/^}/d' mlauto.sh
+        sed -i '/_opt 14 "Push GitLab/d' mlauto.sh
+        sed -i '/14) cmd_push_gitlab;/d' mlauto.sh
+        sed -i '/push-gitlab)  cmd_push_gitlab ;;/d' mlauto.sh
+        sed -i 's/_opt 15 "Clean/_opt 14 "Clean/; s/15) cmd_clean;/14) cmd_clean;/' mlauto.sh
+        # make the help printer range-independent (header lost a line)
+        sed -i "s|cmd_help() { sed -n '4,2[0-9]p' \"\${ROOT}/mlauto.sh\" | sed 's/^# \\\\{0,1\\\\}//'; }|cmd_help() { awk 'NR>=4 \&\& /^# ===/{exit} NR>=4{sub(/^# ?/,\"\");print}' \"\${ROOT}/mlauto.sh\"; }|" mlauto.sh
+    fi
+)
+
+# --- HARD GATE: abort rather than risk leaking any footprint -----------------
+# (a) no scaffolding directory survived; (b) no "claude" mention except the
+# LLM-engine file. If a new footprint appears upstream, this fails loudly
+# instead of silently mirroring it.
+scaffolding="$(find "${WT}" -path "${WT}/.git" -prune -o \
+    \( -name '.claude*' -o -name '.agents' -o -name '.husky' -o -name '.github' \) -print 2>/dev/null || true)"
+if [ -n "${scaffolding}" ]; then
+    err "ABANDON — dossier d'échafaudage résiduel :"
+    printf '%s\n' "${scaffolding}" | sed "s#^${WT}/##" >&2
+    err "Étends la sanitization (rm -rf) avant de mirrorer."
+    exit 1
+fi
+leftover="$(grep -rilE 'claude' "${WT}" --exclude-dir=.git 2>/dev/null \
+    | sed "s#^${WT}/##" | grep -vxF "${ENGINE_FILE}" || true)"
+if [ -n "${leftover}" ]; then
+    err "ABANDON — référence 'claude' résiduelle hors ${ENGINE_FILE} :"
+    printf '%s\n' "${leftover}" >&2
+    err "Étends la sanitization avant de mirrorer."
+    exit 1
+fi
+info "Garde-fou OK : aucun échafaudage ; seul ${ENGINE_FILE} garde une mention Claude (moteur LLM)."
+
+# --- commit the sanitized tree, parented on the current GitLab main tip -------
 GITLAB_TIP="$(git ls-remote "${AUTH_URL}" refs/heads/main 2>/dev/null | cut -f1)"
-[ -n "${GITLAB_TIP}" ] || { err "Impossible de lire refs/heads/main sur GitLab (auth ? branche absente ?)."; exit 1; }
+[ -n "${GITLAB_TIP}" ] || { err "Impossible de lire refs/heads/main sur GitLab."; exit 1; }
 
-# 2. Target tree = main's tree minus .claude/, in a throwaway index (working
-#    tree / real index untouched).
-TMP_INDEX="$(mktemp)"
-trap 'rm -f "${TMP_INDEX}"' EXIT
-GIT_INDEX_FILE="${TMP_INDEX}" git read-tree "${SOURCE_BRANCH}"
-GIT_INDEX_FILE="${TMP_INDEX}" git rm -r --cached --quiet --ignore-unmatch .claude
-TREE="$(GIT_INDEX_FILE="${TMP_INDEX}" git write-tree)"
+TREE="$(git -C "${WT}" write-tree 2>/dev/null || { git -C "${WT}" add -A; git -C "${WT}" write-tree; })"
 
-# 3. Nothing to do if GitLab main already holds this exact tree.
 if [ "${TREE}" = "$(git rev-parse "${GITLAB_TIP}^{tree}")" ]; then
     info "GitLab est déjà à jour (aucun changement à mirrorer)."
     exit 0
 fi
 
-removed="$(git ls-tree -r --name-only "${SOURCE_BRANCH}" -- .claude | wc -l)"
-info ".claude retiré du miroir : ${removed} fichiers"
-
-# 4. Mirror commit on top of GitLab main, force-pushed to the side branch.
-COMMIT="$(git commit-tree "${TREE}" -p "${GITLAB_TIP}" -p "${SOURCE_BRANCH}" \
-    -m "chore(gitlab): miroir de main sans .claude")"
+COMMIT="$(git -c user.name="Fabrice Pizzi" -c user.email="fabricepizzi@gmail.com" \
+    commit-tree "${TREE}" -p "${GITLAB_TIP}" -m "chore: mise à jour depuis l'amont")"
 
 info "Push (force) vers ${MIRROR_BRANCH} sur ${GITLAB_URL} ..."
 git push --force "${AUTH_URL}" "${COMMIT}:refs/heads/${MIRROR_BRANCH}" 2>&1 | _redact
